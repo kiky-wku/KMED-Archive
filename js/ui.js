@@ -75,6 +75,13 @@ const P = {
   plus: '<path d="M12 5v14M5 12h14"/>',
   trash: '<path d="M4 7h16M10 11v6M14 11v6M6 7l1 13h10l1-13M9 7V4h6v3"/>',
   up: '<path d="M6 15l6-6 6 6"/>',
+  shuffle: '<path d="M16 4h4v4M4 20l16-16M20 16v4h-4M15 15l5 5M4 4l5 5"/>',
+  undo: '<path d="M9 14L4 9l5-5"/><path d="M4 9h11a5 5 0 0 1 0 10h-4"/>',
+  skip: '<path d="M5 5l9 7-9 7z"/><path d="M19 5v14"/>',
+  restore: '<path d="M3 12a9 9 0 1 0 3-6.7L3 8"/><path d="M3 3v5h5"/>',
+  list: '<path d="M8 6h13M8 12h13M8 18h13M3.5 6h.01M3.5 12h.01M3.5 18h.01"/>',
+  layers: '<path d="M12 3l9 5-9 5-9-5z"/><path d="M3 13l9 5 9-5"/>',
+  search: '<circle cx="11" cy="11" r="7"/><path d="M20 20l-3.5-3.5"/>',
 };
 export function icon(name, cls = 'icon') {
   const s = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
@@ -153,4 +160,43 @@ export function ago(t) {
   if (s < 86400) return `${Math.floor(s / 3600)}시간 전`;
   if (s < 86400 * 7) return `${Math.floor(s / 86400)}일 전`;
   return fmtDate(t, false);
+}
+
+// 오른쪽에서 미끄러져 나오는 서랍
+export function drawer({ title, body, onClose }) {
+  const panel = h('aside', { class: 'drawer', role: 'dialog', 'aria-modal': 'true' },
+    h('div', { class: 'drawer-head' }, h('h2', {}, title), h('button', { class: 'ib', 'aria-label': '닫기', onclick: () => close() }, icon('x'))),
+    h('div', { class: 'drawer-body' }, body));
+  const scrim = h('div', { class: 'scrim', onclick: () => close() });
+  document.body.append(scrim, panel);
+  requestAnimationFrame(() => { scrim.classList.add('on'); panel.classList.add('on'); });
+  function close() {
+    scrim.classList.remove('on'); panel.classList.remove('on');
+    setTimeout(() => { scrim.remove(); panel.remove(); }, 320);
+    onClose?.();
+  }
+  return { close, panel };
+}
+
+// 버튼 아래로 펼쳐지는 작은 메뉴
+export function popover(anchor, content, { align = 'left', width } = {}) {
+  document.querySelector('.pop')?._close?.();
+  const pop = h('div', { class: 'pop' }, content);
+  if (width) pop.style.width = `${width}px`;
+  document.body.append(pop);
+  const r = anchor.getBoundingClientRect();
+  const w = pop.offsetWidth;
+  pop.style.top = `${r.bottom + 8}px`;
+  pop.style.left = `${Math.max(12, Math.min(align === 'right' ? r.right - w : r.left, window.innerWidth - w - 12))}px`;
+  pop.style.transformOrigin = align === 'right' ? 'top right' : 'top left';
+  anchor.classList.add('open');
+  const onDoc = (e) => { if (!pop.contains(e.target) && !anchor.contains(e.target)) close(); };
+  setTimeout(() => document.addEventListener('pointerdown', onDoc), 0);
+  function close() {
+    anchor.classList.remove('open');
+    document.removeEventListener('pointerdown', onDoc);
+    pop.classList.add('out'); setTimeout(() => pop.remove(), 160);
+  }
+  pop._close = close;
+  return { close, pop };
 }

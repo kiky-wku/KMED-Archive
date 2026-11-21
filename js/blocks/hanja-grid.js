@@ -1,4 +1,5 @@
-import { h, seg } from '../ui.js';
+import { h, seg, icon } from '../ui.js';
+import { unitPicker } from './units.js';
 import { loadCards, loadProgress, uniqueCards } from '../data/hanja.js';
 
 // ─────────────────────────────────────────────
@@ -15,25 +16,19 @@ export function hanjaGrid(ctx, el) {
 
     let mode = 'r';
     let sel = [];
-    const unitBar = units.length ? h('div', { class: 'unit-bar' }) : null;
-    const search = h('input', { class: 'search-in', type: 'search', placeholder: '한자 · 훈 · 음 검색' });
-    const legend = h('div', { class: 'legend' });
+    const search = h('input', { type: 'search', placeholder: '한자 · 훈 · 음 검색' });
+    const legend = h('div', { class: 'q-counts' });
     const result = h('div', { class: 'g-result' });
     const grid = h('div', { class: 'hg' });
     el.append(
-      unitBar ? h('div', { class: 'q-top' }, unitBar) : null,
-      h('div', { class: 'toolbar' }, search, seg([['r', '한자 → 훈음'], ['h', '훈음 → 한자']], mode, (v) => { mode = v; draw(); }), h('div', { class: 'sp' }), legend),
+      h('div', { class: 'q-bar' },
+        units.length ? unitPicker(units, sel, (v) => { sel = v; draw(); }) : null,
+        h('label', { class: 'srch' }, icon('search', 'icon s'), search),
+        h('div', { class: 'sp' }), legend,
+        seg([['r', '한자 → 훈음'], ['h', '훈음 → 한자']], mode, (v) => { mode = v; draw(); })),
       result, grid,
     );
 
-    function drawUnits() {
-      if (!unitBar) return;
-      unitBar.replaceChildren(
-        h('button', { class: 'chipt' + (sel.length ? '' : ' on'), onclick: () => { sel = []; drawUnits(); draw(); } }, '전체'),
-        ...units.map((u) => h('button', { class: 'chipt' + (sel.includes(u.id) ? ' on' : ''), onclick: () => {
-          sel = sel.includes(u.id) ? sel.filter((x) => x !== u.id) : [...sel, u.id]; drawUnits(); draw();
-        } }, u.label)));
-    }
     function draw() {
       const list = uniqueCards(cards, sel);
       const st = prog[mode];
@@ -44,9 +39,9 @@ export function hanjaGrid(ctx, el) {
           h('div', { class: 'h' }, c.ch), h('div', { class: 'u' }, c.readings.join(' / ')));
       }));
       legend.replaceChildren(
-        h('span', { class: 'lg ok' }, h('i'), '맞음 ', h('b', {}, ok)),
-        h('span', { class: 'lg no' }, h('i'), '틀림 ', h('b', {}, no)),
-        h('span', { class: 'lg' }, h('i'), '안 함 ', h('b', {}, list.length - ok - no)));
+        h('span', { class: 'ok' }, h('b', {}, ok), ' 맞음'),
+        h('span', { class: 'no' }, h('b', {}, no), ' 틀림'),
+        h('span', {}, h('b', {}, list.length - ok - no), ' 안 함'));
       find();
     }
     function find() {
@@ -63,7 +58,7 @@ export function hanjaGrid(ctx, el) {
       first?.scrollIntoView({ behavior: 'smooth', block: 'center' });
     }
     search.addEventListener('input', find);
-    drawUnits(); draw();
+    draw();
   })();
   return () => { alive = false; };
 }

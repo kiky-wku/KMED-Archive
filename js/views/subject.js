@@ -20,7 +20,7 @@ export function subjectView(id, q) {
   const tabs = h('nav', { class: 'tabs', role: 'tablist' });
   const area = h('div', { class: 'block-area' });
   const back = h('button', { class: 'ib', 'aria-label': '뒤로', onclick: () => go('#/home') }, icon('back'));
-  const root = shell({ title: titleEl, left: back, right, body: h('div', {}, tabs, area) });
+  const root = shell({ title: titleEl, left: back, right, body: h('div', {}, tabs, area), tone: 'gray' });
 
   let cleanup = null;
   const prev = root.cleanup;

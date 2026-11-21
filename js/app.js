@@ -66,7 +66,7 @@ window.addEventListener('hashchange', route);
     const { data: { session } } = await sb.auth.getSession();
     if (session) {
       await loadMe();
-      if (S.profile) sb.rpc('touch_session', { p_device: deviceName() });
+      if (S.profile) { sb.rpc('touch_session', { p_device: deviceName() }); S.welcomed = true; }
     }
   } catch (e) {
     console.error(e);

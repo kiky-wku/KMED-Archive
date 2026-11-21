@@ -2,7 +2,7 @@ import { h, icon, gradeLabel } from '../ui.js';
 import { S, isAdmin, signOut, go } from '../app.js';
 
 // 상단 바 + 숨겨진 사이드바(☰)
-export function shell({ title, active, left, right, body }) {
+export function shell({ title, active, left, right, body, tone }) {
   const scrim = h('div', { class: 'scrim', onclick: close });
   const nav = (ic, label, hash, key) => h('button', {
     class: 'nav-i' + (active === key ? ' on' : ''),
@@ -14,8 +14,7 @@ export function shell({ title, active, left, right, body }) {
       h('div', { class: 'avatar' }, (S.profile.name || S.profile.email || '?').slice(0, 1)),
       h('div', {}, h('div', { class: 'n' }, S.profile.name || S.profile.email), h('div', { class: 'm' }, gradeLabel(S.grade))),
     ),
-    nav('home', '홈', '#/welcome', 'welcome'),
-    nav('book', '내 과목', '#/home', 'home'),
+    nav('home', '홈', '#/home', 'home'),
     nav('gear', '설정', '#/settings', 'settings'),
     isAdmin() ? nav('shield', '관리', '#/admin', 'admin') : null,
     h('div', { class: 'sp' }),
@@ -33,7 +32,7 @@ export function shell({ title, active, left, right, body }) {
 
   const onScroll = () => top.classList.toggle('scrolled', window.scrollY > 4);
   window.addEventListener('scroll', onScroll, { passive: true });
-  const root = h('div', {}, top, h('main', { class: 'page' }, body), scrim, side);
+  const root = h('div', { class: tone === 'gray' ? 'tone-gray' : '' }, top, h('main', { class: 'page' }, body), scrim, side);
   root.cleanup = () => window.removeEventListener('scroll', onScroll);
   return root;
 }
