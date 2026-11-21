@@ -5,6 +5,7 @@ import { welcomeView } from './views/welcome.js';
 import { homeView } from './views/home.js';
 import { placeholderView } from './views/placeholder.js';
 import { adminView } from './views/admin.js';
+import { subjectView } from './views/subject.js';
 
 // 앱 전체 상태
 export const S = { user: null, profile: null, grade: null, sem: null, welcomed: false };
@@ -45,7 +46,7 @@ export async function route(opt = {}) {
   const [a, b] = path.split('/');
   if (a === 'welcome') return mount(welcomeView());
   if (a === 'home') return mount(homeView(q));
-  if (a === 's' && b) return mount(placeholderView('과목', b));
+  if (a === 's' && b) return mount(subjectView(b, q));
   if (a === 'settings') return mount(placeholderView('설정'));
   if (a === 'admin' && isAdmin()) return mount(adminView(q));
   location.hash = '#/home';
