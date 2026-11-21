@@ -7,12 +7,14 @@ import { loadCards, loadProgress, uniqueCards } from '../data/hanja.js';
 // ─────────────────────────────────────────────
 export function hanjaGrid(ctx, el) {
   let alive = true;
-  el.append(h('div', { class: 'loading' }, h('i')));
+  const sk = h('div', { class: 'g-skel' },
+    h('div', { class: 'bar' }, h('i', { class: 'skel', style: { width: '130px' } }), h('i', { class: 'skel', style: { width: '290px' } })),
+    h('div', { class: 'hg' }, Array.from({ length: 40 }, () => h('i', { class: 'skel' }))));
+  el.append(sk);
   (async () => {
-    const [{ cards, units }, prog] = await Promise.all([loadCards(ctx.range.id), loadProgress(ctx.pool)]);
+    const [{ cards, units }, prog] = await Promise.all([loadCards(ctx.range.id), loadProgress(ctx.pool), document.fonts?.ready]);
     if (!alive) return;
-    el.replaceChildren();
-    if (!cards.length) { el.append(h('div', { class: 'empty' }, '등록된 한자가 없습니다')); return; }
+    if (!cards.length) { el.replaceChildren(h('div', { class: 'empty' }, '등록된 한자가 없습니다')); return; }
 
     let mode = 'r';
     let sel = [];
@@ -20,7 +22,7 @@ export function hanjaGrid(ctx, el) {
     const legend = h('div', { class: 'q-counts' });
     const result = h('div', { class: 'g-result' });
     const grid = h('div', { class: 'hg' });
-    el.append(
+    const wrap = h('div', { class: 'g-wrap' },
       h('div', { class: 'q-bar' },
         units.length ? unitPicker(units, sel, (v) => { sel = v; draw(); }) : null,
         h('label', { class: 'srch' }, icon('search', 'icon s'), search),
@@ -35,7 +37,7 @@ export function hanjaGrid(ctx, el) {
       let ok = 0, no = 0;
       grid.replaceChildren(...list.map((c, i) => {
         const s = st.get(c.ch); if (s === 'ok') ok++; else if (s === 'no') no++;
-        return h('div', { class: 'hc ' + (s || '') + (i < 50 ? ' in' : ''), 'data-c': c.ch, 'data-r': c.readings.join(' '), style: i < 50 ? { animationDelay: `${i * 0.006}s` } : null },
+        return h('div', { class: 'hc ' + (s || '') + '', 'data-c': c.ch, 'data-r': c.readings.join(' ') },
           h('div', { class: 'h' }, c.ch), h('div', { class: 'u' }, c.readings.join(' / ')));
       }));
       legend.replaceChildren(
@@ -59,6 +61,13 @@ export function hanjaGrid(ctx, el) {
     }
     search.addEventListener('input', find);
     draw();
+    // 다 그린 뒤 레이아웃까지 끝나면 한 번에 등장
+    sk.classList.add('out');
+    await new Promise((r) => setTimeout(r, 200));
+    if (!alive) return;
+    el.replaceChildren(wrap);
+    void wrap.offsetHeight;
+    requestAnimationFrame(() => requestAnimationFrame(() => wrap.classList.add('ready')));
   })();
   return () => { alive = false; };
 }
