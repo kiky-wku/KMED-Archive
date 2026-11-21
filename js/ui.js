@@ -18,12 +18,12 @@ const root = () => document.getElementById('app');
 let current = null;
 
 // 화면 교체 : 이전 화면 페이드 아웃 → 새 화면 순차 등장
-export async function mount(view) {
+export async function mount(view, opt = {}) {
   const r = root();
   document.querySelector('.menu')?.remove();
   if (current?.firstChild?.cleanup) current.firstChild.cleanup();
   if (current?.cleanup) current.cleanup();
-  if (current && current.isConnected) {
+  if (current && current.isConnected && !opt.instant) {
     current.classList.add('leaving');
     await new Promise((ok) => setTimeout(ok, matchMedia('(prefers-reduced-motion: reduce)').matches ? 0 : 170));
   }

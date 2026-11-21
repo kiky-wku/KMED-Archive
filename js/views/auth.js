@@ -10,15 +10,16 @@ export function idToEmail(v) {
 }
 
 // 성공 체크 : 원이 그려지고 체크가 그어짐
-export function doneCheck() {
+// 체크가 가린 동안 다음 화면으로 바꿔두고(next), 체크가 걷히면 바로 드러나게
+export function doneCheck(next) {
   const reduce = matchMedia('(prefers-reduced-motion: reduce)').matches;
   const el = h('div', { class: 'done', html: '<svg viewBox="0 0 56 56" aria-hidden="true"><circle cx="28" cy="28" r="26"/><path d="M17 29l7.5 7.5L39.5 21"/></svg>' });
   document.body.append(el);
-  return new Promise((ok) => setTimeout(() => {
+  return new Promise((ok) => setTimeout(async () => {
+    await next?.();
     el.classList.add('out');
-    setTimeout(() => el.remove(), 260);
-    ok();
-  }, reduce ? 300 : 1050));
+    setTimeout(() => { el.remove(); ok(); }, 420);
+  }, reduce ? 300 : 1000));
 }
 
 // 로그인
@@ -51,8 +52,8 @@ export function loginView() {
     await loadMe();
     if (!S.profile) { busy(btn, false, '로그인'); err.textContent = '등록되지 않은 계정입니다.'; shake(card); return; }
     sb.rpc('touch_session', { p_device: deviceName() });
-    await doneCheck();
-    route();
+    if (S.profile.must_change_pw) { route(); return; }      // 첫 로그인은 비밀번호 변경 후에 체크
+    await doneCheck(() => route({ instant: true }));
   }
 
   setTimeout(() => email.focus(), 400);
@@ -110,8 +111,7 @@ export function firstView() {
     const r = await sb.rpc('finish_first_login', { p_student_no: n });
     if (r.error) { busy(btn, false, '시작'); err.textContent = '저장할 수 없습니다. 다시 시도하세요.'; shake(card); return; }
     await loadMe();
-    await doneCheck();
-    route();
+    await doneCheck(() => route({ instant: true }));
   }
 
   setTimeout(() => pw1.focus(), 400);

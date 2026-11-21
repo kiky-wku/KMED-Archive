@@ -34,10 +34,10 @@ export async function signOut() {
 }
 
 // 주소(#/…) → 화면
-export async function route() {
-  if (!S.user || !S.profile) return mount(loginView());
-  if (S.profile.must_change_pw) return mount(firstView());
-  if (!S.welcomed) return mount(welcomeView());
+export async function route(opt = {}) {
+  if (!S.user || !S.profile) return mount(loginView(), opt);
+  if (S.profile.must_change_pw) return mount(firstView(), opt);
+  if (!S.welcomed) return mount(welcomeView(), opt);
 
   const [path, qs] = (location.hash.slice(2) || 'home').split('?');
   const q = new URLSearchParams(qs || '');
