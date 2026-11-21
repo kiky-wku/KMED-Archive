@@ -10,7 +10,7 @@ export function homeView(q) {
 
   const semBtn = h('button', { class: 'sem' }, gradeLabel(g, s), seesAll() ? icon('down') : null);
   const tiles = h('div', { class: 'tiles' });
-  const body = h('div', {}, tiles);
+  const body = h('div', {}, h('div', { class: 'page-head' }, semBtn), tiles);
 
   if (seesAll()) semBtn.addEventListener('click', (e) => openSemMenu(e, g, s, semBtn));
   else semBtn.style.pointerEvents = 'none';
@@ -24,7 +24,9 @@ export function homeView(q) {
     ));
   });
 
-  return shell({ title: semBtn, active: 'home', body });
+  const logo = h('button', { class: 'logo-btn', 'aria-label': '홈', onclick: () => go('#/welcome') },
+    h('img', { class: 'logo-h', src: 'icons/logo-h.png', alt: '夜淚冷 YRR STUDY' }));
+  return shell({ title: logo, active: 'home', body });
 }
 
 // 학기 이동 메뉴 (전체 열람 계정)

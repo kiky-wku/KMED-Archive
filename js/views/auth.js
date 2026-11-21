@@ -9,17 +9,29 @@ export function idToEmail(v) {
   return t.includes('@') ? t : `${t}@${ID_DOMAIN}`;
 }
 
+// 성공 체크 : 원이 그려지고 체크가 그어짐
+export function doneCheck() {
+  const reduce = matchMedia('(prefers-reduced-motion: reduce)').matches;
+  const el = h('div', { class: 'done', html: '<svg viewBox="0 0 56 56" aria-hidden="true"><circle cx="28" cy="28" r="26"/><path d="M17 29l7.5 7.5L39.5 21"/></svg>' });
+  document.body.append(el);
+  return new Promise((ok) => setTimeout(() => {
+    el.classList.add('out');
+    setTimeout(() => el.remove(), 260);
+    ok();
+  }, reduce ? 300 : 1050));
+}
+
 // 로그인
 export function loginView() {
-  const email = h('input', { class: 'input', type: 'text', autocomplete: 'username', autocapitalize: 'none', autocorrect: 'off', spellcheck: 'false' });
-  const pw = h('input', { class: 'input', type: 'password', autocomplete: 'current-password' });
+  const email = h('input', { class: 'input', type: 'text', placeholder: '아이디', autocomplete: 'username', autocapitalize: 'none', autocorrect: 'off', spellcheck: 'false' });
+  const pw = h('input', { class: 'input', type: 'password', placeholder: '비밀번호', autocomplete: 'current-password' });
   const err = h('div', { class: 'err' });
   const btn = h('button', { class: 'btn', type: 'submit' }, '로그인');
 
   const card = h('form', { class: 'auth-card', novalidate: true, onsubmit: submit },
-    h('img', { class: 'brand', src: 'icons/logo-h.png', alt: '夜淚冷 YRR STUDY' }),
-    h('div', { class: 'field' }, h('label', {}, '아이디'), email),
-    h('div', { class: 'field' }, h('label', {}, '비밀번호'), pw),
+    h('img', { class: 'brand', src: 'icons/logo.png', alt: '夜淚冷 YRR STUDY' }),
+    email,
+    pw,
     err,
     btn,
   );
@@ -39,6 +51,7 @@ export function loginView() {
     await loadMe();
     if (!S.profile) { busy(btn, false, '로그인'); err.textContent = '등록되지 않은 계정입니다.'; shake(card); return; }
     sb.rpc('touch_session', { p_device: deviceName() });
+    await doneCheck();
     route();
   }
 
@@ -50,10 +63,10 @@ export function loginView() {
 export function firstView() {
   const p = S.profile;
   const locked = p.scope === 'own' && p.student_no != null && p.role !== 'admin';
-  const pw1 = h('input', { class: 'input', type: 'password', autocomplete: 'new-password' });
-  const pw2 = h('input', { class: 'input', type: 'password', autocomplete: 'new-password' });
-  const sno = h('input', { class: 'input', type: 'text', inputmode: 'numeric', maxlength: '2', placeholder: '26', value: p.student_no ?? '', readonly: locked });
-  const hint = h('div', { style: { fontSize: '15px', fontWeight: '700', color: 'var(--blue)', minHeight: '0' } });
+  const pw1 = h('input', { class: 'input', type: 'password', placeholder: '새 비밀번호', autocomplete: 'new-password' });
+  const pw2 = h('input', { class: 'input', type: 'password', placeholder: '새 비밀번호 확인', autocomplete: 'new-password' });
+  const sno = h('input', { class: 'input', type: 'text', inputmode: 'numeric', maxlength: '2', placeholder: '학번 (예: 26)', value: p.student_no ?? '', readonly: locked });
+  const hint = h('div', { class: 'hint' });
   const err = h('div', { class: 'err' });
   const btn = h('button', { class: 'btn', type: 'submit' }, '시작');
 
@@ -69,11 +82,12 @@ export function firstView() {
   showGrade();
 
   const card = h('form', { class: 'auth-card', novalidate: true, onsubmit: submit },
-    h('img', { class: 'brand sm', src: 'icons/logo-h.png', alt: '夜淚冷 YRR STUDY' }),
+    h('img', { class: 'brand sm', src: 'icons/logo.png', alt: '夜淚冷 YRR STUDY' }),
     h('h1', { class: 'auth-title' }, '비밀번호 변경'),
-    h('div', { class: 'field' }, h('label', {}, '새 비밀번호'), pw1),
-    h('div', { class: 'field' }, h('label', {}, '새 비밀번호 확인'), pw2),
-    h('div', { class: 'field' }, h('label', {}, '학번'), sno, hint),
+    pw1,
+    pw2,
+    sno,
+    hint,
     err,
     btn,
   );
@@ -96,7 +110,7 @@ export function firstView() {
     const r = await sb.rpc('finish_first_login', { p_student_no: n });
     if (r.error) { busy(btn, false, '시작'); err.textContent = '저장할 수 없습니다. 다시 시도하세요.'; shake(card); return; }
     await loadMe();
-    toast('비밀번호가 변경되었습니다');
+    await doneCheck();
     route();
   }
 

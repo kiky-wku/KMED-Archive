@@ -56,17 +56,33 @@ input{font:inherit;color:inherit}
   transition:opacity .25s,transform .3s var(--ease);pointer-events:none;white-space:nowrap}
 .toast.on{opacity:1;transform:translate(-50%,0)}
 
-/* ---------- 로그인 · 첫 로그인 ---------- */
+/* ---------- 로그인 · 첫 로그인 (무채색) ---------- */
 @keyframes logoIn{from{opacity:0;transform:translateY(10px) scale(.96);filter:blur(6px)}to{opacity:1;transform:none;filter:none}}
 .auth{min-height:100vh;min-height:100dvh;display:grid;place-items:center;padding:32px 24px calc(32px + var(--safe-b));background:#fff}
-.auth-card{width:100%;max-width:380px;display:flex;flex-direction:column;gap:16px}
+.auth-card{width:100%;max-width:360px;display:flex;flex-direction:column;gap:12px}
 .auth-card>*{animation:rise .45s var(--ease) both}
 .auth-card>*:nth-child(2){animation-delay:.22s}.auth-card>*:nth-child(3){animation-delay:.28s}
 .auth-card>*:nth-child(4){animation-delay:.34s}.auth-card>*:nth-child(5){animation-delay:.4s}.auth-card>*:nth-child(6){animation-delay:.46s}
-.auth-card>.brand{width:260px;align-self:center;margin:0 0 44px;animation:logoIn .7s var(--ease) both}
-.auth-card>.brand.sm{width:220px;margin-bottom:36px}
-.auth-title{font-size:22px;font-weight:800;letter-spacing:-.03em;margin:0 0 4px}
-.auth-card .btn{margin-top:8px}
+.auth-card>.brand{width:170px;align-self:center;margin:0 0 48px;animation:logoIn .7s var(--ease) both}
+.auth-card>.brand.sm{width:130px;margin-bottom:36px}
+.auth-title{font-size:20px;font-weight:800;letter-spacing:-.03em;margin:0 0 4px}
+.auth .input{height:56px;background:#fff;border:1px solid var(--line);border-radius:12px}
+.auth .input:focus{border-color:var(--text);background:#fff}
+.auth .input::placeholder{color:var(--faint)}
+.auth .btn{height:56px;border-radius:12px;background:var(--text);margin-top:8px}
+.auth .btn:active{background:#000}
+.auth .hint{font-size:14px;font-weight:700;color:var(--sub);padding:0 4px}
+.auth .hint:empty{display:none}
+
+/* 로그인 성공 체크 */
+.done{position:fixed;inset:0;z-index:300;display:grid;place-items:center;background:#fff;animation:fadeIn .2s ease both}
+.done svg{width:88px;height:88px;animation:popIn .45s cubic-bezier(.3,1.5,.5,1) both}
+.done circle{fill:none;stroke:var(--text);stroke-width:3;stroke-dasharray:166;stroke-dashoffset:166;animation:draw .5s .05s var(--ease) forwards}
+.done path{fill:none;stroke:var(--text);stroke-width:3.5;stroke-linecap:round;stroke-linejoin:round;stroke-dasharray:48;stroke-dashoffset:48;animation:draw .35s .45s var(--ease) forwards}
+.done.out{animation:fadeOut .25s ease forwards}
+@keyframes draw{to{stroke-dashoffset:0}}
+@keyframes popIn{from{transform:scale(.6);opacity:0}to{transform:none;opacity:1}}
+@keyframes fadeIn{from{opacity:0}to{opacity:1}}
 
 /* ---------- 환영 ---------- */
 .welcome{min-height:100vh;min-height:100dvh;display:flex;flex-direction:column;align-items:center;justify-content:center;
@@ -88,6 +104,11 @@ input{font:inherit;color:inherit}
   padding:var(--safe-t) 16px 0;background:rgba(255,255,255,.92);-webkit-backdrop-filter:blur(12px);backdrop-filter:blur(12px);
   border-bottom:1px solid transparent;transition:border-color .2s}
 .top.scrolled{border-bottom-color:var(--line)}
+.top .logo-h{height:26px;margin-left:4px;display:block}
+.top .logo-btn{padding:6px;border-radius:10px;transition:transform .15s var(--spring)}
+.top .logo-btn:active{transform:scale(.95)}
+.page-head{display:flex;align-items:center;margin:4px 0 20px}
+.page-head .sem{font-size:26px;height:48px;padding:0 10px 0 4px;margin-left:-4px}
 .top .ttl{font-size:20px;font-weight:800;letter-spacing:-.02em;display:flex;align-items:center;gap:6px}
 .top .right{margin-left:auto;display:flex;align-items:center;gap:8px}
 .ib{width:44px;height:44px;border-radius:12px;display:grid;place-items:center;color:var(--text);transition:background-color .15s,transform .15s var(--spring)}
