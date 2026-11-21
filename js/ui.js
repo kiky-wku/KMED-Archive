@@ -71,6 +71,10 @@ const P = {
   right: '<path d="M9 6l6 6-6 6"/>',
   back: '<path d="M15 6l-6 6 6 6"/>',
   check: '<path d="M5 12l5 5 9-10"/>',
+  x: '<path d="M6 6l12 12M18 6L6 18"/>',
+  plus: '<path d="M12 5v14M5 12h14"/>',
+  trash: '<path d="M4 7h16M10 11v6M14 11v6M6 7l1 13h10l1-13M9 7V4h6v3"/>',
+  up: '<path d="M6 15l6-6 6 6"/>',
 };
 export function icon(name, cls = 'icon') {
   const s = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
@@ -103,4 +107,50 @@ export function gradeLabel(g, s) {
   if (!g) return '';
   const y = g <= 2 ? `예과 ${g}학년` : `본과 ${g - 2}학년`;
   return s ? `${y} ${s}학기` : y;
+}
+
+// 가운데 모달 : 살짝 작은 상태에서 커지며 등장, 바깥 누르면 닫힘
+export function modal({ title, body, actions = [], wide = false, onClose }) {
+  const box = h('div', { class: 'modal' + (wide ? ' wide' : ''), role: 'dialog', 'aria-modal': 'true' },
+    h('div', { class: 'modal-head' }, h('h2', {}, title),
+      h('button', { class: 'ib', 'aria-label': '닫기', onclick: () => close() }, icon('x'))),
+    h('div', { class: 'modal-body' }, body),
+    actions.length ? h('div', { class: 'modal-foot' }, actions) : null,
+  );
+  const wrap = h('div', { class: 'modal-wrap', onclick: (e) => { if (e.target === wrap) close(); } }, box);
+  document.body.append(wrap);
+  requestAnimationFrame(() => wrap.classList.add('on'));
+  function close() {
+    wrap.classList.remove('on');
+    setTimeout(() => wrap.remove(), 260);
+    onClose?.();
+  }
+  return { close, box };
+}
+
+// 세그먼트 선택 [A | B | C]
+export function seg(options, value, onChange) {
+  const el = h('div', { class: 'segc' });
+  const render = () => el.replaceChildren(...options.map(([v, label]) =>
+    h('button', { type: 'button', class: v === value ? 'on' : '', onclick: () => { value = v; render(); onChange?.(v); } }, label)));
+  render();
+  el.get = () => value;
+  return el;
+}
+
+export function fmtDate(t, withTime = true) {
+  if (!t) return '';
+  const d = new Date(t);
+  const md = `${d.getMonth() + 1}/${d.getDate()}`;
+  return withTime ? `${md} ${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}` : md;
+}
+
+export function ago(t) {
+  if (!t) return '';
+  const s = (Date.now() - new Date(t).getTime()) / 1000;
+  if (s < 60) return '방금';
+  if (s < 3600) return `${Math.floor(s / 60)}분 전`;
+  if (s < 86400) return `${Math.floor(s / 3600)}시간 전`;
+  if (s < 86400 * 7) return `${Math.floor(s / 86400)}일 전`;
+  return fmtDate(t, false);
 }
