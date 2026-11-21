@@ -1,0 +1,97 @@
+import { sb } from '../sb.js';
+import { h, shake, busy, toast, deviceName, gradeLabel } from '../ui.js';
+import { S, loadMe, route } from '../app.js';
+
+// 로그인
+export function loginView() {
+  const email = h('input', { class: 'input', type: 'email', autocomplete: 'username', inputmode: 'email', placeholder: 'name@example.com' });
+  const pw = h('input', { class: 'input', type: 'password', autocomplete: 'current-password' });
+  const err = h('div', { class: 'err' });
+  const btn = h('button', { class: 'btn', type: 'submit' }, '로그인');
+
+  const card = h('form', { class: 'auth-card', novalidate: true, onsubmit: submit },
+    h('img', { class: 'logo', src: 'icons/icon-192.png', alt: '' }),
+    h('div', { class: 'field' }, h('label', {}, '이메일'), email),
+    h('div', { class: 'field' }, h('label', {}, '비밀번호'), pw),
+    err,
+    btn,
+  );
+
+  async function submit(e) {
+    e.preventDefault();
+    err.textContent = '';
+    if (!email.value.trim() || !pw.value) { err.textContent = '이메일과 비밀번호를 입력하세요.'; shake(card); return; }
+    busy(btn, true);
+    const { error } = await sb.auth.signInWithPassword({ email: email.value.trim(), password: pw.value });
+    if (error) {
+      busy(btn, false, '로그인');
+      err.textContent = /invalid/i.test(error.message) ? '이메일 또는 비밀번호가 올바르지 않습니다.' : '로그인할 수 없습니다. 잠시 후 다시 시도하세요.';
+      shake(card);
+      return;
+    }
+    await loadMe();
+    if (!S.profile) { busy(btn, false, '로그인'); err.textContent = '등록되지 않은 계정입니다.'; shake(card); return; }
+    sb.rpc('touch_session', { p_device: deviceName() });
+    route();
+  }
+
+  setTimeout(() => email.focus(), 400);
+  return h('div', { class: 'auth' }, card);
+}
+
+// 첫 로그인 : 비밀번호 변경 + 학번 확인
+export function firstView() {
+  const p = S.profile;
+  const locked = p.scope === 'own' && p.student_no != null && p.role !== 'admin';
+  const pw1 = h('input', { class: 'input', type: 'password', autocomplete: 'new-password' });
+  const pw2 = h('input', { class: 'input', type: 'password', autocomplete: 'new-password' });
+  const sno = h('input', { class: 'input', type: 'text', inputmode: 'numeric', maxlength: '2', placeholder: '26', value: p.student_no ?? '', readonly: locked });
+  const hint = h('div', { style: { fontSize: '15px', fontWeight: '700', color: 'var(--blue)', minHeight: '0' } });
+  const err = h('div', { class: 'err' });
+  const btn = h('button', { class: 'btn', type: 'submit' }, '시작');
+
+  function showGrade() {
+    const n = parseInt(sno.value, 10);
+    if (!(n >= 0 && n <= 99) || sno.value.length !== 2) { hint.textContent = ''; return; }
+    if (p.grade_override != null) { hint.textContent = gradeLabel(S.grade, S.sem); return; }
+    const now = new Date(); const ay = now.getFullYear() - (now.getMonth() < 2 ? 1 : 0);
+    const g = ay - (2000 + n) + 1;
+    hint.textContent = g >= 1 && g <= 6 ? gradeLabel(g, S.sem) : '';
+  }
+  sno.addEventListener('input', () => { sno.value = sno.value.replace(/\D/g, ''); showGrade(); });
+  showGrade();
+
+  const card = h('form', { class: 'auth-card', novalidate: true, onsubmit: submit },
+    h('h1', { class: 'auth-title' }, '비밀번호 변경'),
+    h('div', { class: 'field' }, h('label', {}, '새 비밀번호'), pw1),
+    h('div', { class: 'field' }, h('label', {}, '새 비밀번호 확인'), pw2),
+    h('div', { class: 'field' }, h('label', {}, '학번'), sno, hint),
+    err,
+    btn,
+  );
+
+  async function submit(e) {
+    e.preventDefault();
+    err.textContent = '';
+    if (pw1.value.length < 6) { err.textContent = '비밀번호는 6자 이상이어야 합니다.'; shake(card); return; }
+    if (pw1.value !== pw2.value) { err.textContent = '비밀번호가 일치하지 않습니다.'; shake(card); return; }
+    const n = parseInt(sno.value, 10);
+    if (sno.value.length !== 2 || isNaN(n)) { err.textContent = '학번 두 자리를 입력하세요.'; shake(card); return; }
+    busy(btn, true);
+    const { error } = await sb.auth.updateUser({ password: pw1.value });
+    if (error) {
+      busy(btn, false, '시작');
+      err.textContent = /different/i.test(error.message) ? '기존과 다른 비밀번호를 입력하세요.' : '비밀번호를 바꿀 수 없습니다. 다시 시도하세요.';
+      shake(card);
+      return;
+    }
+    const r = await sb.rpc('finish_first_login', { p_student_no: n });
+    if (r.error) { busy(btn, false, '시작'); err.textContent = '저장할 수 없습니다. 다시 시도하세요.'; shake(card); return; }
+    await loadMe();
+    toast('비밀번호가 변경되었습니다');
+    route();
+  }
+
+  setTimeout(() => pw1.focus(), 400);
+  return h('div', { class: 'auth' }, card);
+}
