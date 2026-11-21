@@ -9,7 +9,8 @@ create table public.profiles (
   email          text not null,
   name           text not null default '',
   student_no     int,                       -- 학번 (25 = 2025 입학)
-  grade_override int,                       -- 학년 직접 지정 (휴학·유급)
+  grade_override int,                       -- 학년 직접 지정 (휴학·유급·재수 등). 지정한 해 기준
+  grade_set_year int,                        -- 지정한 학년도 → 매년 3월 자동 +1
   role           text not null default 'student' check (role in ('admin','writer','student')),
   scope          text not null default 'own'     check (scope in ('all','own')),
   must_change_pw boolean not null default true,
@@ -46,12 +47,29 @@ $$ select now() at time zone 'Asia/Seoul' $$;
 create function public.current_semester() returns int language sql stable as
 $$ select case when extract(month from public.kst_now()) between 3 and 8 then 1 else 2 end $$;
 
-create function public.grade_of(sno int) returns int language sql stable as $$
-  select case when sno is null then null else
-    (extract(year from public.kst_now())::int
-      - case when extract(month from public.kst_now()) < 3 then 1 else 0 end)
-    - (2000 + sno) + 1 end
+create function public.academic_year() returns int language sql stable as $$
+  select extract(year from public.kst_now())::int
+       - case when extract(month from public.kst_now()) < 3 then 1 else 0 end
 $$;
+
+create function public.grade_of(sno int) returns int language sql stable as
+$$ select case when sno is null then null else public.academic_year() - (2000 + sno) + 1 end $$;
+
+-- 실제 학년 : 직접 지정이 있으면 지정 학년 + 지난 학년도 수, 없으면 학번 계산
+create function public.effective_grade(sno int, g_over int, g_year int) returns int language sql stable as $$
+  select case when g_over is not null then g_over + (public.academic_year() - coalesce(g_year, public.academic_year()))
+              else public.grade_of(sno) end
+$$;
+
+create function public.profiles_grade_year() returns trigger language plpgsql as $$
+begin
+  if new.grade_override is distinct from old.grade_override then
+    new.grade_set_year := case when new.grade_override is null then null else public.academic_year() end;
+  end if;
+  return new;
+end $$;
+create trigger trg_profiles_grade_year before update on public.profiles
+  for each row execute function public.profiles_grade_year();
 
 -- =========================================================
 -- 과목 구조 : 과목 → 범위(중간·기말) / 블록(탭)
@@ -97,14 +115,14 @@ $$ select exists (select 1 from profiles where id = auth.uid() and role = 'admin
 
 create function public.my_grade() returns int
 language sql stable security definer set search_path = public as
-$$ select coalesce(grade_override, public.grade_of(student_no)) from profiles where id = auth.uid() $$;
+$$ select public.effective_grade(student_no, grade_override, grade_set_year) from profiles where id = auth.uid() $$;
 
 create function public.can_view_subject(sid uuid) returns boolean
 language sql stable security definer set search_path = public as $$
   select exists (
     select 1 from profiles p, subjects s
     where p.id = auth.uid() and s.id = sid
-      and (p.role = 'admin' or p.scope = 'all' or s.grade = coalesce(p.grade_override, public.grade_of(p.student_no)))
+      and (p.role = 'admin' or p.scope = 'all' or s.grade = public.effective_grade(p.student_no, p.grade_override, p.grade_set_year))
   )
 $$;
 
@@ -296,7 +314,7 @@ end $$;
 create function public.set_my_student_no(p_student_no int) returns void
 language plpgsql security definer set search_path = public as $$
 begin
-  update profiles set student_no = p_student_no, grade_override = null
+  update profiles set student_no = p_student_no, grade_override = null, grade_set_year = null
   where id = auth.uid() and (scope = 'all' or role = 'admin');
 end $$;
 
