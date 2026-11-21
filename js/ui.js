@@ -200,3 +200,8 @@ export function popover(anchor, content, { align = 'left', width } = {}) {
   pop._close = close;
   return { close, pop };
 }
+
+// 회색 대기 표시 (스피너 대신)
+export function skelRows(n = 6, hgt = 52) {
+  return h('div', { class: 'skel-rows' }, Array.from({ length: n }, (_, i) => h('i', { class: 'skel', style: { height: `${hgt}px`, width: i % 3 === 2 ? '72%' : '100%' } })));
+}

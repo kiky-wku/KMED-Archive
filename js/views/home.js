@@ -13,7 +13,7 @@ export function homeView(q) {
   if (seesAll()) semBtn.addEventListener('click', () => openSemMenu(semBtn, g, s));
 
   const resume = h('div', { class: 'resume-slot' });
-  const list = h('div', { class: 'tiles2' }, h('div', { class: 'loading' }, h('i')));
+  const list = h('div', { class: 'tiles2' }, Array.from({ length: 4 }, () => h('i', { class: 'skel tile-skel' })));
   const count = h('span', { class: 'cnt' });
 
   const body = h('div', { class: 'home2' },
@@ -42,7 +42,7 @@ export function homeView(q) {
   sb.from('subjects').select('id,name,sort,icon,ranges(name,sort),blocks(kind)').eq('grade', g).eq('semester', s).order('sort').order('name').then(({ data, error }) => {
     if (error || !data?.length) { list.replaceChildren(h('div', { class: 'box-empty' }, '등록된 과목이 없습니다')); count.textContent = ''; return; }
     count.textContent = `${data.length}과목`;
-    list.replaceChildren(...data.map((sub, i) => h('button', { class: 'tile2', style: { animationDelay: `${0.08 + i * 0.05}s` }, onclick: () => go(`#/s/${sub.id}`) },
+    list.replaceChildren(...data.map((sub, i) => h('button', { class: 'tile2', style: { animationDelay: `${i * 0.035}s` }, onclick: () => go(`#/s/${sub.id}`) },
       h('span', { class: 'emo' }, sub.icon || sub.name.slice(0, 1)),
       h('span', { class: 'n' }, sub.name),
       h('span', { class: 'm' }, (sub.ranges || []).sort((a, b) => a.sort - b.sort).map((r) => r.name).join(' · ') || ''))));

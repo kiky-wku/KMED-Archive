@@ -59,7 +59,7 @@ export function subjectView(id, q) {
 
       cleanup?.(); cleanup = null;
       area.replaceChildren();
-      area.classList.remove('swap'); void area.offsetWidth; area.classList.add('swap');
+      area.classList.remove('swap', 'q-in'); void area.offsetWidth; area.classList.add('swap');
       const range = ranges.find((r) => r.id === rangeId);
       const ctx = { subject: sub, range, pool: sub.progress_pool || sub.id };
       const fn = RENDER[kind];

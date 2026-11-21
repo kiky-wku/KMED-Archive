@@ -10,12 +10,15 @@ import { unitPicker } from './units.js';
 export function hanjaQuiz(ctx, el, mode) {
   let alive = true;
   const offs = [];
-  el.append(h('div', { class: 'loading' }, h('i')));
+  el.append(h('div', { class: 'q-skel' },
+    h('div', { class: 'bar' }, h('i', { class: 'skel', style: { width: '130px' } }), h('i', { class: 'skel', style: { width: '200px' } })),
+    h('i', { class: 'skel card' }), h('i', { class: 'skel act' })));
 
   (async () => {
     const [{ cards, units }, prog] = await Promise.all([loadCards(ctx.range.id), loadProgress(ctx.pool)]);
     if (!alive) return;
     el.replaceChildren();
+    el.classList.add('q-in');
     if (!cards.length) { el.append(h('div', { class: 'empty' }, '등록된 한자가 없습니다')); return; }
     const status = prog[mode];
 

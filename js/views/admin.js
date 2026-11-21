@@ -1,5 +1,5 @@
 import { sb } from '../sb.js';
-import { h, icon, modal, seg, toast, shake, busy, gradeLabel, fmtDate, ago, deviceName } from '../ui.js';
+import { h, icon, modal, seg, toast, shake, busy, gradeLabel, fmtDate, ago, deviceName, skelRows } from '../ui.js';
 import { S, go } from '../app.js';
 import { shell } from './shell.js';
 
@@ -77,7 +77,7 @@ export function adminView(q) {
 async function membersTab(area) {
   const search = h('input', { class: 'search-in', type: 'search', placeholder: '이름 · 아이디 검색' });
   const add = h('button', { class: 'btn sm', onclick: () => memberModal(null, reload) }, icon('plus'), '회원 등록');
-  const list = h('div', { class: 'card tbl-card' }, h('div', { class: 'loading' }, h('i')));
+  const list = h('div', { class: 'card tbl-card' }, skelRows());
   area.append(h('div', { class: 'toolbar' }, search, add), list);
 
   let rows = [];
@@ -221,7 +221,7 @@ async function logsTab(area) {
   const { data: people } = await sb.from('profiles').select('id,name,username').order('name');
   const sel = h('select', { class: 'input sel' }, h('option', { value: '' }, '전체 회원'),
     (people || []).map((p) => h('option', { value: p.id }, `${p.name || p.username}`)));
-  const list = h('div', { class: 'card tbl-card' }, h('div', { class: 'loading' }, h('i')));
+  const list = h('div', { class: 'card tbl-card' }, skelRows());
   area.append(h('div', { class: 'toolbar' }, sel), list);
   const nameOf = Object.fromEntries((people || []).map((p) => [p.id, p]));
 
@@ -260,7 +260,7 @@ async function subjectsTab(area) {
   area.append(h('div', { class: 'toolbar' }, gsel, ssel, h('div', { class: 'sp' }), add), list);
 
   async function load() {
-    list.replaceChildren(h('div', { class: 'loading' }, h('i')));
+    list.replaceChildren(skelRows());
     const { data } = await sb.from('subjects').select('*, ranges(id,name,sort), blocks(kind,sort)').eq('grade', g).eq('semester', s).order('sort');
     if (!data?.length) { list.replaceChildren(h('div', { class: 'empty sm' }, '등록된 과목이 없습니다')); return; }
     list.replaceChildren(...data.map((sub, i) => h('button', { class: 'subj-row', style: { animationDelay: `${i * 0.04}s` }, onclick: () => subjectModal(sub, null, load) },
