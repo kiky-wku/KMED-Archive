@@ -35,7 +35,7 @@ export function hanjaGrid(ctx, el) {
       let ok = 0, no = 0;
       grid.replaceChildren(...list.map((c, i) => {
         const s = st.get(c.ch); if (s === 'ok') ok++; else if (s === 'no') no++;
-        return h('div', { class: 'hc ' + (s || ''), 'data-c': c.ch, 'data-r': c.readings.join(' '), style: { animationDelay: `${Math.min(i, 40) * 0.008}s` } },
+        return h('div', { class: 'hc ' + (s || '') + (i < 50 ? ' in' : ''), 'data-c': c.ch, 'data-r': c.readings.join(' '), style: i < 50 ? { animationDelay: `${i * 0.006}s` } : null },
           h('div', { class: 'h' }, c.ch), h('div', { class: 'u' }, c.readings.join(' / ')));
       }));
       legend.replaceChildren(
