@@ -2,16 +2,23 @@ import { sb } from '../sb.js';
 import { h, shake, busy, toast, deviceName, gradeLabel } from '../ui.js';
 import { S, loadMe, route } from '../app.js';
 
+// 아이디 → 로그인용 내부 주소 (@가 있으면 이메일 그대로)
+export const ID_DOMAIN = 'yrr-study.app';
+export function idToEmail(v) {
+  const t = String(v || '').trim().toLowerCase();
+  return t.includes('@') ? t : `${t}@${ID_DOMAIN}`;
+}
+
 // 로그인
 export function loginView() {
-  const email = h('input', { class: 'input', type: 'email', autocomplete: 'username', inputmode: 'email', placeholder: 'name@example.com' });
+  const email = h('input', { class: 'input', type: 'text', autocomplete: 'username', autocapitalize: 'none', autocorrect: 'off', spellcheck: 'false' });
   const pw = h('input', { class: 'input', type: 'password', autocomplete: 'current-password' });
   const err = h('div', { class: 'err' });
   const btn = h('button', { class: 'btn', type: 'submit' }, '로그인');
 
   const card = h('form', { class: 'auth-card', novalidate: true, onsubmit: submit },
     h('img', { class: 'brand', src: 'icons/logo.png', alt: '夜淚冷 YRR STUDY' }),
-    h('div', { class: 'field' }, h('label', {}, '이메일'), email),
+    h('div', { class: 'field' }, h('label', {}, '아이디'), email),
     h('div', { class: 'field' }, h('label', {}, '비밀번호'), pw),
     err,
     btn,
@@ -20,12 +27,12 @@ export function loginView() {
   async function submit(e) {
     e.preventDefault();
     err.textContent = '';
-    if (!email.value.trim() || !pw.value) { err.textContent = '이메일과 비밀번호를 입력하세요.'; shake(card); return; }
+    if (!email.value.trim() || !pw.value) { err.textContent = '아이디와 비밀번호를 입력하세요.'; shake(card); return; }
     busy(btn, true);
-    const { error } = await sb.auth.signInWithPassword({ email: email.value.trim(), password: pw.value });
+    const { error } = await sb.auth.signInWithPassword({ email: idToEmail(email.value), password: pw.value });
     if (error) {
       busy(btn, false, '로그인');
-      err.textContent = /invalid/i.test(error.message) ? '이메일 또는 비밀번호가 올바르지 않습니다.' : '로그인할 수 없습니다. 잠시 후 다시 시도하세요.';
+      err.textContent = /invalid/i.test(error.message) ? '아이디 또는 비밀번호가 올바르지 않습니다.' : '로그인할 수 없습니다. 잠시 후 다시 시도하세요.';
       shake(card);
       return;
     }

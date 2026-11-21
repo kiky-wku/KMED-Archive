@@ -63,8 +63,8 @@ input{font:inherit;color:inherit}
 .auth-card>*{animation:rise .45s var(--ease) both}
 .auth-card>*:nth-child(2){animation-delay:.22s}.auth-card>*:nth-child(3){animation-delay:.28s}
 .auth-card>*:nth-child(4){animation-delay:.34s}.auth-card>*:nth-child(5){animation-delay:.4s}.auth-card>*:nth-child(6){animation-delay:.46s}
-.auth-card>.brand{width:220px;align-self:center;margin:0 0 40px;animation:logoIn .7s var(--ease) both}
-.auth-card>.brand.sm{width:150px;margin-bottom:28px}
+.auth-card>.brand{width:100%;align-self:center;margin:0 0 48px;animation:logoIn .7s var(--ease) both}
+.auth-card>.brand.sm{width:62%;margin-bottom:36px}
 .auth-title{font-size:22px;font-weight:800;letter-spacing:-.03em;margin:0 0 4px}
 .auth-card .btn{margin-top:8px}
 
