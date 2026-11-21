@@ -66,6 +66,12 @@ export function hanjaGrid(ctx, el) {
     await new Promise((r) => setTimeout(r, 200));
     if (!alive) return;
     el.replaceChildren(wrap);
+    // 화면에 보이는 줄만 위에서부터 차례로 (나머지는 그대로 → 버벅임 없음)
+    const cols = getComputedStyle(grid).gridTemplateColumns.split(' ').length || 1;
+    const rows = Math.ceil(innerHeight / 80) + 1;
+    [...grid.children].slice(0, cols * rows).forEach((c, i) => {
+      c.classList.add('rw'); c.style.setProperty('--d', `${0.12 + Math.floor(i / cols) * 0.06 + (i % cols) * 0.012}s`);
+    });
     void wrap.offsetHeight;
     requestAnimationFrame(() => requestAnimationFrame(() => wrap.classList.add('ready')));
   })();
