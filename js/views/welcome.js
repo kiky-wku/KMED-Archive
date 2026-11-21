@@ -21,6 +21,7 @@ export function welcomeView() {
   });
 
   return h('div', { class: 'welcome' },
+    h('img', { class: 'brand', src: 'icons/logo.png', alt: '夜淚冷 YRR STUDY' }),
     h('h1', { class: 'st' }, `${S.profile.name || ''}님 안녕하세요 `, h('span', { class: 'wave' }, '👋')),
     h('div', { class: 'meta st' }, `${gradeLabel(S.grade, S.sem)} · ${today}`),
     actions,

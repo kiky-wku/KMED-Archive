@@ -17,7 +17,7 @@ export function loginView() {
   const btn = h('button', { class: 'btn', type: 'submit' }, '로그인');
 
   const card = h('form', { class: 'auth-card', novalidate: true, onsubmit: submit },
-    h('img', { class: 'brand', src: 'icons/logo.png', alt: '夜淚冷 YRR STUDY' }),
+    h('img', { class: 'brand', src: 'icons/logo-h.png', alt: '夜淚冷 YRR STUDY' }),
     h('div', { class: 'field' }, h('label', {}, '아이디'), email),
     h('div', { class: 'field' }, h('label', {}, '비밀번호'), pw),
     err,
@@ -69,7 +69,7 @@ export function firstView() {
   showGrade();
 
   const card = h('form', { class: 'auth-card', novalidate: true, onsubmit: submit },
-    h('img', { class: 'brand sm', src: 'icons/logo.png', alt: '夜淚冷 YRR STUDY' }),
+    h('img', { class: 'brand sm', src: 'icons/logo-h.png', alt: '夜淚冷 YRR STUDY' }),
     h('h1', { class: 'auth-title' }, '비밀번호 변경'),
     h('div', { class: 'field' }, h('label', {}, '새 비밀번호'), pw1),
     h('div', { class: 'field' }, h('label', {}, '새 비밀번호 확인'), pw2),
