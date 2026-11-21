@@ -34,8 +34,15 @@ const gradeOf = (p) => p.grade_override != null
 async function callAdmin(body) {
   const { data, error } = await sb.functions.invoke('admin-users', { body });
   if (error) {
-    let msg = '요청을 처리할 수 없습니다.';
-    try { msg = (await error.context.json()).error || msg; } catch { /* 응답 본문 없음 */ }
+    const st = error.context?.status;
+    let msg = '';
+    try { const j = await error.context.json(); msg = j.error || j.message || j.msg || ''; } catch { /* 응답 본문 없음 */ }
+    if (!msg) {
+      if (error.name === 'FunctionsFetchError') msg = '서버 함수에 연결할 수 없습니다. (함수 미배포 또는 이름 불일치)';
+      else if (st === 404) msg = '서버 함수 admin-users 를 찾을 수 없습니다. (404)';
+      else if (st === 401) msg = '서버 함수 인증 실패 (401) — Verify JWT 설정을 끄세요.';
+      else msg = `요청을 처리할 수 없습니다. (${st || error.name})`;
+    } else if (st) msg += ` (${st})`;
     throw new Error(msg);
   }
   if (data?.error) throw new Error(data.error);
