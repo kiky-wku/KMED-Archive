@@ -15,10 +15,11 @@ export function homeView(q) {
   if (seesAll()) semBtn.addEventListener('click', (e) => openSemMenu(e, g, s, semBtn));
   else semBtn.style.pointerEvents = 'none';
 
-  sb.from('subjects').select('id,name,sort').eq('grade', g).eq('semester', s).order('sort').order('name').then(({ data, error }) => {
+  sb.from('subjects').select('id,name,sort,icon').eq('grade', g).eq('semester', s).order('sort').order('name').then(({ data, error }) => {
     if (error || !data?.length) { tiles.replaceWith(h('div', { class: 'empty' }, '등록된 과목이 없습니다')); return; }
     data.forEach((sub, i) => tiles.append(
       h('button', { class: 'tile', style: { animationDelay: `${i * 0.05}s` }, onclick: () => go(`#/s/${sub.id}`) },
+        sub.icon ? h('div', { class: 'emo' }, sub.icon) : null,
         h('div', { class: 'n' }, sub.name),
       ),
     ));

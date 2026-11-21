@@ -155,7 +155,11 @@ input{font:inherit;color:inherit}
   transition:transform .15s var(--spring),border-color .15s,box-shadow .15s}
 .tile:active{transform:scale(.97)}
 @media (hover:hover){.tile:hover{border-color:#D1D6DB;box-shadow:0 8px 24px rgba(0,27,55,.06)}}
-.tile .n{font-size:22px;font-weight:800;letter-spacing:-.02em}
+.tile{justify-content:space-between;min-height:148px}
+.tile .emo{font-size:40px;line-height:1;transition:transform .25s var(--spring)}
+.tile:active .emo{transform:scale(.9) rotate(-6deg)}
+@media (hover:hover){.tile:hover .emo{transform:scale(1.08) rotate(-4deg)}}
+.tile .n{margin-top:auto;font-size:22px;font-weight:800;letter-spacing:-.02em}
 .tile .m{font-size:14px;font-weight:600;color:var(--sub)}
 .empty{padding:80px 24px;text-align:center;font-size:17px;font-weight:600;color:var(--sub);animation:rise .45s var(--ease) both}
 
