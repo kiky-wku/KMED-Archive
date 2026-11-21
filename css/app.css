@@ -91,11 +91,13 @@ input{font:inherit;color:inherit}
 .welcome .brand{width:150px;margin-bottom:40px;animation:logoIn .7s var(--ease) both}
 .welcome h1{font-size:34px;font-weight:800;letter-spacing:-.03em;margin:0;line-height:1.3}
 .welcome .meta{font-size:17px;font-weight:600;color:var(--sub);margin-top:10px}
+.welcome .btn{background:var(--text);height:56px;border-radius:12px}
+.welcome .btn:active{background:#000}
 .welcome .actions{width:100%;max-width:360px;margin-top:40px;display:flex;flex-direction:column;gap:12px}
 .resume{display:flex;align-items:center;gap:12px;width:100%;padding:16px 18px;border-radius:16px;border:1px solid var(--line);
   background:#fff;text-align:left;transition:transform .15s var(--spring),background-color .15s}
 .resume:active{transform:scale(.98);background:var(--surface2)}
-.resume .k{font-size:13px;font-weight:700;color:var(--blue)}
+.resume .k{font-size:13px;font-weight:700;color:var(--sub)}
 .resume .v{font-size:16px;font-weight:700}
 .resume .icon{margin-left:auto;color:var(--faint)}
 
