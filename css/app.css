@@ -1339,3 +1339,4 @@ html.pv-open,html.pv-open body{overflow:hidden}
 .q-bar .segc{margin:0 10px 0 4px}
 .segc.full{gap:0}
 .subj-right .segc{margin-top:7px}
+.fl-views{display:inline-flex;align-items:center;gap:3px}.fl-views .icon{width:13px;height:13px}

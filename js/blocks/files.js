@@ -1,6 +1,6 @@
 import { h, icon, toast, seg, modal, popover } from '../ui.js';
 import { sb } from '../sb.js';
-import { listFiles, addFile, replaceFile, deleteFile, myOldVersions, fmtSize } from '../data/files.js';
+import { listFiles, addFile, replaceFile, deleteFile, myOldVersions, fmtSize, loadViews, markViewed } from '../data/files.js';
 import { openPdf } from '../views/pdf-viewer.js';
 
 // ─────────────────────────────────────────────
@@ -9,7 +9,6 @@ import { openPdf } from '../views/pdf-viewer.js';
 //  주차별형 = 같은 이름 아래 주차마다, 한 주차에 파일 여러 개 가능
 // ─────────────────────────────────────────────
 const CAT = [['summary', '써머리'], ['etc', '기타 자료']];
-const isNew = (t) => Date.now() - new Date(t).getTime() < 3 * 86400e3;
 const md = (t) => { const d = new Date(t); return `${d.getMonth() + 1}월 ${d.getDate()}일`; };
 const catOf = (f) => (f.category === 'etc' ? 'etc' : 'summary');
 const fname = (f) => (f.filename || '').replace(/\.pdf$/i, '') || '파일';
@@ -18,6 +17,10 @@ const latest = (fs) => fs.reduce((t, f) => (f.updated_at > t ? f.updated_at : t)
 export function filesBlock(ctx, el) {
   let alive = true;
   let all = [];
+  let seen = new Map(); let counts = new Map();
+  // NEW : 안 본 파일(2주 안에 올라온 것) 또는 내가 본 뒤 바뀐 파일
+  const isNew = (f) => (seen.has(f.id) ? seen.get(f.id) !== f.key : Date.now() - new Date(f.updated_at).getTime() < 14 * 86400e3);
+  const anyNew = (fs) => fs.some(isNew);
   const open = new Set();
   const list = h('div', { class: 'fl' });
   const canWrite = !!ctx.canWrite;
@@ -27,7 +30,10 @@ export function filesBlock(ctx, el) {
 
   async function load() {
     list.replaceChildren(...[0, 1, 2].map(() => h('i', { class: 'skel fl-sk' })));
-    try { all = await listFiles(ctx.subject.id, ctx.range?.id); }
+    try {
+      all = await listFiles(ctx.subject.id, ctx.range?.id);
+      ({ mine: seen, counts } = await loadViews(all.map((f) => f.id)).catch(() => ({ mine: new Map(), counts: new Map() })));
+    }
     catch { list.replaceChildren(h('div', { class: 'box-empty' }, '자료를 불러올 수 없습니다')); return; }
     if (alive) draw();
   }
@@ -64,18 +70,19 @@ export function filesBlock(ctx, el) {
   const meta = (f) => h('div', { class: 'fl-meta' },
     h('span', {}, `${md(f.updated_at)} ${f.created_at === f.updated_at ? '올림' : '업데이트'}`),
     f.uploader_name ? h('span', {}, f.uploader_name) : null,
-    h('span', {}, fmtSize(f.size)));
+    h('span', {}, fmtSize(f.size)),
+    counts.get(f.id) ? h('span', { class: 'fl-views' }, icon('eye', 'icon s'), counts.get(f.id)) : null);
 
   // 파일 한 줄 (묶음 안)
   const fileRow = (f, scope) => h('div', { class: 'fl-wk fl-file' },
     h('button', { class: 'fl-wk-main', onclick: () => view(f) },
-      h('span', { class: 'fl-dot' }, 'PDF'), h('b', {}, fname(f)), isNew(f.updated_at) ? h('em', {}, 'NEW') : null, meta(f)),
+      h('span', { class: 'fl-dot' }, 'PDF'), h('b', {}, fname(f)), isNew(f) ? h('em', {}, 'NEW') : null, meta(f)),
     canWrite ? more(f, scope) : null);
 
   // 한 파일 갱신형 : 파일 하나면 바로 열기, 여러 개면 펼쳐서
   function single(g, i) {
     const f0 = g.items[0];
-    const head = (extra) => h('span', { class: 'fl-tx' }, h('b', {}, h('span', { class: 'fl-name' }, g.series || fname(f0)), isNew(g.t) ? h('em', {}, 'NEW') : null), extra);
+    const head = (extra) => h('span', { class: 'fl-tx' }, h('b', {}, h('span', { class: 'fl-name' }, g.series || fname(f0)), anyNew(g.items) ? h('em', {}, 'NEW') : null), extra);
     if (g.items.length === 1) {
       return h('article', { class: 'fl-card', style: { animationDelay: `${i * 0.03}s` } },
         h('button', { class: 'fl-main', onclick: () => view(f0) }, h('span', { class: 'fl-ic' }, 'PDF'), head(meta(f0))),
@@ -98,16 +105,16 @@ export function filesBlock(ctx, el) {
       if (w.files.length === 1) {
         const f = w.files[0];
         return [h('div', { class: 'fl-wk' },
-          h('button', { class: 'fl-wk-main', onclick: () => view(f) }, h('b', {}, w.week || '자료'), isNew(f.updated_at) ? h('em', {}, 'NEW') : null, meta(f)),
+          h('button', { class: 'fl-wk-main', onclick: () => view(f) }, h('b', {}, w.week || '자료'), isNew(f) ? h('em', {}, 'NEW') : null, meta(f)),
           canWrite ? more(f, scope) : null)];
       }
       return [h('div', { class: 'fl-wk fl-wk-h' },
-        h('div', { class: 'fl-wk-main' }, h('b', {}, w.week || '자료'), isNew(latest(w.files)) ? h('em', {}, 'NEW') : null,
+        h('div', { class: 'fl-wk-main' }, h('b', {}, w.week || '자료'), anyNew(w.files) ? h('em', {}, 'NEW') : null,
           h('div', { class: 'fl-meta' }, h('span', {}, `${w.files.length}개 파일`))),
         canWrite ? h('button', { class: 'tool-ic sm fl-more', 'aria-label': '이 주차에 파일 추가', title: '이 주차에 파일 추가', onclick: () => uploadModal({ series: g.series, category: g.category, mode: 'weekly', week: w.week, fixed: true }) }, icon('plus', 'icon s')) : null),
       ...w.files.map((f) => fileRow(f, scope))];
     });
-    return foldCard(g, i, h('span', { class: 'fl-tx' }, h('b', {}, h('span', { class: 'fl-name' }, g.series), isNew(g.t) ? h('em', {}, 'NEW') : null),
+    return foldCard(g, i, h('span', { class: 'fl-tx' }, h('b', {}, h('span', { class: 'fl-name' }, g.series), anyNew(g.items) ? h('em', {}, 'NEW') : null),
       h('div', { class: 'fl-meta' }, h('span', {}, `${weeks.length}개 주차`), h('span', {}, `${md(g.t)} 업데이트`))),
     rows,
     canWrite ? h('button', { class: 'fl-add', onclick: () => uploadModal({ series: g.series, category: g.category, mode: 'weekly', week: nextWeek(weeks) }) }, icon('plus', 'icon s'), '주차 추가') : null);
@@ -126,6 +133,12 @@ export function filesBlock(ctx, el) {
 
   // 열기 (내가 필기한 이전 파일이 있으면 고르기)
   async function view(f) {
+    // 읽음 표시 (NEW 지우기 · 조회 수)
+    if (seen.get(f.id) !== f.key) {
+      if (!seen.has(f.id)) counts.set(f.id, (counts.get(f.id) || 0) + 1);
+      seen.set(f.id, f.key); markViewed(f);
+      setTimeout(() => { if (alive) draw(); }, 400);
+    }
     const old = await myOldVersions(f).catch(() => []);
     if (!old.length) { openPdf(f); return; }
     const m = modal({ title: f.series || fname(f), body: h('div', { class: 'menu-list fl-ver' },

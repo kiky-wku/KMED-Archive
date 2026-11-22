@@ -99,3 +99,19 @@ export function saveNotes(fileId, key, page, strokes) {
 export function flushNotes() { /* 저장 예약은 타이머로 곧 실행됨 */ }
 
 export const fmtSize = (b) => (b >= 1048576 ? `${(b / 1048576).toFixed(1)}MB` : `${Math.max(1, Math.round(b / 1024))}KB`);
+
+// ── 읽음 · 조회 수 ──
+export async function loadViews(ids) {
+  const mine = new Map(); const counts = new Map();
+  if (!ids.length) return { mine, counts };
+  const [a, b] = await Promise.all([
+    sb.from('file_views').select('file_id,key').eq('user_id', S.user.id).in('file_id', ids),
+    sb.rpc('file_view_counts', { ids }),
+  ]);
+  (a.data || []).forEach((r) => mine.set(r.file_id, r.key));
+  (b.data || []).forEach((r) => counts.set(r.file_id, r.n));
+  return { mine, counts };
+}
+export function markViewed(f) {
+  return sb.from('file_views').upsert({ file_id: f.id, user_id: S.user.id, key: f.key, seen_at: new Date().toISOString() }, { onConflict: 'file_id,user_id' }).then(() => {}, () => {});
+}
