@@ -22,7 +22,6 @@ export function myStatsView() {
     const today = ymd(now);
     const start = new Date(now.getTime() - ((now.getDay() + 6) % 7) * 86400e3); // 월요일
     const days = Array.from({ length: 7 }, (_, i) => { const d = new Date(start.getTime() + i * 86400e3); return { k: ymd(d), d }; });
-    const max = Math.max(1, ...days.map((x) => m.get(x.k) || 0));
     const studied = days.filter((x) => m.get(x.k)).length;
     // 연속 공부한 날 (오늘 아직 안 했으면 어제부터)
     let streak = 0;
@@ -34,9 +33,11 @@ export function myStatsView() {
         h('div', { class: 'ms-streak' + (streak ? ' on' : '') }, h('span', { class: 'fire' }, '🔥'), h('b', {}, streak), h('span', {}, '일 연속'))),
       h('div', { class: 'ms-days' }, days.map((x, i) => {
         const n = m.get(x.k) || 0;
-        return h('div', { class: 'ms-d' + (x.k === today ? ' today' : '') + (n ? ' on' : ''), style: { animationDelay: `${i * 0.04}s` } },
-          h('div', { class: 'col' }, h('i', { style: { height: `${n ? 18 + (n / max) * 82 : 0}%` } })),
-          h('span', {}, DAY[x.d.getDay()]), h('em', {}, n || ''));
+        const st = n ? ' on' : x.k < today ? ' miss' : '';
+        return h('div', { class: 'ms-d' + (x.k === today ? ' today' : '') + st, style: { animationDelay: `${i * 0.04}s` } },
+          h('span', {}, DAY[x.d.getDay()]),
+          h('i', { class: 'stamp' }, n ? icon('check') : x.k < today ? icon('minus') : null),
+          h('em', {}, n || ''));
       })),
       h('div', { class: 'ms-foot' }, `이번 주 ${total}문제`));
   }).catch(() => week.replaceChildren(h('div', { class: 'box-empty' }, '기록을 불러오지 못했습니다')));

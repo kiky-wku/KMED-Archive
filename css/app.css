@@ -1468,13 +1468,16 @@ html.offline body::after{content:'인터넷 연결 없음. 이 기기에 저장�
 .ms-streak{display:flex;align-items:baseline;gap:3px;padding:8px 12px;border-radius:14px;background:var(--surface);color:var(--faint);font-size:13px;font-weight:700}
 .ms-streak b{font-size:20px;margin:0}
 .ms-streak .fire{filter:grayscale(1);opacity:.5}
-.ms-streak.on{background:#FFF4E0;color:#C46A00}
+.ms-streak.on{background:var(--red-soft);color:var(--red)}
 .ms-streak.on .fire{filter:none;opacity:1}
 .ms-days{display:grid;grid-template-columns:repeat(7,1fr);gap:8px;margin-top:18px}
 .ms-d{display:flex;flex-direction:column;align-items:center;gap:6px;animation:rise .3s var(--ease) both}
-.ms-d .col{width:100%;max-width:40px;height:84px;border-radius:12px;background:#F2F4F6;display:flex;align-items:flex-end;overflow:hidden}
-.ms-d .col i{display:block;width:100%;background:#C9D2DC;border-radius:12px;transition:height .8s var(--spring)}
-.ms-d.on .col i{background:var(--green)}
+.ms-d .stamp{width:36px;height:36px;border-radius:50%;display:grid;place-items:center;border:1.5px dashed #D1D6DB;color:#fff}
+.ms-d .stamp .icon{width:18px;height:18px;stroke-width:2.8}
+.ms-d.on .stamp{border:0;background:var(--text);animation:stampIn .45s var(--spring) both;animation-delay:inherit}
+@keyframes stampIn{from{transform:scale(.4);opacity:0}to{transform:none;opacity:1}}
+.ms-d.miss .stamp{border:0;background:var(--red-soft);color:var(--red)}
+.ms-d.miss .stamp .icon{width:14px;height:14px}
 .ms-d span{font-size:13px;font-weight:700;color:var(--sub)}
 .ms-d.today span{color:var(--text);font-weight:800}
 .ms-d em{font-style:normal;font-size:11.5px;font-weight:700;color:var(--faint);min-height:14px}
