@@ -86,7 +86,7 @@ export function subjectView(id, q) {
       const p = popover(more, h('div', { class: 'menu-list' }, tools.map(([ic, label, fn, cls]) => h('button', { class: cls, onclick: () => { p.close(); fn(); } }, icon(ic, 'icon s'), label))), { align: 'right' });
     } }, icon('more'));
     right.append(toolBox, more);
-    if (ranges.length > 1) right.append(seg(ranges.map((r) => [r.id, r.name]), rangeId, (v) => { rangeId = v; show(); }));
+    if (ranges.length > 1) right.prepend(seg(ranges.map((r) => [r.id, r.name]), rangeId, (v) => { rangeId = v; show(); }));
     const tabBtns = blocks.map((b) => h('button', { role: 'tab', class: 'tab', onclick: () => { kind = b.kind; show(); } },
       (BLOCK_KINDS.find((k) => k[0] === b.kind) || [0, b.title])[1]));
     tabs.replaceChildren(...tabBtns, h('i', { class: 'tab-ind' }));
