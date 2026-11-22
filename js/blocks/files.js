@@ -72,7 +72,8 @@ export function filesBlock(ctx, el) {
   }
 
   function weekly(g, i) {
-    const items = g.items.slice().sort((a, b) => (weekNo(b.week) - weekNo(a.week)) || (a.created_at < b.created_at ? 1 : -1));
+    // 주차 숫자 순 (1주차 → 2주차 …), 숫자가 없으면 올린 순서
+    const items = g.items.slice().sort((a, b) => (weekNo(a.week) || 1e6) - (weekNo(b.week) || 1e6) || (a.created_at < b.created_at ? -1 : 1));
     const isOpen = open.has(g.series) || i === 0;
     const body = h('div', { class: 'fl-weeks' }, items.map((f) => h('div', { class: 'fl-wk' },
       h('button', { class: 'fl-wk-main', onclick: () => view(f) },
@@ -147,6 +148,8 @@ export function filesBlock(ctx, el) {
       drop.classList.add('has');
       drop.replaceChildren(drop.firstChild, h('span', { class: 'fl-ic' }, 'PDF'), h('b', {}, f.name), h('span', {}, fmtSize(f.size)));
       if (!series.value.trim()) series.value = f.name.replace(/\.pdf$/i, '');
+      const wk = weekFromName(f.name);
+      if (wk && mode === 'weekly' && (!week.value || week.value === '1주차' || week.value === pre.week)) week.value = wk;
     }
     const bar = h('div', { class: 'fl-prog' }, h('i'));
     const go = h('button', { class: 'btn ink', onclick: submit }, '업로드');
@@ -183,6 +186,8 @@ function pickFile(cb) {
   i.onchange = () => { const f = i.files[0]; if (!f) return; if (!/\.pdf$/i.test(f.name)) { toast('PDF 파일만 올릴 수 있습니다'); return; } cb(f); };
   i.click();
 }
+// 파일 이름 속 주차 : '3주차', '3주', 'week3', 'W3'
+function weekFromName(n) { const m = String(n).match(/(\d{1,2})\s*주(차)?|week\s*(\d{1,2})|(?:^|[^a-z])w(\d{1,2})(?!\d)/i); const v = m && (m[1] || m[3] || m[4]); return v ? `${+v}주차` : ''; }
 function weekNo(w) { const m = String(w || '').match(/\d+/); return m ? +m[0] : 0; }
 function nextWeek(items) { const n = Math.max(0, ...items.map((f) => weekNo(f.week))); return n ? `${n + 1}주차` : ''; }
 
