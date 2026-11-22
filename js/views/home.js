@@ -70,7 +70,7 @@ export function homeView(q) {
   });
 
   const logo = h('button', { class: 'logo-btn', 'aria-label': '홈', onclick: () => go('#/home') },
-    h('img', { class: 'logo-h', src: 'icons/logo-h.png', alt: '夜淚冷 YRR STUDY' }));
+    h('img', { class: 'logo-h', src: 'icons/logo-h.png', alt: '工夫韓醫 YRR STUDY' }));
   const root = shell({ title: logo, active: 'home', body, right, tone: 'gray', fit: 'home-fit' });
   const prev = root.cleanup;
   root.cleanup = () => { prev?.(); stack.cleanup?.(); bell.cleanup?.(); };

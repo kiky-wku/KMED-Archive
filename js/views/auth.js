@@ -30,7 +30,7 @@ export function loginView() {
   const btn = h('button', { class: 'btn', type: 'submit' }, '로그인');
 
   const card = h('form', { class: 'auth-card', novalidate: true, onsubmit: submit },
-    h('img', { class: 'brand', src: 'icons/logo.png', alt: '夜淚冷 YRR STUDY' }),
+    h('img', { class: 'brand', src: 'icons/logo.png', alt: '工夫韓醫 YRR STUDY' }),
     email,
     pw,
     err,
@@ -83,7 +83,7 @@ export function firstView() {
   showGrade();
 
   const card = h('form', { class: 'auth-card', novalidate: true, onsubmit: submit },
-    h('img', { class: 'brand sm', src: 'icons/logo.png', alt: '夜淚冷 YRR STUDY' }),
+    h('img', { class: 'brand sm', src: 'icons/logo.png', alt: '工夫韓醫 YRR STUDY' }),
     h('h1', { class: 'auth-title' }, '비밀번호 변경'),
     pw1,
     pw2,
