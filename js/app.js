@@ -73,3 +73,6 @@ window.addEventListener('hashchange', route);
   }
   route();
 })();
+
+// 확대 막기 : 두 번 탭은 CSS(touch-action), 두 손가락은 여기서
+['gesturestart', 'gesturechange'].forEach((t) => document.addEventListener(t, (e) => e.preventDefault(), { passive: false }));

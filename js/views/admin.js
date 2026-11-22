@@ -1,5 +1,4 @@
 import { sb } from '../sb.js';
-import { dataTab } from './admin-data.js';
 import { h, icon, modal, seg, toast, shake, busy, gradeLabel, fmtDate, ago, deviceName, skelRows } from '../ui.js';
 import { S, go } from '../app.js';
 import { shell } from './shell.js';
@@ -53,7 +52,7 @@ async function callAdmin(body) {
 export function adminView(q) {
   const tab = q.get('t') || 'members';
   const area = h('div', { class: 'adm-area' });
-  const tabs = seg([['members', '회원'], ['logs', '로그인 기록'], ['subjects', '과목'], ['data', '데이터']], tab, (v) => {
+  const tabs = seg([['members', '회원'], ['logs', '로그인 기록'], ['subjects', '과목']], tab, (v) => {
     history.replaceState(null, '', `#/admin?t=${v}`);
     show(v);
   });
@@ -62,7 +61,6 @@ export function adminView(q) {
     area.classList.remove('swap'); void area.offsetWidth; area.classList.add('swap');
     if (v === 'members') membersTab(area);
     else if (v === 'logs') logsTab(area);
-    else if (v === 'data') dataTab(area);
     else subjectsTab(area);
   }
   show(tab);

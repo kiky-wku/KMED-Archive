@@ -45,7 +45,8 @@ export function wordbook(ctx, el) {
     let shuf = localStorage.getItem('kmed:wb-shuf') !== '0';
     const homeSel = new Set();
 
-    function swap(nodes) {
+    function swap(nodes, fit = false) {
+      ctx.fit?.(fit);
       pad?.destroy(); pad = null; offKey?.(); offKey = null;
       el.replaceChildren(...nodes.filter(Boolean));
       el.classList.remove('q-in'); void el.offsetWidth; el.classList.add('q-in');
@@ -141,7 +142,7 @@ export function wordbook(ctx, el) {
       let phase = 'ask';
       swap([h('div', { class: 'q-bar' },
         h('button', { class: 'tool-pill', onclick: quit }, icon('x', 'icon s'), h('span', {}, '그만하기')),
-        counter, h('div', { class: 'sp' })), bar, stage]);
+        counter, h('div', { class: 'sp' })), bar, stage], true);
 
       function quit() { if (!T.hist.length) home(); else result(T); }
       function back() {

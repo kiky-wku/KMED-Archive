@@ -50,7 +50,7 @@ export function homeView(q) {
 
   const logo = h('button', { class: 'logo-btn', 'aria-label': '홈', onclick: () => go('#/home') },
     h('img', { class: 'logo-h', src: 'icons/logo-h.png', alt: '夜淚冷 YRR STUDY' }));
-  return shell({ title: logo, active: 'home', body, tone: 'gray' });
+  return shell({ title: logo, active: 'home', body, tone: 'gray', fit: 'home-fit' });
 }
 
 // 학기 이동 (전체 열람 계정)
