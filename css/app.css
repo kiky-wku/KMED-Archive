@@ -985,3 +985,8 @@ html.pv-open,html.pv-open body{overflow:hidden}
 .pv-load .skel{display:block;width:min(1100px,calc(100% - 32px));aspect-ratio:1/1.414;max-height:70vh;border-radius:4px;background:#F0F1F3}
 .pv-err{margin-top:80px;font-size:16px;font-weight:700;color:var(--sub)}
 @media (max-width:760px){.pv-ttl{display:none}.pv-right .pv-t:not(:last-child){display:none}}
+.pv-sz{display:flex;gap:2px;transition:opacity .2s}
+.pv-sz.off{opacity:.3;pointer-events:none}
+.pv-s{width:30px;height:30px;border-radius:9px;display:grid;place-items:center;transition:background-color .15s}
+.pv-s i{display:block;border-radius:50%;background:var(--text)}
+.pv-s.on{background:#fff;box-shadow:var(--sh1)}

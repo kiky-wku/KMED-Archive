@@ -17,10 +17,13 @@ async function pdfjs() {
 const COLORS = ['#191F28', '#E5484D', '#3182F6', '#16A34A'];
 const HL = ['#FFE066', '#9BE7B5', '#A5D8FF', '#FFB3C7'];
 const ZOOMS = [1, 1.25, 1.5, 2];
+const SIZES = { pen: [0.0016, 0.0028, 0.0046], hl: [0.013, 0.022, 0.034] };
 
 export function openPdf(file, { key = null, label = '' } = {}) {
   const fileKey = key || file.key;
   let tool = 'pen'; let color = COLORS[0]; let hl = HL[0]; let zoom = 1;
+  const size = { pen: 1, hl: 1 };
+  try { Object.assign(size, JSON.parse(localStorage.getItem('kmed:pv-size') || '{}')); } catch { /* 무시 */ }
   let doc = null; let alive = true;
   const pages = []; // { wrap, cv, ink, vp, rendered, strokes }
   const history = []; // { i, prev }
@@ -31,6 +34,7 @@ export function openPdf(file, { key = null, label = '' } = {}) {
   const toolBtns = {};
   const tbtn = (t, ic, label) => (toolBtns[t] = h('button', { class: 'pv-t', title: label, 'aria-label': label, onclick: () => setTool(t) }, icon(ic)));
   const swatches = h('div', { class: 'pv-sw' });
+  const sizes = h('div', { class: 'pv-sz' });
   const undoBtn = h('button', { class: 'pv-t', title: '실행 취소', 'aria-label': '실행 취소', disabled: true, onclick: undo }, icon('undo'));
   const zoomOut = h('button', { class: 'pv-t', title: '축소', 'aria-label': '축소', onclick: () => setZoom(-1) }, icon('minus'));
   const zoomIn = h('button', { class: 'pv-t', title: '확대', 'aria-label': '확대', onclick: () => setZoom(1) }, icon('plus'));
@@ -42,7 +46,7 @@ export function openPdf(file, { key = null, label = '' } = {}) {
     h('div', { class: 'pv-ttl' }, h('b', {}, file.series || file.filename), h('span', {}, [file.week, label].filter(Boolean).join('  '))),
     h('div', { class: 'pv-tools' },
       tbtn('pen', 'pen', '펜'), tbtn('hl', 'marker', '형광펜'), tbtn('eraser', 'eraser', '지우개'),
-      h('i', { class: 'pv-div' }), swatches, h('i', { class: 'pv-div' }), undoBtn),
+      h('i', { class: 'pv-div' }), swatches, h('i', { class: 'pv-div' }), sizes, h('i', { class: 'pv-div' }), undoBtn),
     h('div', { class: 'pv-right' }, zoomOut, zoomIn, pageInfo,
       h('button', { class: 'pv-t', title: '굿노트로 보내기', 'aria-label': '굿노트로 보내기', onclick: share }, icon('share'))));
   const loading = h('div', { class: 'pv-load' }, h('i', { class: 'skel' }), h('i', { class: 'skel' }));
@@ -72,6 +76,11 @@ export function openPdf(file, { key = null, label = '' } = {}) {
     swatches.replaceChildren(...set.map((c) => h('button', { class: 'pv-c' + (c === cur ? ' on' : ''), style: { '--c': c }, 'aria-label': '색', disabled: tool === 'eraser',
       onclick: () => { if (tool === 'hl') hl = c; else color = c; paintTools(); } })));
     swatches.classList.toggle('off', tool === 'eraser');
+    const t = tool === 'hl' ? 'hl' : 'pen';
+    sizes.replaceChildren(...[0, 1, 2].map((i) => h('button', { class: 'pv-s' + (size[t] === i ? ' on' : ''), 'aria-label': ['가늘게', '보통', '굵게'][i], title: ['가늘게', '보통', '굵게'][i], disabled: tool === 'eraser',
+      onclick: () => { size[t] = i; try { localStorage.setItem('kmed:pv-size', JSON.stringify(size)); } catch { /* 무시 */ } paintTools(); } },
+    h('i', { style: { width: `${[4, 7, 11][i]}px`, height: `${[4, 7, 11][i]}px` } }))));
+    sizes.classList.toggle('off', tool === 'eraser');
   }
   function setTool(t) { tool = t; paintTools(); }
 
@@ -189,7 +198,7 @@ export function openPdf(file, { key = null, label = '' } = {}) {
       e.preventDefault();
       pid = e.pointerId; pg.ink.setPointerCapture(pid);
       if (tool === 'eraser') { history.push({ i: idx, prev: pg.strokes.slice() }); erase(pg, pt(e)); cur = { erase: true }; return; }
-      cur = { t: tool === 'hl' ? 'hl' : 'pen', c: tool === 'hl' ? hl : color, w: tool === 'hl' ? 0.022 : 0.0028, p: [pt(e)] };
+      cur = { t: tool === 'hl' ? 'hl' : 'pen', c: tool === 'hl' ? hl : color, w: tool === 'hl' ? SIZES.hl[size.hl] : SIZES.pen[size.pen], p: [pt(e)] };
       redraw(pg, cur);
     });
     pg.ink.addEventListener('pointermove', (e) => {
