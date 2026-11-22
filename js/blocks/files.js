@@ -8,7 +8,6 @@ import { openPdf } from '../views/pdf-viewer.js';
 //  주차별형 = 같은 이름 아래 주차마다 쌓임
 // ─────────────────────────────────────────────
 const CAT = [['summary', '써머리'], ['etc', '기타 자료']];
-const catTag = (c) => h('span', { class: 'fl-cat ' + (c === 'etc' ? 'etc' : 'sum') }, c === 'etc' ? '기타 자료' : '써머리');
 const isNew = (t) => Date.now() - new Date(t).getTime() < 3 * 86400e3;
 const md = (t) => { const d = new Date(t); return `${d.getMonth() + 1}월 ${d.getDate()}일`; };
 
@@ -49,7 +48,13 @@ export function filesBlock(ctx, el) {
       }
     });
     groups.sort((a, b) => (a.t < b.t ? 1 : -1));
-    list.replaceChildren(...groups.map((g, i) => (g.type === 'single' ? single(g.f, i) : weekly(g, i))));
+    // 써머리 → 기타 자료 순으로, 박스 밖 제목 아래 쭉
+    let n = 0;
+    list.replaceChildren(...CAT.flatMap(([k, label]) => {
+      const gs = groups.filter((g) => ((g.type === 'single' ? g.f.category : g.category) === 'etc' ? 'etc' : 'summary') === k);
+      if (!gs.length) return [];
+      return [h('h3', { class: 'fl-h' }, label, h('span', {}, gs.length)), ...gs.map((g) => (g.type === 'single' ? single(g.f, n++) : weekly(g, n++)))];
+    }));
   }
 
   const meta = (f) => h('div', { class: 'fl-meta' },
@@ -61,7 +66,7 @@ export function filesBlock(ctx, el) {
     return h('article', { class: 'fl-card', style: { animationDelay: `${i * 0.03}s` } },
       h('button', { class: 'fl-main', onclick: () => view(f) },
         h('span', { class: 'fl-ic' }, 'PDF'),
-        h('span', { class: 'fl-tx' }, h('b', {}, catTag(f.category), h('span', { class: 'fl-name' }, f.series || f.filename), isNew(f.updated_at) ? h('em', {}, 'NEW') : null), meta(f))),
+        h('span', { class: 'fl-tx' }, h('b', {}, h('span', { class: 'fl-name' }, f.series || f.filename), isNew(f.updated_at) ? h('em', {}, 'NEW') : null), meta(f))),
       canWrite ? more(f) : null);
   }
 
@@ -76,7 +81,7 @@ export function filesBlock(ctx, el) {
     const card = h('article', { class: 'fl-card wk' + (isOpen ? ' open' : ''), style: { animationDelay: `${i * 0.03}s` } },
       h('button', { class: 'fl-main', onclick: () => { card.classList.toggle('open'); card.classList.contains('open') ? open.add(g.series) : open.delete(g.series); } },
         h('span', { class: 'fl-ic stack' }, 'PDF'),
-        h('span', { class: 'fl-tx' }, h('b', {}, catTag(g.category), h('span', { class: 'fl-name' }, g.series), isNew(g.t) ? h('em', {}, 'NEW') : null),
+        h('span', { class: 'fl-tx' }, h('b', {}, h('span', { class: 'fl-name' }, g.series), isNew(g.t) ? h('em', {}, 'NEW') : null),
           h('div', { class: 'fl-meta' }, h('span', {}, `${items.length}개 주차`), h('span', {}, `${md(g.t)} 업데이트`))),
         icon('down', 'icon fl-chev')),
       body);
