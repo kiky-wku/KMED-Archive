@@ -59,7 +59,8 @@ export function openPdf(file, { key = null, label = '' } = {}) {
       tbtn('pen', 'pen', '펜'), tbtn('hl', 'marker', '형광펜'), tbtn('eraser', 'eraser', '지우개'),
       h('i', { class: 'pv-div' }), swatches, h('i', { class: 'pv-div' }), sizes, h('i', { class: 'pv-div' }), handBtn, undoBtn),
     h('div', { class: 'pv-right' }, editBtn, zoomOut, zoomIn, pageInfo,
-      h('button', { class: 'pv-t', title: '굿노트로 보내기', 'aria-label': '굿노트로 보내기', onclick: share }, icon('share'))));
+      h('button', { class: 'pv-t', title: '굿노트로 보내기', 'aria-label': '굿노트로 보내기', onclick: share }, icon('share')),
+      h('button', { class: 'pv-t', title: '다운로드', 'aria-label': '다운로드', onclick: download }, icon('download'))));
   const loading = h('div', { class: 'pv-load' }, h('i', { class: 'skel' }), h('i', { class: 'skel' }));
   const root = h('div', { class: 'pv', role: 'dialog', 'aria-modal': 'true' }, top, scroller, loading);
   document.body.append(root);
@@ -418,6 +419,19 @@ export function openPdf(file, { key = null, label = '' } = {}) {
     let n = 0; for (let i = 0; i < pages.length; i++) { if (pages[i].wrap.offsetTop <= mid) n = i; else break; }
     pageInfo.textContent = `${n + 1} / ${pages.length}`;
   }, { passive: true });
+
+  // ── 다운로드 (파일 그대로 저장) ──
+  async function download(e) {
+    const btn = e.currentTarget; btn.disabled = true;
+    try {
+      const url = await viewUrl(file, key || undefined);
+      const blob = await (await fetch(url)).blob();
+      const a = h('a', { href: URL.createObjectURL(new Blob([blob], { type: 'application/pdf' })), download: file.filename || `${file.series || '자료'}.pdf` });
+      document.body.append(a); a.click(); a.remove();
+      setTimeout(() => URL.revokeObjectURL(a.href), 4000);
+    } catch { toast('다운로드하지 못했습니다'); }
+    btn.disabled = false;
+  }
 
   // ── 굿노트로 보내기 (공유 시트) ──
   async function share() {
