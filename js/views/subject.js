@@ -12,6 +12,7 @@ import { umOrder } from '../blocks/um-order.js';
 import { umAnswers } from '../blocks/um-answers.js';
 import { wordbook } from '../blocks/wordbook.js';
 import { flash } from '../blocks/flash.js';
+import { filesBlock } from '../blocks/files.js';
 
 // 탭 종류 → 화면
 const RENDER = {
@@ -23,6 +24,7 @@ const RENDER = {
   um_answers: (ctx, el) => umAnswers(ctx, el),
   wordbook: (ctx, el) => wordbook(ctx, el),
   flash: (ctx, el) => flash(ctx, el),
+  summary: (ctx, el) => filesBlock(ctx, el),
 };
 
 // 화면에 꼭 맞게 고정 (스크롤 없음)
@@ -83,7 +85,7 @@ export function subjectView(id, q) {
       area.classList.remove('swap', 'q-in'); void area.offsetWidth; area.classList.add('swap');
       root.classList.toggle('fit', FIT.has(kind));
       const range = ranges.find((r) => r.id === rangeId);
-      const ctx = { subject: sub, range, pool: sub.progress_pool || sub.id, fit: (on) => root.classList.toggle('fit', !!on) };
+      const ctx = { subject: sub, range, canWrite, pool: sub.progress_pool || sub.id, fit: (on) => root.classList.toggle('fit', !!on) };
       const fn = RENDER[kind];
       if (fn) cleanup = fn(ctx, area) || null;
       else area.append(h('div', { class: 'empty' }, '준비 중입니다'));

@@ -9,7 +9,7 @@ import { shell } from './shell.js';
 const ROLE = { admin: '관리자', writer: '작성자', student: '학생' };
 const SCOPE = { all: '전체', own: '자기 학년' };
 export const BLOCK_KINDS = [
-  ['summary', '써머리'],
+  ['summary', '자료'],
   ['jung_translate', '해석 쓰기'],
   ['hanja_r', '한자 → 훈음'],
   ['hanja_h', '훈음 → 한자'],

@@ -49,5 +49,9 @@ create policy p_sel on public.hanja_hints for select using (auth.uid() is not nu
 create policy p_wr  on public.hanja_hints for all using (public.can_write_pool(pool)) with check (public.can_write_pool(pool));
 
 grant select, insert, update, delete on public.flash_cards, public.hanja_hints to authenticated;
-grant select, insert, update, delete on public.flash_cards, public.hanja_hints to service_role;
+do $$ begin
+  if exists (select 1 from pg_roles where rolname = 'service_role') then
+    grant select, insert, update, delete on public.flash_cards, public.hanja_hints to service_role;
+  end if;
+end $$;
 grant execute on function public.can_write_pool(text) to authenticated;
