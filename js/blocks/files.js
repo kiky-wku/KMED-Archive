@@ -18,8 +18,8 @@ export function filesBlock(ctx, el) {
   const list = h('div', { class: 'fl' });
   const canWrite = !!ctx.canWrite;
 
-  el.append(canWrite ? h('div', { class: 'q-bar' }, h('div', { class: 'sp' }),
-    h('button', { class: 'tool-pill', onclick: () => uploadModal({}) }, icon('plus', 'icon s'), h('span', {}, '올리기'))) : null, list);
+  el.append(list);
+  const upBtn = () => (canWrite ? h('button', { class: 'tool-pill fl-up', onclick: () => uploadModal({}) }, icon('plus', 'icon s'), h('span', {}, '업로드')) : null);
 
   async function load() {
     list.replaceChildren(...[0, 1, 2].map(() => h('i', { class: 'skel fl-sk' })));
@@ -34,7 +34,7 @@ export function filesBlock(ctx, el) {
       list.replaceChildren(h('div', { class: 'fl-empty' },
         h('div', { class: 'emo' }, '📄'),
         h('b', {}, '아직 올라온 자료가 없습니다'),
-        canWrite ? h('button', { class: 'btn sm ink', onclick: () => uploadModal({}) }, icon('plus', 'icon s'), '올리기') : null));
+        canWrite ? h('button', { class: 'btn sm ink', onclick: () => uploadModal({}) }, icon('plus', 'icon s'), '업로드') : null));
       return;
     }
     // 묶기 : 한 파일 = 한 칸, 주차별 = 이름별로 한 칸
@@ -53,7 +53,8 @@ export function filesBlock(ctx, el) {
     list.replaceChildren(...CAT.flatMap(([k, label]) => {
       const gs = groups.filter((g) => ((g.type === 'single' ? g.f.category : g.category) === 'etc' ? 'etc' : 'summary') === k);
       if (!gs.length) return [];
-      return [h('h3', { class: 'fl-h' }, label, h('span', {}, gs.length)), ...gs.map((g) => (g.type === 'single' ? single(g.f, n++) : weekly(g, n++)))];
+      const first = n === 0;
+      return [h('div', { class: 'fl-h' }, h('h3', {}, label, h('span', {}, gs.length)), first ? upBtn() : null), ...gs.map((g) => (g.type === 'single' ? single(g.f, n++) : weekly(g, n++)))];
     }));
   }
 
@@ -148,9 +149,9 @@ export function filesBlock(ctx, el) {
       if (!series.value.trim()) series.value = f.name.replace(/\.pdf$/i, '');
     }
     const bar = h('div', { class: 'fl-prog' }, h('i'));
-    const go = h('button', { class: 'btn ink', onclick: submit }, '올리기');
+    const go = h('button', { class: 'btn ink', onclick: submit }, '업로드');
     const m = modal({
-      title: pre.series ? `${pre.series}에 주차 추가` : '자료 올리기',
+      title: pre.series ? `${pre.series}에 주차 추가` : '자료 업로드',
       body: h('div', { class: 'form1 fl-form' },
         pre.series ? null : h('div', { class: 'fld' }, h('span', {}, '종류'), seg(CAT, c, (v) => { c = v; })),
         pre.series ? null : h('div', { class: 'fld' }, h('span', {}, '올리는 방식'), seg([['single', '한 파일 계속 바꾸기'], ['weekly', '주차별로 쌓기']], mode, (v) => { mode = v; paintMode(); }), modeDesc),
@@ -164,12 +165,12 @@ export function filesBlock(ctx, el) {
       const name = (pre.series || series.value).trim();
       if (!name) { toast('이름을 적어 주세요'); return; }
       if (mode === 'weekly' && !week.value.trim()) { toast('주차를 적어 주세요'); return; }
-      go.disabled = true; go.textContent = '올리는 중'; bar.classList.add('on');
+      go.disabled = true; go.textContent = '업로드 중'; bar.classList.add('on');
       try {
         await addFile({ subject: ctx.subject, range: ctx.range, category: c, mode, series: name, week: mode === 'weekly' ? week.value.trim() : '', file,
           onProgress: (p) => { bar.firstChild.style.width = `${Math.round(p * 100)}%`; } });
-        m.close(); toast('올렸습니다'); if (pre.series) open.add(name); load();
-      } catch (e) { go.disabled = false; go.textContent = '올리기'; bar.classList.remove('on'); toast(e.message || '올리지 못했습니다'); }
+        m.close(); toast('업로드했습니다'); if (pre.series) open.add(name); load();
+      } catch (e) { go.disabled = false; go.textContent = '업로드'; bar.classList.remove('on'); toast(e.message || '올리지 못했습니다'); }
     }
   }
 

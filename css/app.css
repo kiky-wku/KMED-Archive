@@ -901,17 +901,18 @@ html:has(.fit){overflow:hidden;height:100%}
 .fr.no{background:#FDEEF0} .fr.no b{color:var(--red)}
 
 /* ═══════════ 자료 목록 ═══════════ */
-.fl{display:flex;flex-direction:column;gap:10px;padding-bottom:40px}
+.fl{display:flex;flex-direction:column;gap:8px;padding-bottom:40px}
 .fl-sk{display:block;height:84px;border-radius:20px}
 .fl-empty{display:flex;flex-direction:column;align-items:center;gap:10px;padding:72px 20px;border-radius:24px;background:#fff;border:1px solid #E6E8EB;font-size:16px}
 .fl-empty .emo{font-size:44px}
 .fl-empty .btn{margin-top:8px}
 .fl-card{position:relative;border-radius:20px;background:#fff;border:1px solid #E6E8EB;animation:rowIn .38s var(--ease) both;overflow:hidden;transition:box-shadow .2s}
 @media (hover:hover){.fl-card:hover{box-shadow:var(--sh1)}}
-.fl-main{display:flex;align-items:center;gap:14px;width:100%;padding:16px 60px 16px 16px;text-align:left}
+.fl-main{display:flex;align-items:center;gap:14px;width:100%;padding:13px 60px 13px 14px;text-align:left}
 .fl-card.wk .fl-main{padding-right:20px}
+.block-area>.fl{margin-top:-4px}
 .fl-main:active{background:#FAFAFB}
-.fl-ic{flex:none;width:44px;height:52px;border-radius:10px;background:#FDEEF0;color:#D6334B;display:grid;place-items:center;font-size:11px;font-weight:900;letter-spacing:.04em;position:relative}
+.fl-ic{flex:none;width:40px;height:48px;border-radius:10px;background:#FDEEF0;color:#D6334B;display:grid;place-items:center;font-size:11px;font-weight:900;letter-spacing:.04em;position:relative}
 .fl-ic.stack{box-shadow:4px -4px 0 -1px #fff,4px -4px 0 0 #F6C9D0}
 .fl-tx{flex:1;min-width:0;display:flex;flex-direction:column;gap:4px}
 .fl-tx b{display:flex;align-items:center;gap:8px;font-size:17px;font-weight:800;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
@@ -991,6 +992,7 @@ html.pv-open,html.pv-open body{overflow:hidden}
 .pv-s i{display:block;border-radius:50%;background:var(--text)}
 .pv-s.on{background:#fff;box-shadow:var(--sh1)}
 .fl-tx b .fl-name{min-width:0;overflow:hidden;text-overflow:ellipsis}
-.fl-h{display:flex;align-items:baseline;gap:8px;margin:14px 4px 2px;font-size:18px;font-weight:800}
-.fl-h:first-child{margin-top:2px}
-.fl-h span{font-size:14px;font-weight:700;color:var(--faint)}
+.fl-h{display:flex;align-items:center;justify-content:space-between;gap:8px;min-height:40px;margin:14px 2px 0 4px}
+.fl-h:first-child{margin-top:-4px}
+.fl-h h3{display:flex;align-items:baseline;gap:7px;margin:0;font-size:19px;font-weight:800;letter-spacing:-.02em}
+.fl-h h3 span{font-size:14px;font-weight:700;color:var(--faint)}
