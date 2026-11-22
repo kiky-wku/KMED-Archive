@@ -74,7 +74,7 @@ export function subjectView(id, q) {
     const edit = (k, query) => openEditSheet({ sub, range: ranges.find((r) => r.id === rangeId), pool: sub.progress_pool || sub.id, kind: k || editKindOf(kind), query, onDone: () => show() });
     right.append(h('button', { class: 'tool-ic siren-btn', title: '제보하기', 'aria-label': '제보하기', onclick: () => report() }, icon('siren')));
     if (canWrite && kinds.length) {
-      right.append(h('button', { class: 'tool-ic', title: '데이터 고치기', 'aria-label': '데이터 고치기', onclick: () => edit() }, icon('editlist')));
+      right.append(h('button', { class: 'tool-ic', title: '데이터 편집', 'aria-label': '데이터 편집', onclick: () => edit() }, icon('editlist')));
     }
     if (canWrite && formatsFor(blocks.map((b) => b.kind)).length) {
       right.append(h('button', { class: 'tool-ic data-btn', title: '데이터 넣기', 'aria-label': '데이터 넣기',

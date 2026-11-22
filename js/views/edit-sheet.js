@@ -21,7 +21,7 @@ const ok = (r) => { if (r.error) throw r.error; return r.data; };
 
 export function openEditSheet({ sub, range, pool, kind: k0, query = '', onDone }) {
   const kinds = editKinds((sub.blocks || []).map((b) => b.kind));
-  if (!kinds.length) { toast('고칠 수 있는 데이터가 없습니다'); return; }
+  if (!kinds.length) { toast('편집할 데이터가 없습니다'); return; }
   let kind = kinds.find((k) => k[0] === k0)?.[0] || kinds[0][0];
   let items = []; let units = new Map(); let hints = new Map();
   let shown = 60; let openId = null; let changed = false;
@@ -33,7 +33,7 @@ export function openEditSheet({ sub, range, pool, kind: k0, query = '', onDone }
   const list = h('div', { class: 'es-list' });
   const sheet = h('div', { class: 'ds es', role: 'dialog', 'aria-modal': 'true' },
     h('header', { class: 'ds-head' },
-      h('div', { class: 'ds-ttl' }, h('span', { class: 'emo' }, sub.icon || ''), h('div', {}, h('h2', {}, '데이터 고치기'), h('span', {}, `${sub.name} ${range.name}`))),
+      h('div', { class: 'ds-ttl' }, h('span', { class: 'emo' }, sub.icon || ''), h('div', {}, h('h2', {}, '데이터 편집'), h('span', {}, `${sub.name} ${range.name}`))),
       h('button', { class: 'ib', 'aria-label': '닫기', onclick: close }, icon('x'))),
     h('div', { class: 'es-bar' }, tabs,
       h('div', { class: 'es-row' }, h('label', { class: 'es-search' }, icon('search', 'icon s'), search), count, addBtn)),
