@@ -3,7 +3,7 @@ import { mount, h, deviceName } from './ui.js';
 import { loginView, firstView } from './views/auth.js';
 import { welcomeView } from './views/welcome.js';
 import { homeView } from './views/home.js';
-import { placeholderView } from './views/placeholder.js';
+import { settingsView } from './views/settings.js';
 import { adminView } from './views/admin.js';
 import { subjectView } from './views/subject.js';
 import { registerSW, syncPush, disablePush, clearBadge } from './data/push.js';
@@ -53,7 +53,7 @@ export async function route(opt = {}) {
   if (a === 'welcome') return mount(welcomeView());
   if (a === 'home') return mount(homeView(q));
   if (a === 's' && b) return mount(subjectView(b, q));
-  if (a === 'settings') return mount(placeholderView('설정'));
+  if (a === 'settings') return mount(settingsView());
   if (a === 'admin' && isAdmin()) return mount(adminView(q));
   location.hash = '#/home';
 }

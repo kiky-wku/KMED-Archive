@@ -1239,3 +1239,36 @@ html.pv-open,html.pv-open body{overflow:hidden}
 .es-more{padding:12px;font-size:14px;font-weight:700;color:var(--sub)}
 .rp-btn.go{background:var(--blue-soft);color:var(--blue);margin-right:auto}
 @media (max-width:640px){.es-grid{grid-template-columns:1fr}.es-add span{display:none}.es-add{width:44px;padding:0}}
+/* ---------- 설정 ---------- */
+.st{width:min(640px,100%);margin:0 auto;display:flex;flex-direction:column;gap:22px}
+.st-sec{animation:rise .35s var(--ease) both}
+.st-sec:nth-child(2){animation-delay:.04s}.st-sec:nth-child(3){animation-delay:.08s}.st-sec:nth-child(4){animation-delay:.12s}
+.st-sec h2{margin:0 6px 8px;font-size:15px;font-weight:800;color:var(--sub)}
+.st-box{background:#fff;border-radius:20px;box-shadow:var(--sh1);overflow:hidden}
+.st-box>*+*{border-top:1px solid #F2F4F6}
+.st-me{display:flex;align-items:center;gap:14px;padding:18px}
+.avatar.lg{width:52px;height:52px;border-radius:16px;font-size:22px}
+.st-me-tx{display:flex;flex-direction:column;gap:3px;min-width:0}
+.st-me-tx b{font-size:19px;font-weight:800}
+.st-me-tx span{font-size:14px;color:var(--sub);font-weight:600;white-space:pre}
+.st-row{display:flex;align-items:center;gap:12px;min-height:54px;padding:0 18px;width:100%;box-sizing:border-box;text-align:left}
+.st-row .k{flex:none;width:76px;font-size:15px;font-weight:700}
+.st-row .v{flex:1;min-width:0;font-size:15px;color:var(--sub);font-weight:600}
+.st-btn .k{width:auto}
+.st-btn .v{font-size:13px;color:var(--faint)}
+.st-btn .icon{color:var(--faint)}
+.st-btn:active{background:var(--surface2)}
+.st-btn.danger .k,.st-btn.danger .icon{color:var(--red)}
+.st-link{font-size:14px;font-weight:700;color:var(--blue);padding:6px 4px}
+.st-note{margin:0;padding:12px 18px 14px;font-size:13px;color:var(--sub);font-weight:600}
+.st-in{width:100%;box-sizing:border-box;height:48px;border:1.5px solid var(--line);border-radius:12px;padding:0 14px;font-size:16px;outline:0;background:#fff;transition:border-color .15s}
+.st-in:focus{border-color:var(--blue)}
+.st-in.sm{width:80px;height:38px;text-align:center}
+.st-row .btn.sm{height:38px}
+.st-pw{display:flex;flex-direction:column;gap:8px;padding:16px 18px}
+.st-pw-foot{display:flex;align-items:center;gap:10px;margin-top:4px}
+.st-pw-foot .err{flex:1}
+.st-box .pr{border:0;border-radius:0;background:none;margin:0;padding:14px 18px}
+.st-tip{display:flex;gap:10px;align-items:flex-start;padding:14px 18px;font-size:14px;color:#4E5968;font-weight:600;line-height:1.5;background:var(--blue-soft)}
+.st-tip .icon{flex:none;color:var(--blue);margin-top:2px}
+.st-pw-foot .btn{margin-left:auto}
