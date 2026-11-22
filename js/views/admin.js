@@ -230,10 +230,11 @@ async function logsTab(area) {
   const nameOf = Object.fromEntries((people || []).map((p) => [p.id, p]));
 
   async function load() {
-    let q = sb.from('login_logs').select('at,device,user_id').order('at', { ascending: false }).limit(300);
+    const since = new Date(Date.now() - 30 * 86400e3).toISOString();   // 최근 30일만
+    let q = sb.from('login_logs').select('at,device,user_id').gte('at', since).order('at', { ascending: false }).limit(500);
     if (sel.value) q = q.eq('user_id', sel.value);
     const { data } = await q;
-    if (!data?.length) { list.replaceChildren(h('div', { class: 'empty sm' }, '기록이 없습니다')); return; }
+    if (!data?.length) { list.replaceChildren(h('div', { class: 'empty sm' }, '최근 30일 기록이 없습니다')); return; }
     let lastDay = '';
     const body = [];
     data.forEach((r, i) => {
