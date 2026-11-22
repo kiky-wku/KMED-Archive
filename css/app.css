@@ -1625,4 +1625,7 @@ html.offline body::after{content:'인터넷 연결 없음. 이 기기에 저장�
 
 /* 한 화면 고정 : 페이지 영역도 스크롤로 밀리지 않게 */
 .fit>.page{overflow:hidden;overflow:clip}
-.fit .block-area,.fit .subj-body{overflow:clip}
+.fit .block-area{overflow:clip}
+/* 한 화면 고정(fit) 화면은 창에 못 박기 : 사파리가 문서를 키보드나 커서 때문에 밀어도 화면은 그대로 */
+.fit{position:fixed;inset:0;width:100%}
+html:has(.fit),html:has(.fit) body{overflow:hidden;overscroll-behavior:none}
