@@ -7,6 +7,7 @@ import { loadFavs, removeFav, resetFavs } from '../data/favs.js';
 import { markViewed } from '../data/files.js';
 import { openPdf } from './pdf-viewer.js';
 import { openComments } from './comments.js';
+import { savedFile } from '../data/offline.js';
 import { bellButton, noticeStack, openSuggest, pushNudge } from './reports.js';
 
 // 홈 : 인사 · 이어서 하기 · 과목 목록 (한 박스)
@@ -52,7 +53,7 @@ export function homeView(q) {
 
   // 과목
   sb.from('subjects').select('id,name,sort,icon,ranges(name,sort),blocks(kind)').eq('grade', g).eq('semester', s).order('sort').order('name').then(({ data, error }) => {
-    if (error || !data?.length) { list.replaceChildren(h('div', { class: 'box-empty' }, '등록된 과목이 없습니다')); count.textContent = ''; return; }
+    if (error || !data?.length) { list.replaceChildren(h('div', { class: 'box-empty' }, !navigator.onLine || error ? '인터넷에 연결되면 과목이 보입니다' : '등록된 과목이 없습니다')); count.textContent = ''; return; }
     count.textContent = `${data.length}과목`;
     list.replaceChildren(...data.map((sub, i) => h('button', { class: 'tile2', style: { animationDelay: `${i * 0.035}s` }, onclick: () => go(`#/s/${sub.id}`) },
       h('span', { class: 'emo' }, sub.icon || sub.name.slice(0, 1)),
@@ -100,11 +101,17 @@ function favBox() {
       h('div', { class: 'fav-list' }, shown.map((x, i) => h('div', { class: 'fav-i', style: { animationDelay: `${i * 0.04}s` } },
         h('button', { class: 'fav-main', onclick: () => open(x) },
           h('span', { class: 'fav-ic' }, x.icon || 'PDF'),
-          h('span', { class: 'fav-tx' }, h('b', {}, x.title), h('span', {}, x.sub))),
+          h('span', { class: 'fav-tx' }, h('b', {}, x.title), h('span', {}, x.sub, savedFile(x.id) ? h('i', { class: 'fav-off', title: '이 기기에 저장됨' }, icon('download', 'icon s')) : null))),
         h('button', { class: 'fav-x', 'aria-label': '즐겨찾기 빼기', title: '즐겨찾기 빼기', onclick: async () => { await removeFav(x.id); paint(await loadFavs()); } }, icon('star', 'icon s'))))));
   };
   async function open(x) {
-    const { data: f } = await sb.from('files').select('*').eq('id', x.id).maybeSingle();
+    let f = null; let net = true;
+    try { const r = await sb.from('files').select('*').eq('id', x.id).maybeSingle(); if (r.error) throw r.error; f = r.data; } catch { net = false; }
+    if (!net) {
+      f = savedFile(x.id);
+      if (!f) { toast('인터넷에 연결되면 열 수 있습니다'); return; }
+      openPdf(f); return;
+    }
     if (!f) { toast('지워진 자료라 즐겨찾기에서 뺐습니다'); await removeFav(x.id); paint(await loadFavs()); return; }
     markViewed(f);
     openPdf(f, { onComments: () => openComments(f, {}) });

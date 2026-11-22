@@ -1,5 +1,6 @@
 import { h, icon, toast, popover } from '../ui.js';
-import { viewUrl, loadNotes, saveNotes } from '../data/files.js';
+import { loadNotes, saveNotes } from '../data/files.js';
+import { getPdf } from '../data/offline.js';
 
 // ─────────────────────────────────────────────
 // PDF 보기 + 애플펜슬 필기 (나만 보기)
@@ -185,9 +186,13 @@ export function openPdf(file, { key = null, label = '', onComments = null } = {}
   // ── 불러오기 ──
   (async () => {
     try {
-      const [L, url, n] = await Promise.all([pdfjs(), viewUrl(file, key || undefined), loadNotes(file.id, fileKey)]);
+      const bar = h('div', { class: 'pv-prog' }, h('i'));
+      const [L, data, n] = await Promise.all([pdfjs(), getPdf(file, key, (r) => {
+        if (!bar.isConnected) loading.prepend(bar);
+        bar.firstChild.style.width = `${Math.round(r * 100)}%`;
+      }), loadNotes(file.id, fileKey)]);
       notes = n;
-      doc = await L.getDocument({ url, isEvalSupported: false }).promise;
+      doc = await L.getDocument({ data, isEvalSupported: false }).promise;
       if (!alive) return;
       for (let i = 1; i <= doc.numPages; i++) {
         const p = await doc.getPage(i);
@@ -577,9 +582,8 @@ export function openPdf(file, { key = null, label = '', onComments = null } = {}
   async function download(e) {
     const btn = e.currentTarget; btn.disabled = true;
     try {
-      const url = await viewUrl(file, key || undefined);
-      const blob = await (await fetch(url)).blob();
-      const a = h('a', { href: URL.createObjectURL(new Blob([blob], { type: 'application/pdf' })), download: file.filename || `${file.series || '자료'}.pdf` });
+      const blob = new Blob([await getPdf(file, key)], { type: 'application/pdf' });
+      const a = h('a', { href: URL.createObjectURL(blob), download: file.filename || `${file.series || '자료'}.pdf` });
       document.body.append(a); a.click(); a.remove();
       setTimeout(() => URL.revokeObjectURL(a.href), 4000);
     } catch { toast('다운로드하지 못했습니다'); }
@@ -589,8 +593,7 @@ export function openPdf(file, { key = null, label = '', onComments = null } = {}
   // ── 굿노트로 보내기 (공유 시트) ──
   async function share() {
     try {
-      const url = await viewUrl(file, key || undefined);
-      const blob = await (await fetch(url)).blob();
+      const blob = new Blob([await getPdf(file, key)], { type: 'application/pdf' });
       const f = new File([blob], file.filename || 'file.pdf', { type: 'application/pdf' });
       if (navigator.canShare?.({ files: [f] })) { await navigator.share({ files: [f], title: file.series }); return; }
       const a = h('a', { href: URL.createObjectURL(f), download: f.name }); document.body.append(a); a.click(); a.remove();

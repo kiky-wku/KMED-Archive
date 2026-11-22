@@ -5,12 +5,20 @@ import { S } from '../app.js';
 let cache = null;
 export async function loadFavs() {
   if (cache) return cache;
-  const { data } = await sb.from('user_state').select('value').eq('user_id', S.user.id).eq('key', 'favs').maybeSingle();
-  cache = Array.isArray(data?.value?.list) ? data.value.list : [];
+  const LK = `kmed:favs:${S.user.id}`;
+  try {
+    const { data, error } = await sb.from('user_state').select('value').eq('user_id', S.user.id).eq('key', 'favs').maybeSingle();
+    if (error) throw error;
+    cache = Array.isArray(data?.value?.list) ? data.value.list : [];
+    try { localStorage.setItem(LK, JSON.stringify(cache)); } catch { /* 무시 */ }
+  } catch {
+    try { cache = JSON.parse(localStorage.getItem(LK) || '[]'); } catch { cache = []; }
+  }
   return cache;
 }
 export const isFav = (id) => !!cache?.some((x) => x.id === id);
 async function save() {
+  try { localStorage.setItem(`kmed:favs:${S.user.id}`, JSON.stringify(cache)); } catch { /* 무시 */ }
   await sb.from('user_state').upsert({ user_id: S.user.id, key: 'favs', value: { list: cache }, updated_at: new Date().toISOString() });
 }
 export async function toggleFav(f, subject) {

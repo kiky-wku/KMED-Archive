@@ -7,27 +7,39 @@ import { settingsView } from './views/settings.js';
 import { adminView } from './views/admin.js';
 import { subjectView } from './views/subject.js';
 import { registerSW, syncPush, disablePush, clearBadge } from './data/push.js';
+import { flushPending } from './data/files.js';
 import { markRead } from './data/reports.js';
 
 // 앱 전체 상태
 export const S = { user: null, profile: null, grade: null, sem: null, welcomed: false };
 
 export async function loadMe() {
-  const { data: { user } } = await sb.auth.getUser();
+  // 인터넷이 없으면 저장된 로그인 · 내 정보로 (저장된 자료 보기용)
+  let user = null;
+  try { ({ data: { user } } = await sb.auth.getUser()); } catch { /* 오프라인 */ }
+  if (!user && !navigator.onLine) user = (await sb.auth.getSession()).data.session?.user || null;
   S.user = user;
   if (!user) { S.profile = null; return; }
   const [p, g, s] = await Promise.all([
     sb.from('profiles').select('*').eq('id', user.id).single(),
     sb.rpc('my_grade'),
     sb.rpc('current_semester'),
-  ]);
-  S.profile = p.data;
-  S.grade = g.data;
-  S.sem = s.data;
+  ]).catch(() => [{}, {}, {}]);
+  if (p?.data) {
+    S.profile = p.data; S.grade = g.data; S.sem = s.data;
+    try { localStorage.setItem('kmed:me', JSON.stringify({ id: user.id, profile: S.profile, grade: S.grade, sem: S.sem })); } catch { /* 무시 */ }
+  } else {
+    let c = null; try { c = JSON.parse(localStorage.getItem('kmed:me') || 'null'); } catch { /* 무시 */ }
+    if (c?.id === user.id) { S.profile = c.profile; S.grade = c.grade; S.sem = c.sem; } else S.profile = null;
+  }
 }
 
 export const isAdmin = () => S.profile?.role === 'admin';
 export const seesAll = () => S.profile?.role === 'admin' || S.profile?.scope === 'all';
+
+// 인터넷 끊김 표시
+function paintOnline() { document.documentElement.classList.toggle('offline', !navigator.onLine); }
+window.addEventListener('online', paintOnline); window.addEventListener('offline', paintOnline); paintOnline();
 
 export async function signOut() {
   await disablePush().catch(() => {});
@@ -72,7 +84,7 @@ window.addEventListener('hashchange', route);
     const { data: { session } } = await sb.auth.getSession();
     if (session) {
       await loadMe();
-      if (S.profile) { sb.rpc('touch_session', { p_device: deviceName() }); S.welcomed = true; syncPush(); }
+      if (S.profile) { if (navigator.onLine) { sb.rpc('touch_session', { p_device: deviceName() }); syncPush(); flushPending(); } S.welcomed = true; }
     }
   } catch (e) {
     console.error(e);

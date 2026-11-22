@@ -4,6 +4,8 @@ import { S, isAdmin, seesAll, signOut, loadMe } from '../app.js';
 import { shell } from './shell.js';
 import { pushRow } from './reports.js';
 import { isIOS, isStandalone } from '../data/push.js';
+import { savedSize, clearSaved } from '../data/offline.js';
+import { fmtSize } from '../data/files.js';
 
 // ─────────────────────────────────────────────
 // 설정 : 내 정보 · 알림 · 비밀번호 · 앱
@@ -87,9 +89,23 @@ export function settingsView() {
     infoBox,
     section('알림', pushRow()),
     section('비밀번호 바꾸기', pwForm),
-    section('앱', installRow,
+    section('앱', installRow, savedRow(),
       h('button', { class: 'st-row st-btn', onclick: () => location.reload() }, h('span', { class: 'k' }, '새로고침'), h('span', { class: 'v' }), icon('right', 'icon s')),
       h('button', { class: 'st-row st-btn danger', onclick: () => signOut() }, h('span', { class: 'k' }, '로그아웃'), h('span', { class: 'v' }), icon('out', 'icon s'))),
   );
   return shell({ title: '설정', active: 'settings', body, tone: 'gray' });
+}
+
+// 이 기기에 저장된 자료 (인터넷 없이 열기용)
+function savedRow() {
+  const v = h('span', { class: 'v' });
+  const btn = h('button', { class: 'st-link' }, '비우기');
+  const paint = () => { const { count, bytes } = savedSize(); v.textContent = count ? `${count}개, ${fmtSize(bytes)}` : '없음'; btn.style.display = count ? '' : 'none'; };
+  let armed = 0;
+  btn.addEventListener('click', async () => {
+    if (Date.now() - armed > 2500) { armed = Date.now(); btn.textContent = '한 번 더'; setTimeout(() => { btn.textContent = '비우기'; }, 2500); return; }
+    await clearSaved(); paint(); btn.textContent = '비우기'; toast('저장된 자료를 비웠습니다');
+  });
+  paint();
+  return h('div', { class: 'st-row' }, h('span', { class: 'k' }, '저장된 자료'), v, btn);
 }

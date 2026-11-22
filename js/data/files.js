@@ -78,10 +78,43 @@ export async function myOldVersions(f) {
 }
 
 // ── 내 필기 ──
+// 필기 : 서버가 기본, 인터넷이 없으면 기기에 둔 사본 + 못 보낸 것을 씀
+const NK = (fileId, key) => `kmed:notes:${fileId}:${key}`;
+const PEND = 'kmed:notes-pending';
+const readJ = (k, d) => { try { return JSON.parse(localStorage.getItem(k) || '') ?? d; } catch { return d; } };
+const writeJ = (k, v) => { try { localStorage.setItem(k, JSON.stringify(v)); } catch { /* 가득 참 */ } };
 export async function loadNotes(fileId, key) {
-  const { data } = await sb.from('file_notes').select('page,strokes').eq('user_id', S.user.id).eq('file_id', fileId).eq('key', key);
-  return new Map((data || []).map((r) => [r.page, Array.isArray(r.strokes) ? r.strokes : []]));
+  let rows = null;
+  try {
+    const { data, error } = await sb.from('file_notes').select('page,strokes').eq('user_id', S.user.id).eq('file_id', fileId).eq('key', key);
+    if (!error) rows = data || [];
+  } catch { /* 오프라인 */ }
+  const map = rows
+    ? new Map(rows.map((r) => [r.page, Array.isArray(r.strokes) ? r.strokes : []]))
+    : new Map(Object.entries(readJ(NK(fileId, key), {})).map(([p, s]) => [Number(p), s]));
+  // 아직 서버에 못 보낸 필기가 있으면 그게 최신
+  Object.values(readJ(PEND, {})).filter((r) => r.file_id === fileId && r.key === key).forEach((r) => map.set(r.page, r.strokes));
+  if (rows) writeJ(NK(fileId, key), Object.fromEntries(map));
+  return map;
 }
+function keepLocal(row) {
+  const all = readJ(NK(row.file_id, row.key), {}); all[row.page] = row.strokes; writeJ(NK(row.file_id, row.key), all);
+}
+async function push(row) {
+  const r = row.strokes.length
+    ? await sb.from('file_notes').upsert(row, { onConflict: 'user_id,file_id,key,page' })
+    : await sb.from('file_notes').delete().eq('user_id', row.user_id).eq('file_id', row.file_id).eq('key', row.key).eq('page', row.page);
+  if (r?.error) throw r.error;
+}
+// 인터넷이 다시 되면 못 보낸 필기 보내기
+export async function flushPending() {
+  const p = readJ(PEND, {});
+  for (const [k, row] of Object.entries(p)) {
+    try { await push(row); delete p[k]; } catch { break; }
+  }
+  writeJ(PEND, p);
+}
+window.addEventListener('online', () => flushPending());
 const tm = new Map();
 export function saveNotes(fileId, key, page, strokes) {
   const k = `${fileId}:${key}:${page}`;
@@ -89,11 +122,12 @@ export function saveNotes(fileId, key, page, strokes) {
   tm.set(k, setTimeout(async () => {
     tm.delete(k);
     const row = { user_id: S.user.id, file_id: fileId, key, page, strokes, updated_at: new Date().toISOString() };
-    let r = strokes.length
-      ? await sb.from('file_notes').upsert(row, { onConflict: 'user_id,file_id,key,page' })
-      : await sb.from('file_notes').delete().eq('user_id', S.user.id).eq('file_id', fileId).eq('key', key).eq('page', page);
-    if (r?.error) { await new Promise((ok) => setTimeout(ok, 1000)); r = strokes.length ? await sb.from('file_notes').upsert(row, { onConflict: 'user_id,file_id,key,page' }) : r; }
-    if (r?.error) console.error('필기 저장 실패', r.error);
+    keepLocal(row);
+    try { await push(row); }
+    catch {
+      // 못 보냈으면 기기에 두었다가 인터넷이 되면 보냄
+      const p = readJ(PEND, {}); p[k] = row; writeJ(PEND, p);
+    }
   }, 800));
 }
 export function flushNotes() { /* 저장 예약은 타이머로 곧 실행됨 */ }
