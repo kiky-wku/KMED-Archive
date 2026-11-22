@@ -29,7 +29,7 @@ export function openGuide() {
     h('div', { class: 'gd-p' }, pg.p.map((x) => h('p', {}, x))))));
   const dots = h('div', { class: 'gd-dots' }, pages.map((_, i) => h('button', { 'aria-label': `${i + 1}번째`, onclick: () => to(i) })));
   const prev = h('button', { class: 'gd-nav prev', 'aria-label': '이전', onclick: () => to(idx - 1) }, icon('back'));
-  const next = h('button', { class: 'btn gd-next', onclick: () => (idx === pages.length - 1 ? close() : to(idx + 1)) });
+  const next = h('button', { class: 'gd-nav next', 'aria-label': '다음', onclick: () => (idx === pages.length - 1 ? close() : to(idx + 1)) }, icon('right'));
   const skip = h('button', { class: 'gd-skip', onclick: () => close() }, '건너뛰기');
   const box = h('div', { class: 'gd', role: 'dialog', 'aria-modal': 'true' },
     h('div', { class: 'gd-top' }, h('span', { class: 'gd-cnt' }), skip),
@@ -52,7 +52,8 @@ export function openGuide() {
     box.querySelector('.gd-cnt').textContent = `${i + 1} / ${pages.length}`;
     prev.classList.toggle('off', i === 0);
     const last = i === pages.length - 1;
-    next.textContent = last ? '시작하기' : '다음';
+    next.replaceChildren(icon(last ? 'check' : 'right'));
+    next.setAttribute('aria-label', last ? '닫기' : '다음');
     next.classList.toggle('last', last);
     skip.classList.toggle('off', last);
   }
