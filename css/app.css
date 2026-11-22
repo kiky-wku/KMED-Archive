@@ -1078,6 +1078,13 @@ html.pv-open,html.pv-open body{overflow:hidden}
 .pv-grip .icon{width:14px;height:14px}
 .pv-page.snap .pv-ink{animation:snapFlash .35s ease}
 @keyframes snapFlash{40%{filter:drop-shadow(0 0 6px rgba(49,130,246,.6))}}
-@media (max-width:1320px){.pv-pin span{display:none}.pv-pin{padding:0 8px}.pv.texting .pv-c{width:28px}}
+
 .pv-edit{white-space:nowrap;flex:none}
 .pv-edit span{white-space:nowrap}
+.pv-edit.on{width:40px;padding:0;justify-content:center;border-radius:50%;animation:popIn .25s var(--spring)}
+.pv-edit.on .icon{width:20px;height:20px;stroke-width:2.6}
+.pv-pin{width:36px;height:36px;padding:0;justify-content:center;margin:0}
+.pv.editing .pv-tools .pv-c{width:28px;height:28px}
+.pv.editing .pv-tools .pv-t{width:38px;height:38px}
+.pv.editing .pv-tools .pv-div{margin:0 4px}
+.pv.editing .pv-right{gap:2px}

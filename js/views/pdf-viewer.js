@@ -52,7 +52,7 @@ export function openPdf(file, { key = null, label = '' } = {}) {
     Object.assign(TXDEF, { c: txt.c, fs: txt.fs, b: !!txt.b });
     try { localStorage.setItem('kmed:pv-text', JSON.stringify(TXDEF)); } catch { /* 무시 */ }
     paintTools(); toast('새 텍스트 상자는 이 설정으로 시작합니다');
-  } }, icon('pin', 'icon s'), h('span', {}, '기본값으로'));
+  } }, icon('pin', 'icon s'));
   const undoBtn = h('button', { class: 'pv-t', title: '실행 취소', 'aria-label': '실행 취소', disabled: true, onclick: undo }, icon('undo'));
   const zoomOut = h('button', { class: 'pv-t', title: '축소', 'aria-label': '축소', onclick: () => zoomBy(1 / 1.25) }, icon('minus'));
   const zoomIn = h('button', { class: 'pv-t', title: '확대', 'aria-label': '확대', onclick: () => zoomBy(1.25) }, icon('plus'));
@@ -85,7 +85,8 @@ export function openPdf(file, { key = null, label = '' } = {}) {
     root.classList.toggle('editing', editing);
     root.classList.toggle('hand', editing && handDraw);
     handBtn.classList.toggle('on', handDraw);
-    editBtn.replaceChildren(icon(editing ? 'check' : 'pen', 'icon s'), h('span', {}, editing ? '완료' : '편집'));
+    editBtn.replaceChildren(...(editing ? [icon('check', 'icon')] : [icon('pen', 'icon s'), h('span', {}, '편집')]));
+    editBtn.title = editing ? '완료' : '편집';
     editBtn.classList.toggle('on', editing);
     if (!editing) commitText();
     root.classList.toggle('texting', editing && tool === 'text');
