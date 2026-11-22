@@ -5,12 +5,20 @@ import { shell } from './shell.js';
 import { BLOCK_KINDS } from './admin.js';
 import { hanjaQuiz } from '../blocks/hanja-quiz.js';
 import { hanjaGrid } from '../blocks/hanja-grid.js';
+import { jungTranslate } from '../blocks/jung-translate.js';
+import { umOrder } from '../blocks/um-order.js';
+import { umAnswers } from '../blocks/um-answers.js';
+import { wordbook } from '../blocks/wordbook.js';
 
 // 탭 종류 → 화면
 const RENDER = {
   hanja_r: (ctx, el) => hanjaQuiz(ctx, el, 'r'),
   hanja_h: (ctx, el) => hanjaQuiz(ctx, el, 'h'),
   hanja_grid: (ctx, el) => hanjaGrid(ctx, el),
+  jung_translate: (ctx, el) => jungTranslate(ctx, el),
+  um_order: (ctx, el) => umOrder(ctx, el),
+  um_answers: (ctx, el) => umAnswers(ctx, el),
+  wordbook: (ctx, el) => wordbook(ctx, el),
 };
 
 // 과목 화면 : #/s/{과목}?r={범위}&b={탭}

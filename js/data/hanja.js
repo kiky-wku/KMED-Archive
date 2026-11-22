@@ -9,7 +9,7 @@ import { S } from '../app.js';
 const cardCache = new Map();
 
 // Supabase 는 한 번에 최대 1000행 → 나눠서 전부 받기
-async function fetchAll(build) {
+export async function fetchAll(build) {
   const out = [];
   for (let from = 0; ; from += 1000) {
     const { data, error } = await build().range(from, from + 999);
@@ -106,3 +106,6 @@ export function deckState(key, chars) {
   d.save = () => { try { localStorage.setItem(k, JSON.stringify({ order: d.order, pos: d.pos, hist: d.hist })); } catch { /* 저장 공간 없음 */ } };
   return d;
 }
+
+// 데이터를 새로 넣은 뒤 다시 불러오기
+export function resetCaches() { cardCache.clear(); }
