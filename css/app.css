@@ -1057,3 +1057,6 @@ html.pv-open,html.pv-open body{overflow:hidden}
 .fl-drop .fl-pk .icon,.fl-drop .fl-more-pick .icon{width:16px;height:16px}
 .fl-drop span.fl-dot{color:#D6334B;font-size:9px;font-weight:900}
 .fl-drop span.fl-more-pick{color:var(--sub);font-size:14px;font-weight:700}
+.pv-em{height:32px;padding:0 10px;border-radius:9px;font-size:13px;font-weight:700;color:var(--sub);white-space:nowrap;transition:background-color .15s,color .15s}
+.pv-em.on{background:#fff;color:var(--text);box-shadow:var(--sh1)}
+.pv-sz i.er{box-shadow:0 0 0 1.5px #8B95A1}
