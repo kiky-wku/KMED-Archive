@@ -1,4 +1,4 @@
-import { h, icon, toast } from '../ui.js';
+import { h, icon, toast, popover } from '../ui.js';
 import { viewUrl, loadNotes, saveNotes } from '../data/files.js';
 
 // ─────────────────────────────────────────────
@@ -16,15 +16,19 @@ async function pdfjs() {
 
 const COLORS = ['#191F28', '#E5484D', '#3182F6', '#16A34A'];
 const HL = ['#FFE066', '#9BE7B5', '#A5D8FF', '#FFB3C7'];
-const ZOOMS = [1, 1.25, 1.5, 2];
-const SIZES = { pen: [0.0016, 0.0028, 0.0046], hl: [0.013, 0.022, 0.034] };
+const ZMIN = 0.5; const ZMAX = 4;
+// 굵기 : 화면 폭 1000 기준 px (슬라이더로 조절)
+const RANGE = { pen: [1, 14, 2.8], hl: [6, 50, 22] };
 
 export function openPdf(file, { key = null, label = '' } = {}) {
   const fileKey = key || file.key;
   let tool = 'pen'; let color = COLORS[0]; let hl = HL[0]; let zoom = 1;
-  const size = { pen: 1, hl: 1 };
-  try { Object.assign(size, JSON.parse(localStorage.getItem('kmed:pv-size') || '{}')); } catch { /* 무시 */ }
+  const size = { pen: RANGE.pen[2], hl: RANGE.hl[2] };
+  try { const v = JSON.parse(localStorage.getItem('kmed:pv-size2') || '{}'); ['pen', 'hl'].forEach((k) => { if (typeof v[k] === 'number') size[k] = v[k]; }); } catch { /* 무시 */ }
   let doc = null; let alive = true;
+  let editing = false;                                           // 기본은 읽기 모드
+  let handDraw = localStorage.getItem('kmed:pv-hand') === '1';   // 손으로 그리기
+  let cancelStroke = null;
   const pages = []; // { wrap, cv, ink, vp, rendered, strokes }
   const history = []; // { i, prev }
   let notes = new Map();
@@ -34,10 +38,15 @@ export function openPdf(file, { key = null, label = '' } = {}) {
   const toolBtns = {};
   const tbtn = (t, ic, label) => (toolBtns[t] = h('button', { class: 'pv-t', title: label, 'aria-label': label, onclick: () => setTool(t) }, icon(ic)));
   const swatches = h('div', { class: 'pv-sw' });
-  const sizes = h('div', { class: 'pv-sz' });
+  const sizes = h('button', { class: 'pv-sz', title: '굵기', 'aria-label': '굵기', onclick: openSize });
   const undoBtn = h('button', { class: 'pv-t', title: '실행 취소', 'aria-label': '실행 취소', disabled: true, onclick: undo }, icon('undo'));
-  const zoomOut = h('button', { class: 'pv-t', title: '축소', 'aria-label': '축소', onclick: () => setZoom(-1) }, icon('minus'));
-  const zoomIn = h('button', { class: 'pv-t', title: '확대', 'aria-label': '확대', onclick: () => setZoom(1) }, icon('plus'));
+  const zoomOut = h('button', { class: 'pv-t', title: '축소', 'aria-label': '축소', onclick: () => zoomBy(1 / 1.25) }, icon('minus'));
+  const zoomIn = h('button', { class: 'pv-t', title: '확대', 'aria-label': '확대', onclick: () => zoomBy(1.25) }, icon('plus'));
+  const handBtn = h('button', { class: 'pv-t pv-hand', title: '손으로 그리기', 'aria-label': '손으로 그리기', onclick: () => {
+    handDraw = !handDraw; try { localStorage.setItem('kmed:pv-hand', handDraw ? '1' : '0'); } catch { /* 무시 */ }
+    paintMode(); toast(handDraw ? '손가락 하나로 그리고, 두 손가락으로 넘깁니다' : '애플펜슬로만 그립니다');
+  } }, icon('hand'));
+  const editBtn = h('button', { class: 'pv-edit', onclick: () => { editing = !editing; paintMode(); } });
   const scroller = h('div', { class: 'pv-scroll' });
   const list = h('div', { class: 'pv-pages' });
   scroller.append(list);
@@ -46,15 +55,23 @@ export function openPdf(file, { key = null, label = '' } = {}) {
     h('div', { class: 'pv-ttl' }, h('b', {}, file.series || file.filename), h('span', {}, [file.week, label].filter(Boolean).join('  '))),
     h('div', { class: 'pv-tools' },
       tbtn('pen', 'pen', '펜'), tbtn('hl', 'marker', '형광펜'), tbtn('eraser', 'eraser', '지우개'),
-      h('i', { class: 'pv-div' }), swatches, h('i', { class: 'pv-div' }), sizes, h('i', { class: 'pv-div' }), undoBtn),
-    h('div', { class: 'pv-right' }, zoomOut, zoomIn, pageInfo,
+      h('i', { class: 'pv-div' }), swatches, h('i', { class: 'pv-div' }), sizes, h('i', { class: 'pv-div' }), handBtn, undoBtn),
+    h('div', { class: 'pv-right' }, editBtn, zoomOut, zoomIn, pageInfo,
       h('button', { class: 'pv-t', title: '굿노트로 보내기', 'aria-label': '굿노트로 보내기', onclick: share }, icon('share'))));
   const loading = h('div', { class: 'pv-load' }, h('i', { class: 'skel' }), h('i', { class: 'skel' }));
   const root = h('div', { class: 'pv', role: 'dialog', 'aria-modal': 'true' }, top, scroller, loading);
   document.body.append(root);
   document.documentElement.classList.add('pv-open');
   requestAnimationFrame(() => root.classList.add('on'));
-  paintTools();
+  paintTools(); paintMode();
+
+  function paintMode() {
+    root.classList.toggle('editing', editing);
+    root.classList.toggle('hand', editing && handDraw);
+    handBtn.classList.toggle('on', handDraw);
+    editBtn.replaceChildren(icon(editing ? 'check' : 'pen', 'icon s'), h('span', {}, editing ? '완료' : '편집'));
+    editBtn.classList.toggle('on', editing);
+  }
 
   function close() {
     alive = false;
@@ -77,12 +94,34 @@ export function openPdf(file, { key = null, label = '' } = {}) {
       onclick: () => { if (tool === 'hl') hl = c; else color = c; paintTools(); } })));
     swatches.classList.toggle('off', tool === 'eraser');
     const t = tool === 'hl' ? 'hl' : 'pen';
-    sizes.replaceChildren(...[0, 1, 2].map((i) => h('button', { class: 'pv-s' + (size[t] === i ? ' on' : ''), 'aria-label': ['가늘게', '보통', '굵게'][i], title: ['가늘게', '보통', '굵게'][i], disabled: tool === 'eraser',
-      onclick: () => { size[t] = i; try { localStorage.setItem('kmed:pv-size', JSON.stringify(size)); } catch { /* 무시 */ } paintTools(); } },
-    h('i', { style: { width: `${[4, 7, 11][i]}px`, height: `${[4, 7, 11][i]}px` } }))));
+    const d = Math.max(3, Math.min(22, size[t] * (t === 'hl' ? 0.45 : 1.4)));
+    sizes.replaceChildren(h('i', { class: t, style: { width: `${d}px`, height: `${t === 'hl' ? Math.max(3, d * 0.45) : d}px`, background: t === 'hl' ? hl : color } }), h('span', {}, Math.round(size[t] * 10) / 10));
     sizes.classList.toggle('off', tool === 'eraser');
   }
   function setTool(t) { tool = t; paintTools(); }
+  function openSize() {
+    const t = tool === 'hl' ? 'hl' : 'pen';
+    const [lo, hi] = RANGE[t];
+    const prev = h('div', { class: 'sz-prev' }, h('i'));
+    const val = h('b', {});
+    const input = h('input', { type: 'range', min: lo, max: hi, step: 0.2, value: size[t] });
+    const paint = () => {
+      const px = size[t] * (Math.min(scroller.clientWidth - 32, 1100) / 1000) * (t === 'hl' ? 1 : 1.3);
+      prev.firstChild.style.cssText = t === 'hl' ? `width:120px;height:${px}px;border-radius:2px;background:${hl};opacity:.6` : `width:${px}px;height:${px}px;border-radius:50%;background:${color}`;
+      val.textContent = Math.round(size[t] * 10) / 10;
+    };
+    const step = (d) => { size[t] = Math.max(lo, Math.min(hi, Math.round((size[t] + d) * 10) / 10)); input.value = size[t]; save(); };
+    const save = () => { try { localStorage.setItem('kmed:pv-size2', JSON.stringify(size)); } catch { /* 무시 */ } paint(); paintTools(); };
+    input.addEventListener('input', () => { size[t] = +input.value; save(); });
+    paint();
+    popover(sizes, h('div', { class: 'sz-pop' },
+      h('div', { class: 'sz-head' }, h('span', {}, t === 'hl' ? '형광펜 굵기' : '펜 굵기'), val),
+      prev,
+      h('div', { class: 'sz-row' },
+        h('button', { class: 'pv-t', 'aria-label': '가늘게', onclick: () => step(t === 'hl' ? -2 : -0.4) }, icon('minus')),
+        input,
+        h('button', { class: 'pv-t', 'aria-label': '굵게', onclick: () => step(t === 'hl' ? 2 : 0.4) }, icon('plus')))), { width: 280 });
+  }
 
   // ── 불러오기 ──
   (async () => {
@@ -133,7 +172,7 @@ export function openPdf(file, { key = null, label = '' } = {}) {
   async function render(pg) {
     if (!pg || pg.rendered === pg.w || pg.busy) return;
     pg.busy = true;
-    const dpr = Math.min(window.devicePixelRatio || 1, 2.5);
+    const dpr = Math.min(window.devicePixelRatio || 1, 2.5, Math.sqrt(14e6 / (pg.w * pg.h)));
     const scale = (pg.w / pg.vp.width) * dpr;
     const vp = pg.page.getViewport({ scale });
     const off = document.createElement('canvas');
@@ -150,7 +189,7 @@ export function openPdf(file, { key = null, label = '' } = {}) {
   }
 
   function sizeInk(pg) {
-    const dpr = Math.min(window.devicePixelRatio || 1, 2.5);
+    const dpr = Math.min(window.devicePixelRatio || 1, 2.5, Math.sqrt(14e6 / (pg.w * pg.h)));
     pg.ink.width = Math.round(pg.w * dpr); pg.ink.height = Math.round(pg.h * dpr);
     const ctx = pg.ink.getContext('2d', { desynchronized: true });
     ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
@@ -184,25 +223,91 @@ export function openPdf(file, { key = null, label = '' } = {}) {
     c.restore();
   }
 
-  // ── 펜 입력 ──
-  // 펜슬이 화면에 닿을 때 스크롤되지 않게 (손가락은 그대로 스크롤)
-  scroller.addEventListener('touchstart', (e) => { const t = e.touches[0]; if (t && t.touchType === 'stylus') e.preventDefault(); }, { passive: false });
-  scroller.addEventListener('touchmove', (e) => { const t = e.touches[0]; if (t && t.touchType === 'stylus') e.preventDefault(); }, { passive: false });
+  // ── 터치 : 그리기 · 넘기기 · 두 손가락 확대 ──
+  //  읽기 모드      : 손 · 펜슬 모두 넘기기, 두 손가락 확대
+  //  편집 + 기본    : 펜슬 = 그리기, 손가락 하나 = 넘기기, 두 손가락 = 확대
+  //  편집 + 손 그리기 : 손가락 하나 = 그리기, 두 손가락 = 확대 + 넘기기
+  const drawsWith = (e) => editing && (e.pointerType === 'pen' || e.pointerType === 'mouse' || (e.pointerType === 'touch' && handDraw));
+  let pinch = null;
+  scroller.addEventListener('touchstart', (e) => {
+    const t = e.touches;
+    if (t.length >= 2) {
+      e.preventDefault();
+      cancelStroke?.();
+      if (!pinch) startPinch(t);
+      return;
+    }
+    const stylus = t[0]?.touchType === 'stylus';
+    if (editing && (stylus || handDraw) && e.target.classList?.contains('pv-ink')) e.preventDefault();
+  }, { passive: false });
+  scroller.addEventListener('touchmove', (e) => {
+    if (pinch && e.touches.length >= 2) { e.preventDefault(); movePinch(e.touches); return; }
+    const t = e.touches[0];
+    if (editing && t && (t.touchType === 'stylus' || handDraw) && e.target.classList?.contains('pv-ink')) e.preventDefault();
+  }, { passive: false });
+  const touchEnd = (e) => { if (pinch && e.touches.length < 2) endPinch(); };
+  scroller.addEventListener('touchend', touchEnd);
+  scroller.addEventListener('touchcancel', touchEnd);
+
+  // 두 손가락 : 움직이는 동안은 화면만 늘리고(transform), 손을 떼면 그 크기로 다시 그림
+  const mid = (t) => { const r = scroller.getBoundingClientRect(); return { x: (t[0].clientX + t[1].clientX) / 2 - r.left, y: (t[0].clientY + t[1].clientY) / 2 - r.top }; };
+  const dist = (t) => Math.hypot(t[0].clientX - t[1].clientX, t[0].clientY - t[1].clientY);
+  function startPinch(t) {
+    const m = mid(t);
+    pinch = { d0: dist(t), m0: m, s0: { x: scroller.scrollLeft, y: scroller.scrollTop }, s: 1, dx: 0, dy: 0 };
+    list.style.transformOrigin = '0 0'; list.style.willChange = 'transform';
+  }
+  function movePinch(t) {
+    const m = mid(t);
+    const s = Math.max(ZMIN / zoom, Math.min(ZMAX / zoom, dist(t) / pinch.d0));
+    Object.assign(pinch, { s, dx: m.x - pinch.m0.x, dy: m.y - pinch.m0.y });
+    paintPinch();
+  }
+  function paintPinch() {
+    const { s, dx, dy, m0, s0 } = pinch;
+    const tx = (s0.x + m0.x) * (1 - s) + dx; const ty = (s0.y + m0.y) * (1 - s) + dy;
+    list.style.transform = `translate(${tx}px, ${ty}px) scale(${s})`;
+  }
+  function endPinch() {
+    const { s, dx, dy, m0, s0 } = pinch;
+    pinch = null;
+    list.style.transform = ''; list.style.willChange = '';
+    zoom = Math.max(ZMIN, Math.min(ZMAX, zoom * s));
+    layout();
+    scroller.scrollLeft = (s0.x + m0.x) * s - (m0.x + dx);
+    scroller.scrollTop = (s0.y + m0.y) * s - (m0.y + dy);
+    paintZoom();
+  }
+  // 맥 트랙패드 오므리기 (ctrl + 휠)
+  let wheelT = 0;
+  scroller.addEventListener('wheel', (e) => {
+    if (!e.ctrlKey) return;
+    e.preventDefault();
+    if (!pinch) {
+      const r = scroller.getBoundingClientRect();
+      pinch = { d0: 1, m0: { x: e.clientX - r.left, y: e.clientY - r.top }, s0: { x: scroller.scrollLeft, y: scroller.scrollTop }, s: 1, dx: 0, dy: 0 };
+      list.style.transformOrigin = '0 0';
+    }
+    pinch.s = Math.max(ZMIN / zoom, Math.min(ZMAX / zoom, pinch.s * Math.exp(-e.deltaY * 0.01)));
+    paintPinch();
+    clearTimeout(wheelT); wheelT = setTimeout(endPinch, 160);
+  }, { passive: false });
 
   function bindInk(pg, idx) {
     let cur = null; let pid = null;
     const pt = (e) => { const r = pg.ink.getBoundingClientRect(); return [(e.clientX - r.left) / pg.w, (e.clientY - r.top) / pg.w, e.pointerType === 'pen' ? (e.pressure || 0.5) : 0.5]; };
     pg.ink.addEventListener('pointerdown', (e) => {
-      if (e.pointerType === 'touch') return;
+      if (!drawsWith(e) || pinch) return;
       if (e.pointerType === 'mouse' && e.button !== 0) return;
       e.preventDefault();
+      cancelStroke = () => { if (cur && !cur.erase) { cur = null; pid = null; redraw(pg); } cancelStroke = null; };
       pid = e.pointerId; pg.ink.setPointerCapture(pid);
       if (tool === 'eraser') { history.push({ i: idx, prev: pg.strokes.slice() }); erase(pg, pt(e)); cur = { erase: true }; return; }
-      cur = { t: tool === 'hl' ? 'hl' : 'pen', c: tool === 'hl' ? hl : color, w: tool === 'hl' ? SIZES.hl[size.hl] : SIZES.pen[size.pen], p: [pt(e)] };
+      cur = { t: tool === 'hl' ? 'hl' : 'pen', c: tool === 'hl' ? hl : color, w: (tool === 'hl' ? size.hl : size.pen) / 1000, p: [pt(e)] };
       redraw(pg, cur);
     });
     pg.ink.addEventListener('pointermove', (e) => {
-      if (!cur || e.pointerId !== pid) return;
+      if (!cur || e.pointerId !== pid || pinch) return;
       const evs = e.getCoalescedEvents ? e.getCoalescedEvents() : [e];
       if (cur.erase) { evs.forEach((x) => erase(pg, pt(x))); return; }
       const before = cur.p.length;
@@ -239,16 +344,17 @@ export function openPdf(file, { key = null, label = '' } = {}) {
     undoBtn.disabled = !history.length;
   }
 
-  // ── 확대 · 쪽 번호 ──
-  function setZoom(d) {
-    const i = Math.max(0, Math.min(ZOOMS.length - 1, ZOOMS.indexOf(zoom) + d));
-    if (ZOOMS[i] === zoom) return;
-    const ratio = scroller.scrollTop / Math.max(1, scroller.scrollHeight);
-    zoom = ZOOMS[i]; layout();
-    scroller.scrollTop = ratio * scroller.scrollHeight;
-    zoomOut.disabled = i === 0; zoomIn.disabled = i === ZOOMS.length - 1;
+  // ── 확대 버튼 · 쪽 번호 ──
+  function zoomBy(f) {
+    const nz = Math.max(ZMIN, Math.min(ZMAX, zoom * f)); if (nz === zoom) return;
+    const s = nz / zoom; const cx = scroller.clientWidth / 2; const cy = scroller.clientHeight / 2;
+    const sx = scroller.scrollLeft; const sy = scroller.scrollTop;
+    zoom = nz; layout();
+    scroller.scrollLeft = (sx + cx) * s - cx; scroller.scrollTop = (sy + cy) * s - cy;
+    paintZoom();
   }
-  zoomOut.disabled = true;
+  function paintZoom() { zoomOut.disabled = zoom <= ZMIN + 0.001; zoomIn.disabled = zoom >= ZMAX - 0.001; }
+  paintZoom();
   scroller.addEventListener('scroll', () => {
     if (!pages.length) return;
     const mid = scroller.scrollTop + scroller.clientHeight / 3;
