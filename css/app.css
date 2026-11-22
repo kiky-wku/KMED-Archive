@@ -1524,3 +1524,28 @@ html.offline body::after{content:'인터넷 연결 없음. 이 기기에 저장�
   .pv.editing .pv-tools>*{flex:none}
   .pv.editing .pv-scroll{padding-bottom:84px}
 }
+.past-row{display:flex;align-items:center;gap:14px;flex-wrap:wrap}
+.past-n{display:flex;align-items:center;gap:8px}
+.past-n .input.past-no{width:76px;text-align:center;font-size:18px;font-weight:800}
+.past-n b{font-size:15px;font-weight:800}
+/* PDF : 페이지 표시 · 찾기 */
+.pv-mark{position:absolute;top:-3px;right:18px;z-index:3;color:#F5B400;opacity:0;transform:translateY(-8px);transition:opacity .25s,transform .35s var(--spring);pointer-events:none}
+.pv-mark .icon{width:26px;height:26px;fill:#F5B400;stroke:#E0A200}
+.pv-page.marked .pv-mark{opacity:1;transform:none}
+.pv-markbtn.on .icon{fill:#F5B400;color:#E0A200}
+.pv-marks{display:flex;flex-direction:column;gap:6px;padding:6px}
+.pv-mk-toggle{display:flex;align-items:center;gap:8px;height:42px;padding:0 12px;border-radius:12px;background:var(--text);color:#fff;font-size:14px;font-weight:800}
+.pv-mk-toggle.on{background:var(--surface);color:var(--text)}
+.pv-mk-list{display:flex;flex-direction:column;max-height:260px;overflow:auto}
+.pv-mk-list button{display:flex;align-items:center;justify-content:space-between;height:40px;padding:0 10px;border-radius:10px;font-size:14px;color:var(--text)}
+.pv-mk-list button:hover,.pv-mk-list button.cur{background:var(--surface)}
+.pv-mk-list .icon{color:var(--faint)}
+.pv-hits{position:absolute;inset:0;z-index:1;pointer-events:none}
+.pv-hits i{position:absolute;background:rgba(255,212,0,.42);border-radius:2px;mix-blend-mode:multiply}
+.pv-hits i.cur{background:rgba(255,149,0,.6);box-shadow:0 0 0 2px rgba(255,149,0,.6)}
+.pv-find{position:absolute;top:calc(64px + var(--safe-t));right:12px;z-index:6;display:flex;align-items:center;gap:4px;width:min(380px,calc(100% - 24px));padding:5px 6px 5px 14px;border-radius:16px;background:rgba(255,255,255,.97);box-shadow:0 10px 30px rgba(0,12,30,.18);animation:rise .25s var(--ease) both;color:var(--faint)}
+.pv-find input{flex:1;min-width:0;border:0;outline:0;background:none;font-size:15px;color:var(--text);height:36px;margin-left:4px}
+.pv-find input::-webkit-search-cancel-button{display:none}
+.pv-f-cnt{flex:none;font-size:13px;font-weight:700;color:var(--sub);font-variant-numeric:tabular-nums;margin-right:4px}
+.pv-find .pv-t{width:34px;height:34px}
+@media (max-width:760px){.pv-right .pv-t[title="굿노트로 보내기"]{display:none}}

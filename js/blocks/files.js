@@ -11,9 +11,22 @@ import { loadFavs, isFav, toggleFav } from '../data/favs.js';
 //  한 파일 갱신형 = 같은 이름 아래 파일들, 각 파일은 새 파일로 교체 가능
 //  주차별형 = 같은 이름 아래 주차마다, 한 주차에 파일 여러 개 가능
 // ─────────────────────────────────────────────
-const CAT = [['summary', '써머리'], ['etc', '기타 자료']];
+const CAT = [['summary', '써머리'], ['past', '기출'], ['etc', '기타 자료']];
+// 기출 : 이름 대신 학번 + 중간/기말 → '25학번 기말'
+const TERMS = [['중간', '중간'], ['기말', '기말']];
+const pastName = (n, t) => `${n}학번 ${t}`;
+const parsePast = (s) => { const m = String(s || '').match(/(\d{2})학번\s*(중간|기말)/); return m ? { n: m[1], t: m[2] } : { n: '', t: '기말' }; };
+const pastRank = (s) => { const p = parsePast(s); return (Number(p.n) || 0) * 10 + (p.t === '기말' ? 1 : 0); };
+function pastFields(init) {
+  let t = init.t || '기말';
+  const no = h('input', { class: 'input past-no', inputmode: 'numeric', maxlength: 2, placeholder: '25', value: init.n || '' });
+  no.addEventListener('input', () => { no.value = no.value.replace(/\D/g, '').slice(0, 2); });
+  const row = h('div', { class: 'fld' }, h('span', {}, '학번과 시험'),
+    h('div', { class: 'past-row' }, h('label', { class: 'past-n' }, no, h('b', {}, '학번')), seg(TERMS, t, (v) => { t = v; })));
+  return { row, no, get: () => (no.value.length === 2 ? pastName(no.value, t) : '') };
+}
 const md = (t) => { const d = new Date(t); return `${d.getMonth() + 1}월 ${d.getDate()}일`; };
-const catOf = (f) => (f.category === 'etc' ? 'etc' : 'summary');
+const catOf = (f) => (f.category === 'etc' || f.category === 'past' ? f.category : 'summary');
 const fname = (f) => (f.filename || '').replace(/\.pdf$/i, '') || '파일';
 const latest = (fs) => fs.reduce((t, f) => (f.updated_at > t ? f.updated_at : t), '');
 
@@ -92,7 +105,7 @@ export function filesBlock(ctx, el) {
       g.items.push(f);
     });
     groups.forEach((g) => { g.t = latest(g.items); });
-    groups.sort((a, b) => (a.t < b.t ? 1 : -1));
+    groups.sort((a, b) => (a.category === 'past' && b.category === 'past' ? pastRank(b.series) - pastRank(a.series) : a.t < b.t ? 1 : -1));
     // 써머리 → 기타 자료, 박스 밖 굵은 제목 아래 쭉
     let n = 0;
     list.replaceChildren(...CAT.flatMap(([k, label]) => {
@@ -227,19 +240,24 @@ export function filesBlock(ctx, el) {
   // ── 수정하기 : 이름 · 종류 (묶음 전체) 또는 주차 이름 ──
   function editModal({ ids, series, category, week, count }) {
     const isWeek = week !== undefined;
-    let c = category === 'etc' ? 'etc' : 'summary';
+    let c = ['etc', 'past'].includes(category) ? category : 'summary';
     const name = h('input', { class: 'input', value: isWeek ? week : series });
+    const nameRow = h('label', { class: 'fld' }, h('span', {}, isWeek ? '주차' : '이름'), name);
+    const past = pastFields(parsePast(series));
+    const paintC = () => { nameRow.hidden = !isWeek && c === 'past'; past.row.hidden = isWeek || c !== 'past'; };
     const m = modal({
       title: '수정하기',
       body: h('div', { class: 'form1 fl-form' },
-        h('label', { class: 'fld' }, h('span', {}, isWeek ? '주차' : '이름'), name),
-        isWeek ? null : h('div', { class: 'fld' }, h('span', {}, '종류'), seg(CAT, c, (v) => { c = v; })),
+        isWeek ? null : h('div', { class: 'fld' }, h('span', {}, '종류'), seg(CAT, c, (v) => { c = v; paintC(); })),
+        nameRow, past.row,
         count > 1 ? h('p', { class: 'fl-desc' }, `안에 있는 파일 ${count}개가 모두 함께 바뀝니다.`) : null),
       actions: [h('button', { class: 'btn ghost', onclick: () => m.close() }, '취소'), h('button', { class: 'btn ink', onclick: save }, '저장')],
     });
-    setTimeout(() => name.focus(), 60);
+    paintC();
+    setTimeout(() => (c === 'past' ? past.no : name).focus(), 60);
     async function save() {
-      const v = name.value.trim(); if (!v) { toast(isWeek ? '주차를 적어 주세요' : '이름을 적어 주세요'); return; }
+      const v = !isWeek && c === 'past' ? past.get() : name.value.trim();
+      if (!v) { toast(c === 'past' ? '학번 두 자리를 적어 주세요' : isWeek ? '주차를 적어 주세요' : '이름을 적어 주세요'); return; }
       const patch = isWeek ? { week: v } : { series: v, category: c };
       const { error } = await sb.from('files').update(patch).in('id', ids);
       if (error) { toast('바꾸지 못했습니다'); return; }
@@ -252,6 +270,7 @@ export function filesBlock(ctx, el) {
   function uploadModal(pre) {
     const mode0 = pre.mode || 'single';
     let mode = mode0; let c = pre.category || 'summary';
+    const past = pastFields({ n: '', t: '기말' });
     let files = [];
     const fixed = !!pre.fixed;           // 이미 있는 이름 · 주차에 파일 추가
     const sameSeries = !!pre.series;     // 이미 있는 이름 아래
@@ -260,6 +279,8 @@ export function filesBlock(ctx, el) {
     const weekRow = h('label', { class: 'fld' }, h('span', {}, '주차'), week);
     const modeDesc = h('p', { class: 'fl-desc' });
     const paintMode = () => {
+      if (c === 'past') mode = 'single';
+      modeRow && (modeRow.hidden = c === 'past'); nameRow && (nameRow.hidden = c === 'past'); past.row.hidden = c !== 'past' || sameSeries;
       weekRow.hidden = mode !== 'weekly' || fixed;
       if (mode === 'weekly' && !week.value) week.value = '1주차';
       modeDesc.textContent = mode === 'single' ? '이름 하나 아래 파일을 두고, 필요할 때 새 파일로 바꿉니다.' : '같은 이름 아래 주차마다 따로 쌓입니다.';
@@ -285,27 +306,31 @@ export function filesBlock(ctx, el) {
       });
       input.value = '';
       if (files[0] && !series.value.trim()) series.value = files[0].name.replace(/\.pdf$/i, '');
+      const yr = files[0]?.name.match(/(\d{2})\s*학번/); if (yr && !past.no.value) past.no.value = yr[1];
+      if (files[0] && /중간/.test(files[0].name)) past.row.querySelector('.segc button:first-of-type')?.click();
       const wk = files[0] && weekFromName(files[0].name);
       if (wk && mode === 'weekly' && !fixed && (!week.value || week.value === '1주차' || week.value === pre.week)) week.value = wk;
       paintDrop();
     }
     const bar = h('div', { class: 'fl-prog' }, h('i'));
+    const modeSeg = sameSeries ? null : seg([['single', '한 파일 계속 바꾸기'], ['weekly', '주차별로 쌓기']], mode, (v) => { mode = v; paintMode(); });
+    const modeRow = sameSeries ? null : h('div', { class: 'fld' }, h('span', {}, '올리는 방식'), modeSeg, modeDesc);
+    const nameRow = sameSeries ? null : h('label', { class: 'fld' }, h('span', {}, '이름'), series);
     const go = h('button', { class: 'btn ink', onclick: submit }, '업로드');
     const title = fixed ? (mode0 === 'weekly' ? `${pre.series} ${pre.week}에 파일 추가` : `${pre.series}에 파일 추가`) : sameSeries ? `${pre.series}에 주차 추가` : '자료 업로드';
     const m = modal({
       title,
       body: h('div', { class: 'form1 fl-form' },
-        sameSeries ? null : h('div', { class: 'fld' }, h('span', {}, '종류'), seg(CAT, c, (v) => { c = v; })),
-        sameSeries ? null : h('div', { class: 'fld' }, h('span', {}, '올리는 방식'), seg([['single', '한 파일 계속 바꾸기'], ['weekly', '주차별로 쌓기']], mode, (v) => { mode = v; paintMode(); }), modeDesc),
-        sameSeries ? null : h('label', { class: 'fld' }, h('span', {}, '이름'), series),
+        sameSeries ? null : h('div', { class: 'fld' }, h('span', {}, '종류'), seg(CAT, c, (v) => { c = v; if (c !== 'past' && modeSeg) mode = modeSeg.get(); paintMode(); })),
+        modeRow, nameRow, past.row,
         weekRow, drop, bar),
       actions: [h('button', { class: 'btn ghost', onclick: () => m.close() }, '취소'), go],
     });
     paintMode(); paintDrop();
     async function submit() {
       if (!files.length) { toast('파일을 골라 주세요'); return; }
-      const name = (pre.series || series.value).trim();
-      if (!name) { toast('이름을 적어 주세요'); return; }
+      const name = (pre.series || (c === 'past' ? past.get() : series.value)).trim();
+      if (!name) { toast(c === 'past' ? '학번 두 자리를 적어 주세요' : '이름을 적어 주세요'); return; }
       if (mode === 'weekly' && !week.value.trim()) { toast('주차를 적어 주세요'); return; }
       go.disabled = true; bar.classList.add('on');
       let done = 0;

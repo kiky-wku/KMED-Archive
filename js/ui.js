@@ -96,6 +96,7 @@ const P = {
   editlist: '<path d="M4 6h10M4 11h7M4 16h5"/><path d="M14.5 19.5l.6-3 5-5a1.5 1.5 0 0 1 2.1 2.1l-5 5z"/>',
   send: '<path d="M12 19V5"/><path d="M6 11l6-6 6 6"/>',
   chart: '<path d="M4 20h16"/><path d="M7 16v-5"/><path d="M12 16V7"/><path d="M17 16v-8"/>',
+  bookmark: '<path d="M7 3.5h10a1 1 0 0 1 1 1V20l-6-3.8L6 20V4.5a1 1 0 0 1 1-1z"/>',
   bell: '<path d="M6 9.5a6 6 0 0 1 12 0c0 5 2 6.5 2 6.5H4s2-1.5 2-6.5"/><path d="M10 19.5a2.2 2.2 0 0 0 4 0"/>',
   siren: '<path d="M7 18v-6a5 5 0 0 1 10 0v6"/><path d="M4.5 18h15v2.5h-15z"/><path d="M12 2.5v1.5M4.2 5.7l1.1 1.1M19.8 5.7l-1.1 1.1M2.5 12H4M20 12h1.5"/>',
   chat: '<path d="M20 12.5a7.5 7.5 0 0 1-11 6.6L4.5 20l1-4A7.5 7.5 0 1 1 20 12.5z"/><path d="M9 11.5h6M9 14.5h3.5"/>',

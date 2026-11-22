@@ -1,6 +1,8 @@
 import { h, icon, toast, popover } from '../ui.js';
 import { loadNotes, saveNotes } from '../data/files.js';
 import { getPdf } from '../data/offline.js';
+import { sb } from '../sb.js';
+import { S } from '../app.js';
 
 // ─────────────────────────────────────────────
 // PDF 보기 + 애플펜슬 필기 (나만 보기)
@@ -44,6 +46,7 @@ export function openPdf(file, { key = null, label = '', onComments = null } = {}
 
   // ── 뼈대 ──
   const pageInfo = h('span', { class: 'pv-pg' }, '');
+  const markBtn = h('button', { class: 'pv-t pv-markbtn', title: '페이지 표시', 'aria-label': '페이지 표시', onclick: () => openMarks() }, icon('bookmark'));
   const toolBtns = {};
   const tbtn = (t, ic, label) => (toolBtns[t] = h('button', { class: 'pv-t', title: label, 'aria-label': label, onclick: () => setTool(t) }, icon(ic)));
   const swatches = h('div', { class: 'pv-sw' });
@@ -73,6 +76,8 @@ export function openPdf(file, { key = null, label = '', onComments = null } = {}
       tbtn('pen', 'pen', '펜'), tbtn('hl', 'marker', '형광펜'), tbtn('text', 'type', '텍스트 상자'), tbtn('eraser', 'eraser', '지우개'),
       h('i', { class: 'pv-div' }), swatches, h('i', { class: 'pv-div' }), sizes, boldBtn, pinBtn, h('i', { class: 'pv-div' }), handBtn, undoBtn),
     h('div', { class: 'pv-right' }, editBtn, zoomOut, zoomIn, pageInfo,
+      h('button', { class: 'pv-t', title: '찾기', 'aria-label': '찾기', onclick: () => openFind() }, icon('search')),
+      markBtn,
       onComments ? h('button', { class: 'pv-t', title: '댓글', 'aria-label': '댓글', onclick: () => onComments() }, icon('chat')) : null,
       h('button', { class: 'pv-t', title: '굿노트로 보내기', 'aria-label': '굿노트로 보내기', onclick: share }, icon('share')),
       h('button', { class: 'pv-t', title: '다운로드', 'aria-label': '다운로드', onclick: download }, icon('download'))));
@@ -110,7 +115,9 @@ export function openPdf(file, { key = null, label = '', onComments = null } = {}
   const onKey = (e) => {
     if (e.target?.closest?.('.cm-drawer') || document.querySelector('.cm-drawer.on')) return;
     if (ed) { if (e.key === 'Escape' || (e.key === 'Enter' && (e.metaKey || e.ctrlKey))) { e.preventDefault(); commitText(); } return; }
-    if (e.key === 'Escape') close();
+    if (e.target?.closest?.('.pv-find') && e.key !== 'Escape') return;
+    if (e.key === 'Escape') { if (find) { closeFind(); return; } close(); return; }
+    if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 'f') { e.preventDefault(); openFind(); return; }
     if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 'z') { e.preventDefault(); undo(); }
   };
   document.addEventListener('keydown', onKey);
@@ -204,7 +211,7 @@ export function openPdf(file, { key = null, label = '', onComments = null } = {}
         const vp = p.getViewport({ scale: 1 });
         const cv = h('canvas', { class: 'pv-cv' });
         const ink = h('canvas', { class: 'pv-ink' });
-        const wrap = h('div', { class: 'pv-page', 'data-i': i - 1 }, cv, ink);
+        const wrap = h('div', { class: 'pv-page', 'data-i': i - 1 }, cv, ink, h('div', { class: 'pv-hits' }), h('i', { class: 'pv-mark' }, icon('bookmark')));
         const pg = { page: p, wrap, cv, ink, vp, rendered: 0, strokes: notes.get(i) || [] };
         pages.push(pg);
         list.append(wrap);
@@ -214,6 +221,7 @@ export function openPdf(file, { key = null, label = '', onComments = null } = {}
       loading.remove();
       root.classList.add('ready');
       pageInfo.textContent = `1 / ${doc.numPages}`;
+      paintMarks();
     } catch (e) {
       loading.replaceChildren(h('div', { class: 'pv-err' }, e.message || 'PDF를 열 수 없습니다'));
     }
@@ -581,7 +589,120 @@ export function openPdf(file, { key = null, label = '', onComments = null } = {}
     const mid = scroller.scrollTop + scroller.clientHeight / 3;
     let n = 0; for (let i = 0; i < pages.length; i++) { if (pages[i].wrap.offsetTop <= mid) n = i; else break; }
     pageInfo.textContent = `${n + 1} / ${pages.length}`;
+    curPage = n + 1; markBtn.classList.toggle('on', marks.includes(curPage));
   }, { passive: true });
+  let curPage = 1;
+  const goPage = (n, smooth = true) => { const pg = pages[n - 1]; if (pg) scroller.scrollTo({ top: pg.wrap.offsetTop - 12, behavior: smooth ? 'smooth' : 'auto' }); };
+
+  // ── 페이지 표시 (책갈피) : 나만 보기, 계정에 저장 ──
+  const MK = `pvmark:${file.id}`;
+  let marks = [];
+  try { marks = JSON.parse(localStorage.getItem(`kmed:${MK}`) || '[]'); } catch { /* 무시 */ }
+  sb.from('user_state').select('value').eq('user_id', S.user.id).eq('key', MK).maybeSingle()
+    .then(({ data }) => { if (Array.isArray(data?.value?.pages)) { marks = data.value.pages; paintMarks(); } }, () => {});
+  function saveMarks() {
+    try { localStorage.setItem(`kmed:${MK}`, JSON.stringify(marks)); } catch { /* 무시 */ }
+    sb.from('user_state').upsert({ user_id: S.user.id, key: MK, value: { pages: marks }, updated_at: new Date().toISOString() }).then(() => {}, () => {});
+  }
+  function paintMarks() {
+    pages.forEach((pg, i) => pg.wrap.classList.toggle('marked', marks.includes(i + 1)));
+    markBtn.classList.toggle('on', marks.includes(curPage));
+    markBtn.classList.toggle('has', marks.length > 0);
+  }
+  function openMarks() {
+    if (!pages.length) return;
+    const on = marks.includes(curPage);
+    const p = popover(markBtn, h('div', { class: 'pv-marks' },
+      h('button', { class: 'pv-mk-toggle' + (on ? ' on' : ''), onclick: () => {
+        marks = on ? marks.filter((x) => x !== curPage) : [...marks, curPage].sort((a, b) => a - b);
+        saveMarks(); paintMarks(); p.close(); toast(on ? `${curPage}쪽 표시를 뺐습니다` : `${curPage}쪽을 표시했습니다`);
+      } }, icon('bookmark', 'icon s'), on ? `${curPage}쪽 표시 빼기` : `${curPage}쪽 표시하기`),
+      marks.length ? h('div', { class: 'pv-mk-list' }, marks.map((n) => h('button', { class: n === curPage ? 'cur' : '', onclick: () => { p.close(); goPage(n); } }, h('b', {}, `${n}쪽`), icon('right', 'icon s')))) : null), { align: 'right', width: 220 });
+  }
+
+  // ── 찾기 (PDF 안 글자) ──
+  const texts = new Map();
+  async function pageText(i) {
+    if (texts.has(i)) return texts.get(i);
+    const pg = pages[i];
+    const tc = await pg.page.getTextContent();
+    const vp = pg.page.getViewport({ scale: 1 });
+    const items = tc.items.filter((it) => it.str).map((it) => {
+      const [x, y] = vp.convertToViewportPoint(it.transform[4], it.transform[5]);
+      const fh = Math.hypot(it.transform[2], it.transform[3]) || it.height || 10;
+      return { s: it.str, x: x / vp.width, y: (y - fh) / vp.height, w: (it.width || 0) / vp.width, hgt: (fh * 1.15) / vp.height };
+    });
+    // 공백을 뺀 글자마다 어느 조각의 몇 번째 글자인지 기억 (여러 조각에 걸친 단어도 찾기)
+    const chars = [];
+    items.forEach((it) => { [...it.s].forEach((ch, k) => { if (!/\s/.test(ch)) chars.push({ it, k, ch: ch.toLowerCase() }); }); });
+    const v = { items, chars, all: chars.map((c) => c.ch).join('') };
+    texts.set(i, v);
+    return v;
+  }
+  let find = null;
+  function openFind() {
+    if (find) { find.inp.focus(); find.inp.select(); return; }
+    const inp = h('input', { type: 'search', placeholder: 'PDF 안에서 찾기', spellcheck: 'false' });
+    const cnt = h('span', { class: 'pv-f-cnt' });
+    const prev = h('button', { class: 'pv-t', 'aria-label': '이전', onclick: () => step(-1) }, icon('up'));
+    const next = h('button', { class: 'pv-t', 'aria-label': '다음', onclick: () => step(1) }, icon('down'));
+    const bar = h('div', { class: 'pv-find' }, icon('search', 'icon s'), inp, cnt, prev, next,
+      h('button', { class: 'pv-t', 'aria-label': '닫기', onclick: () => closeFind() }, icon('x')));
+    root.append(bar);
+    find = { inp, cnt, bar, hits: [], at: -1, seq: 0 };
+    let t = 0;
+    inp.addEventListener('input', () => { clearTimeout(t); t = setTimeout(run, 220); });
+    inp.addEventListener('keydown', (e) => { if (e.key === 'Enter') { e.preventDefault(); step(e.shiftKey ? -1 : 1); } if (e.key === 'Escape') { e.stopPropagation(); closeFind(); } });
+    setTimeout(() => inp.focus(), 50);
+  }
+  function closeFind() { if (!find) return; find.bar.remove(); find = null; pages.forEach((pg) => pg.wrap.querySelector('.pv-hits').replaceChildren()); }
+  async function run() {
+    if (!find) return;
+    const seq = ++find.seq;
+    const q = find.inp.value.replace(/\s+/g, '').toLowerCase();
+    pages.forEach((pg) => pg.wrap.querySelector('.pv-hits').replaceChildren());
+    find.hits = []; find.at = -1;
+    if (!q) { find.cnt.textContent = ''; return; }
+    find.cnt.textContent = '찾는 중';
+    for (let i = 0; i < pages.length; i++) {
+      const tx = await pageText(i).catch(() => null);
+      if (!find || seq !== find.seq) return;
+      if (!tx || !tx.all.includes(q)) continue;
+      // 찾은 곳마다 노란 표시 (조각에 걸치면 조각마다 나눠서)
+      const box = pages[i].wrap.querySelector('.pv-hits');
+      let marked = 0;
+      let k = tx.all.indexOf(q);
+      while (k >= 0) {
+        const seg = new Map();
+        tx.chars.slice(k, k + q.length).forEach((c) => { const r = seg.get(c.it) || [c.k, c.k]; seg.set(c.it, [Math.min(r[0], c.k), Math.max(r[1], c.k)]); });
+        let first = null; const els = [];
+        seg.forEach(([k0, k1], it) => {
+          const L = [...it.s].length || 1;
+          const el = h('i', { style: { left: `${(it.x + (it.w * k0) / L) * 100}%`, top: `${it.y * 100}%`, width: `${Math.max(0.6, ((it.w * (k1 - k0 + 1)) / L) * 100)}%`, height: `${it.hgt * 100}%` } });
+          box.append(el); first = first || el; els.push(el);
+        });
+        if (first) { find.hits.push({ page: i + 1, el: first, els }); marked++; }
+        k = tx.all.indexOf(q, k + q.length);
+      }
+      if (!marked) find.hits.push({ page: i + 1, el: null });
+    }
+    if (!find || seq !== find.seq) return;
+    if (!find.hits.length) { find.cnt.textContent = '없음'; return; }
+    step(1);
+  }
+  function step(d) {
+    if (!find?.hits.length) return;
+    find.at = (find.at + d + find.hits.length) % find.hits.length;
+    const hit = find.hits[find.at];
+    find.cnt.textContent = `${find.at + 1} / ${find.hits.length}`;
+    pages.forEach((pg) => pg.wrap.querySelectorAll('.pv-hits i.cur').forEach((x) => x.classList.remove('cur')));
+    if (hit.el) {
+      hit.els.forEach((x) => x.classList.add('cur'));
+      const pg = pages[hit.page - 1];
+      const y = pg.wrap.offsetTop + hit.el.offsetTop - scroller.clientHeight / 3;
+      scroller.scrollTo({ top: Math.max(0, y), behavior: 'smooth' });
+    } else goPage(hit.page);
+  }
 
   // ── 다운로드 (파일 그대로 저장) ──
   async function download(e) {
