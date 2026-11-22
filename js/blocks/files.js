@@ -35,8 +35,8 @@ export function filesBlock(ctx, el) {
   let all = [];
   let seen = new Map(); let counts = new Map(); let ccount = new Map();
   let q = '';
-  // NEW : 안 본 파일(2주 안에 올라온 것) 또는 내가 본 뒤 바뀐 파일
-  const isNew = (f) => (seen.has(f.id) ? seen.get(f.id) !== f.key : Date.now() - new Date(f.updated_at).getTime() < 14 * 86400e3);
+  // NEW : 올라오거나 바뀐 지 1주일 안이고, 내가 아직 안 봤거나 본 뒤에 바뀐 파일
+  const isNew = (f) => Date.now() - new Date(f.updated_at).getTime() < 7 * 86400e3 && (!seen.has(f.id) || seen.get(f.id) !== f.key);
   const anyNew = (fs) => fs.some(isNew);
   const open = new Set();
   const list = h('div', { class: 'fl' });

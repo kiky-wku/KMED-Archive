@@ -68,9 +68,15 @@ export function openPdf(file, { key = null, label = '', onComments = null } = {}
   const scroller = h('div', { class: 'pv-scroll' });
   const list = h('div', { class: 'pv-pages' });
   scroller.append(list);
+  // 쪽 미리보기 (접었다 펴기, 상태는 기기에 기억)
+  const thumbs = h('div', { class: 'pv-th', 'aria-label': '쪽 미리보기' });
+  const TH_KEY = 'kmed:pvthumbs';
+  const thBtn = h('button', { class: 'pv-t pv-thbtn', title: '쪽 미리보기', 'aria-label': '쪽 미리보기', onclick: () => setThumbs(!root.classList.contains('th-on')) }, icon('sidebar'));
+  const body = h('div', { class: 'pv-body' }, thumbs, scroller);
   const top = h('header', { class: 'pv-top' },
     h('div', { class: 'pv-left' },
       h('button', { class: 'pv-t', 'aria-label': '닫기', onclick: close }, icon('x')),
+      thBtn,
       h('div', { class: 'pv-ttl' }, h('b', {}, file.series || file.filename), h('span', {}, [file.week, label].filter(Boolean).join('  ')))),
     h('div', { class: 'pv-tools' },
       tbtn('pen', 'pen', '펜'), tbtn('hl', 'marker', '형광펜'), tbtn('text', 'type', '텍스트 상자'), tbtn('eraser', 'eraser', '지우개'),
@@ -82,13 +88,17 @@ export function openPdf(file, { key = null, label = '', onComments = null } = {}
       h('button', { class: 'pv-t', title: '굿노트로 보내기', 'aria-label': '굿노트로 보내기', onclick: share }, icon('share')),
       h('button', { class: 'pv-t', title: '다운로드', 'aria-label': '다운로드', onclick: download }, icon('download'))));
   const loading = h('div', { class: 'pv-load' }, h('i', { class: 'skel' }), h('i', { class: 'skel' }));
-  const root = h('div', { class: 'pv', role: 'dialog', 'aria-modal': 'true' }, top, scroller, loading);
+  const root = h('div', { class: 'pv', role: 'dialog', 'aria-modal': 'true' }, top, body, loading);
   document.body.append(root);
   document.documentElement.classList.add('pv-open');
   // 좁은 화면 : 필기 도구는 아래쪽 떠 있는 줄로 (위 막대 안에 두면 고정 위치가 안 먹음)
   const toolsEl = top.querySelector('.pv-tools');
   const narrow = matchMedia('(max-width: 760px)');
-  const placeTools = () => { if (narrow.matches) root.append(toolsEl); else top.insertBefore(toolsEl, top.querySelector('.pv-right')); };
+  const placeTools = () => {
+    if (narrow.matches) root.append(toolsEl); else top.insertBefore(toolsEl, top.querySelector('.pv-right'));
+    // 미리보기 버튼 : 넓으면 닫기 옆, 좁으면 제목 자리를 지키려고 오른쪽 묶음 맨 앞
+    if (narrow.matches) top.querySelector('.pv-right').prepend(thBtn); else top.querySelector('.pv-left').insertBefore(thBtn, top.querySelector('.pv-ttl'));
+  };
   placeTools(); narrow.addEventListener?.('change', placeTools);
   requestAnimationFrame(() => root.classList.add('on'));
   paintTools(); paintMode();
@@ -111,7 +121,8 @@ export function openPdf(file, { key = null, label = '', onComments = null } = {}
     alive = false;
     root.classList.remove('on');
     document.documentElement.classList.remove('pv-open');
-    io?.disconnect(); relIo?.disconnect(); ro.disconnect(); document.removeEventListener('keydown', onKey);
+    io?.disconnect(); relIo?.disconnect(); thIo?.disconnect(); thRel?.disconnect(); ro.disconnect(); document.removeEventListener('keydown', onKey);
+    thItems.forEach((t) => { t.cv.width = 0; t.cv.height = 0; });
     pages.forEach((pg) => { try { pg.task?.cancel(); } catch { /* 무시 */ } pg.cv.width = 0; pg.cv.height = 0; pg.ink.width = 0; pg.ink.height = 0; });
     setTimeout(() => { root.remove(); doc?.destroy?.(); }, 300);
   }
@@ -219,8 +230,11 @@ export function openPdf(file, { key = null, label = '', onComments = null } = {}
         pages.push(pg);
         list.append(wrap);
         bindInk(pg, i - 1);
+        addThumb(pg, i);
       }
       layout();
+      watchThumbs();
+      markThumb(1);
       loading.remove();
       root.classList.add('ready');
       pageInfo.textContent = `1 / ${doc.numPages}`;
@@ -278,7 +292,8 @@ export function openPdf(file, { key = null, label = '', onComments = null } = {}
   function queue(pg) { if (!pg || !pg.near || pg.rendered === pg.w) return; if (!rq.includes(pg)) rq.push(pg); pump(); }
   async function pump() {
     if (rbusy || !alive) return;
-    const pg = rq.shift(); if (!pg) return;
+    const pg = rq.shift();
+    if (!pg) { const t = tq.shift(); if (!t) return; rbusy = true; await renderThumb(t).catch(() => {}); rbusy = false; pump(); return; }
     rbusy = true;
     await render(pg).catch(() => {});
     rbusy = false;
@@ -631,10 +646,66 @@ export function openPdf(file, { key = null, label = '', onComments = null } = {}
     const mid = scroller.scrollTop + scroller.clientHeight / 3;
     let n = 0; for (let i = 0; i < pages.length; i++) { if (pages[i].wrap.offsetTop <= mid) n = i; else break; }
     pageInfo.textContent = `${n + 1} / ${pages.length}`;
+    if (curPage !== n + 1) markThumb(n + 1);
     curPage = n + 1; markBtn.classList.toggle('on', marks.includes(curPage));
   }, { passive: true });
   let curPage = 1;
   const goPage = (n, smooth = true) => { const pg = pages[n - 1]; if (pg) scroller.scrollTo({ top: pg.wrap.offsetTop - 12, behavior: smooth ? 'smooth' : 'auto' }); };
+
+  // ── 쪽 미리보기 ──
+  // 작게(폭 96px) 그리고, 보이는 근처만 그림. 그리기는 본문 다음 순서라 읽기를 방해하지 않음
+  const thItems = []; const tq = []; let thIo = null; let thRel = null;
+  const TW = 96;
+  function addThumb(pg, n) {
+    const cv = h('canvas');
+    const el = h('button', { class: 'pv-thi', 'data-i': n - 1, 'aria-label': `${n}쪽으로 가기`, onclick: () => goPage(n, false) },
+      h('span', { class: 'pv-thc', style: { aspectRatio: `${pg.vp.width} / ${pg.vp.height}` } }, cv), h('b', {}, n));
+    thItems.push({ el, cv, pg, done: false, near: false });
+    thumbs.append(el);
+  }
+  function watchThumbs() {
+    thIo = new IntersectionObserver((es) => es.forEach((e) => {
+      const t = thItems[+e.target.dataset.i];
+      if (e.isIntersecting) { t.near = true; if (!t.done && !tq.includes(t)) { tq.push(t); pump(); } }
+    }), { root: thumbs, rootMargin: '400px' });
+    thRel = new IntersectionObserver((es) => es.forEach((e) => {
+      const t = thItems[+e.target.dataset.i];
+      if (!e.isIntersecting) { t.near = false; t.done = false; t.cv.width = 0; t.cv.height = 0; const k = tq.indexOf(t); if (k >= 0) tq.splice(k, 1); }
+    }), { root: thumbs, rootMargin: '1600px' });
+    thItems.forEach((t) => { thIo.observe(t.el); thRel.observe(t.el); });
+  }
+  async function renderThumb(t) {
+    if (!t.near || t.done || !root.classList.contains('th-on')) return;
+    const dpr = Math.min(window.devicePixelRatio || 1, 2);
+    const vp = t.pg.page.getViewport({ scale: (TW * dpr) / t.pg.vp.width });
+    t.cv.width = Math.floor(vp.width); t.cv.height = Math.floor(vp.height);
+    await t.pg.page.render({ canvasContext: t.cv.getContext('2d', { alpha: false }), viewport: vp }).promise;
+    t.done = true;
+    t.el.classList.add('in');
+  }
+  function markThumb(n) {
+    thItems.forEach((t, i) => t.el.classList.toggle('cur', i === n - 1));
+    const t = thItems[n - 1]; if (!t || !root.classList.contains('th-on')) return;
+    // 미리보기 줄 안에서만 움직임 (본문 스크롤은 건드리지 않음)
+    const el = t.el; const wide = getComputedStyle(body).flexDirection === 'row';
+    if (wide) {
+      const y = el.offsetTop - thumbs.clientHeight / 2 + el.offsetHeight / 2;
+      thumbs.scrollTo({ top: Math.max(0, y), behavior: 'smooth' });
+    } else {
+      const x = el.offsetLeft - thumbs.clientWidth / 2 + el.offsetWidth / 2;
+      thumbs.scrollTo({ left: Math.max(0, x), behavior: 'smooth' });
+    }
+  }
+  function setThumbs(on, save = true) {
+    root.classList.toggle('th-on', on);
+    thBtn.classList.toggle('on', on);
+    if (save) { try { localStorage.setItem(TH_KEY, on ? '1' : '0'); } catch { /* 무시 */ } }
+    if (on) { thItems.forEach((t) => { if (t.near && !t.done && !tq.includes(t)) tq.push(t); }); pump(); setTimeout(() => markThumb(curPage), 280); }
+  }
+  {
+    let saved = null; try { saved = localStorage.getItem(TH_KEY); } catch { /* 무시 */ }
+    setThumbs(saved == null ? !matchMedia('(max-width: 760px)').matches : saved === '1', false);
+  }
 
   // ── 페이지 표시 (책갈피) : 나만 보기, 계정에 저장 ──
   const MK = `pvmark:${file.id}`;
@@ -648,6 +719,7 @@ export function openPdf(file, { key = null, label = '', onComments = null } = {}
   }
   function paintMarks() {
     pages.forEach((pg, i) => pg.wrap.classList.toggle('marked', marks.includes(i + 1)));
+    thItems.forEach((t, i) => t.el.classList.toggle('marked', marks.includes(i + 1)));
     markBtn.classList.toggle('on', marks.includes(curPage));
     markBtn.classList.toggle('has', marks.length > 0);
   }

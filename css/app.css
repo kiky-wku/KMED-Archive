@@ -1593,3 +1593,32 @@ html.offline body::after{content:'인터넷 연결 없음. 이 기기에 저장�
   .h-left h1{margin-top:14px;font-size:28px}
   .h-left .date{margin-top:6px;font-size:15px}
 }
+/* ── PDF 쪽 미리보기 ── */
+.pv-body{flex:1;min-height:0;display:flex}
+.pv-body>.pv-scroll{flex:1;min-width:0}
+.pv-th{flex:none;width:0;overflow:hidden auto;overscroll-behavior:contain;scrollbar-width:none;background:#F2F3F5;border-right:1px solid transparent;
+  display:flex;flex-direction:column;align-items:center;gap:14px;padding:16px 0 calc(24px + var(--safe-b));transition:width .25s var(--ease),border-color .25s}
+.pv-th::-webkit-scrollbar{display:none}
+.pv.th-on .pv-th{width:132px;border-right-color:#E3E5E8}
+.pv-thi{flex:none;display:flex;flex-direction:column;align-items:center;gap:6px;width:96px;opacity:0;transition:opacity .2s}
+.pv.th-on .pv-thi{opacity:1}
+.pv-thc{position:relative;display:block;width:96px;background:#fff;border-radius:3px;box-shadow:0 0 0 1px rgba(0,0,0,.06),0 2px 6px rgba(0,0,0,.06);overflow:hidden;transition:box-shadow .15s,transform .15s var(--spring)}
+.pv-thc canvas{display:block;width:100%;height:100%;opacity:0;transition:opacity .25s}
+.pv-thi.in .pv-thc canvas{opacity:1}
+.pv-thi b{font-size:12px;font-weight:700;color:var(--sub);font-variant-numeric:tabular-nums}
+.pv-thi.cur .pv-thc{box-shadow:0 0 0 2.5px var(--text),0 4px 12px rgba(0,0,0,.12)}
+.pv-thi.cur b{color:var(--text);font-weight:800}
+.pv-thi:active .pv-thc{transform:scale(.95)}
+.pv-thi.marked .pv-thc::after{content:"";position:absolute;top:0;right:8px;width:10px;height:14px;background:var(--red);clip-path:polygon(0 0,100% 0,100% 100%,50% 72%,0 100%)}
+.pv-thbtn.on{background:var(--surface);color:var(--text)}
+/* 좁은 화면 : 위쪽 가로 줄 */
+@media (max-width:760px){
+  .pv-body{flex-direction:column}
+  .pv-th{width:auto!important;height:0;flex-direction:row;align-items:flex-start;overflow:auto hidden;padding:0 12px;gap:10px;border-right:0!important;border-bottom:1px solid transparent;transition:height .25s var(--ease),padding .25s,border-color .25s}
+  .pv.th-on .pv-th{height:118px;padding:12px;border-bottom-color:#E3E5E8}
+  .pv-thi{width:auto}
+  .pv-thc{width:auto;height:72px}
+  .pv-thi.cur .pv-thc{box-shadow:0 0 0 2px var(--text)}
+}
+/* 쪽 위치 계산 기준 (offsetTop 이 스크롤 영역 기준이 되게) */
+.pv-scroll,.pv-th{position:relative}
