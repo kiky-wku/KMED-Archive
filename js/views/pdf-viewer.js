@@ -102,6 +102,8 @@ export function openPdf(file, { key = null, label = '', onComments = null } = {}
     editBtn.classList.toggle('on', editing);
     if (!editing) commitText();
     root.classList.toggle('texting', editing && tool === 'text');
+    // 편집 켜면 보이는 쪽에 필기 그림판 만들기, 끄면 빈 쪽은 비우기
+    pages.forEach((pg) => { if (pg.near) sizeInk(pg); });
   }
 
   function close() {
@@ -205,7 +207,7 @@ export function openPdf(file, { key = null, label = '', onComments = null } = {}
         bar.firstChild.style.width = `${Math.round(r * 100)}%`;
       }), loadNotes(file.id, fileKey)]);
       notes = n;
-      doc = await L.getDocument({ data, isEvalSupported: false }).promise;
+      doc = await L.getDocument({ data, isEvalSupported: false, isOffscreenCanvasSupported: false, maxImageSize: 4096 * 4096 }).promise;
       if (!alive) return;
       for (let i = 1; i <= doc.numPages; i++) {
         const p = await doc.getPage(i);
@@ -234,7 +236,7 @@ export function openPdf(file, { key = null, label = '', onComments = null } = {}
   // 메모리 : 아이폰 · 아이패드는 그림판(canvas) 메모리가 작아서, 보이는 근처 쪽만 그리고 먼 쪽은 비움
   const ua = navigator.userAgent;
   const IOS = /iPad|iPhone|iPod/.test(ua) || (/Macintosh/.test(ua) && navigator.maxTouchPoints > 1);
-  const MAXPX = IOS ? 3.2e6 : 9e6;   // 한 장 그림판 최대 픽셀
+  const MAXPX = IOS ? 2.4e6 : 9e6;   // 한 장 그림판 최대 픽셀
   const dprOf = (pg) => Math.min(window.devicePixelRatio || 1, IOS ? 2 : 2.5, Math.sqrt(MAXPX / (pg.w * pg.h)));
   let relIo = null;
   function layout() {
@@ -252,12 +254,12 @@ export function openPdf(file, { key = null, label = '', onComments = null } = {}
     io = new IntersectionObserver((es) => es.forEach((e) => {
       const pg = pages[+e.target.dataset.i];
       if (e.isIntersecting) { pg.near = true; if (pg.inkW !== pg.w) sizeInk(pg); queue(pg); }
-    }), { root: scroller, rootMargin: IOS ? '700px 0px' : '1200px 0px' });
+    }), { root: scroller, rootMargin: IOS ? '500px 0px' : '1200px 0px' });
     // 멀어지면 비우기
     relIo = new IntersectionObserver((es) => es.forEach((e) => {
       const pg = pages[+e.target.dataset.i];
       if (!e.isIntersecting) release(pg);
-    }), { root: scroller, rootMargin: IOS ? '1600px 0px' : '3000px 0px' });
+    }), { root: scroller, rootMargin: IOS ? '1200px 0px' : '3000px 0px' });
     pages.forEach((pg) => { io.observe(pg.wrap); relIo.observe(pg.wrap); });
   }
   function release(pg) {
@@ -287,24 +289,25 @@ export function openPdf(file, { key = null, label = '', onComments = null } = {}
     const w = pg.w;
     const dpr = dprOf(pg);
     const vp = pg.page.getViewport({ scale: (w / pg.vp.width) * dpr });
-    const off = document.createElement('canvas');
-    off.width = Math.floor(vp.width); off.height = Math.floor(vp.height);
+    const fresh = h('canvas', { class: 'pv-cv' });
+    fresh.width = Math.floor(vp.width); fresh.height = Math.floor(vp.height);
+    let ok = false;
     try {
-      pg.task = pg.page.render({ canvasContext: off.getContext('2d'), viewport: vp });
+      pg.task = pg.page.render({ canvasContext: fresh.getContext('2d', { alpha: false }), viewport: vp });
       await pg.task.promise;
       if (pg.near && pg.w === w) {
-        pg.cv.width = off.width; pg.cv.height = off.height;
-        pg.cv.getContext('2d').drawImage(off, 0, 0);
-        pg.rendered = w;
+        const old = pg.cv; old.replaceWith(fresh); old.width = 0; old.height = 0; // 옛 그림판 바로 비우기
+        pg.cv = fresh; pg.rendered = w; ok = true;
         pg.wrap.classList.add('in');
       }
     } catch { /* 취소 */ }
     pg.task = null;
-    off.width = 0; off.height = 0; // 임시 그림판 바로 비우기
+    if (!ok) { fresh.width = 0; fresh.height = 0; }
     if (pg.near && pg.rendered !== pg.w) queue(pg);
   }
 
   function sizeInk(pg) {
+    if (!editing && !pg.strokes.length) { pg.ink.width = 0; pg.ink.height = 0; pg.ctx = null; pg.inkW = pg.w; return; }
     const dpr = dprOf(pg);
     pg.ink.width = Math.round(pg.w * dpr); pg.ink.height = Math.round(pg.h * dpr);
     const ctx = pg.ink.getContext('2d', { desynchronized: true });
@@ -452,7 +455,7 @@ export function openPdf(file, { key = null, label = '', onComments = null } = {}
   function startPinch(t) {
     const m = mid(t);
     pinch = { src: 'touch', d0: dist(t), m0: m, s0: { x: scroller.scrollLeft, y: scroller.scrollTop }, s: 1, dx: 0, dy: 0 };
-    list.style.transformOrigin = '0 0'; list.style.willChange = 'transform';
+    list.style.transformOrigin = '0 0'; 
   }
   function movePinch(t) {
     const m = mid(t);
@@ -470,8 +473,8 @@ export function openPdf(file, { key = null, label = '', onComments = null } = {}
     const { s, dx, dy, m0, s0, raf } = pinch;
     cancelAnimationFrame(raf); cancelAnimationFrame(wheelT.raf);
     pinch = null;
-    if (Math.abs(s - 1) < 0.01 && !dx && !dy) { list.style.transform = ''; list.style.willChange = ''; return; }
-    list.style.transform = ''; list.style.willChange = '';
+    if (Math.abs(s - 1) < 0.01 && !dx && !dy) { list.style.transform = ''; return; }
+    list.style.transform = '';
     zoom = Math.max(ZMIN, Math.min(ZMAX, zoom * s));
     layout();
     scroller.scrollLeft = (s0.x + m0.x) * s - (m0.x + dx);
@@ -484,7 +487,7 @@ export function openPdf(file, { key = null, label = '', onComments = null } = {}
   function beginAt(cx, cy, src) {
     const r = scroller.getBoundingClientRect();
     pinch = { src, d0: 1, m0: { x: cx - r.left, y: cy - r.top }, s0: { x: scroller.scrollLeft, y: scroller.scrollTop }, s: 1, dx: 0, dy: 0 };
-    list.style.transformOrigin = '0 0'; list.style.willChange = 'transform';
+    list.style.transformOrigin = '0 0'; 
   }
   const clampS = (v) => Math.max(ZMIN / zoom, Math.min(ZMAX / zoom, v));
   const wheelT = { t: 0, raf: 0 };
@@ -535,6 +538,7 @@ export function openPdf(file, { key = null, label = '', onComments = null } = {}
       e.preventDefault();
       cancelStroke = () => { if (cur && !cur.erase) { cur = null; pid = null; redraw(pg); } cancelStroke = null; };
       pid = e.pointerId; pg.ink.setPointerCapture(pid);
+      if (!pg.ctx) sizeInk(pg);
       if (tool === 'eraser') { history.push({ i: idx, prev: pg.strokes.slice() }); erase(pg, pt(e)); cur = { erase: true }; return; }
       cur = { t: tool === 'hl' ? 'hl' : 'pen', c: tool === 'hl' ? hl : color, w: (tool === 'hl' ? size.hl : size.pen) / 1000, p: [pt(e)] };
       lastMove = pt(e); armHold();
