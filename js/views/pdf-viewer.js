@@ -22,7 +22,7 @@ const RANGE = { pen: [1, 14, 2.8], hl: [6, 50, 22], er: [6, 60, 20], tx: [8, 48,
 const TXCOLORS = ['#191F28', '#E5484D', '#3182F6', '#16A34A', '#F59E0B', '#8B5CF6'];
 const FONT = '"Malgun Gothic","맑은 고딕","Apple SD Gothic Neo","Noto Sans KR",sans-serif';
 
-export function openPdf(file, { key = null, label = '' } = {}) {
+export function openPdf(file, { key = null, label = '', onComments = null } = {}) {
   const fileKey = key || file.key;
   let tool = 'pen'; let color = COLORS[0]; let hl = HL[0]; let zoom = 1;
   const size = { pen: RANGE.pen[2], hl: RANGE.hl[2], er: RANGE.er[2] };
@@ -72,6 +72,7 @@ export function openPdf(file, { key = null, label = '' } = {}) {
       tbtn('pen', 'pen', '펜'), tbtn('hl', 'marker', '형광펜'), tbtn('text', 'type', '텍스트 상자'), tbtn('eraser', 'eraser', '지우개'),
       h('i', { class: 'pv-div' }), swatches, h('i', { class: 'pv-div' }), sizes, boldBtn, pinBtn, h('i', { class: 'pv-div' }), handBtn, undoBtn),
     h('div', { class: 'pv-right' }, editBtn, zoomOut, zoomIn, pageInfo,
+      onComments ? h('button', { class: 'pv-t', title: '댓글', 'aria-label': '댓글', onclick: () => onComments() }, icon('chat')) : null,
       h('button', { class: 'pv-t', title: '굿노트로 보내기', 'aria-label': '굿노트로 보내기', onclick: share }, icon('share')),
       h('button', { class: 'pv-t', title: '다운로드', 'aria-label': '다운로드', onclick: download }, icon('download'))));
   const loading = h('div', { class: 'pv-load' }, h('i', { class: 'skel' }), h('i', { class: 'skel' }));
@@ -101,6 +102,7 @@ export function openPdf(file, { key = null, label = '' } = {}) {
     setTimeout(() => { root.remove(); doc?.destroy?.(); }, 300);
   }
   const onKey = (e) => {
+    if (e.target?.closest?.('.cm-drawer') || document.querySelector('.cm-drawer.on')) return;
     if (ed) { if (e.key === 'Escape' || (e.key === 'Enter' && (e.metaKey || e.ctrlKey))) { e.preventDefault(); commitText(); } return; }
     if (e.key === 'Escape') close();
     if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 'z') { e.preventDefault(); undo(); }

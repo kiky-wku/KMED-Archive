@@ -93,6 +93,7 @@ export function subjectView(id, q) {
     const prevClean = root.cleanup;
     root.cleanup = () => { ro.disconnect(); prevClean?.(); };
 
+    let first = true;
     function show() {
       const i = blocks.findIndex((b) => b.kind === kind);
       curBtn = tabBtns[i];
@@ -106,8 +107,9 @@ export function subjectView(id, q) {
       area.classList.remove('swap', 'q-in'); void area.offsetWidth; area.classList.add('swap');
       root.classList.toggle('fit', FIT.has(kind));
       const range = ranges.find((r) => r.id === rangeId);
-      const ctx = { subject: sub, range, canWrite, pool: sub.progress_pool || sub.id, fit: (on) => root.classList.toggle('fit', !!on), here: null };
+      const ctx = { openComments: first && q.get('open') === 'comments' ? q.get('id') : null, subject: sub, range, canWrite, pool: sub.progress_pool || sub.id, fit: (on) => root.classList.toggle('fit', !!on), here: null };
       ctxNow = ctx;
+      first = false;
       const fn = RENDER[kind];
       if (fn) cleanup = fn(ctx, area) || null;
       else area.append(h('div', { class: 'empty' }, '준비 중입니다'));

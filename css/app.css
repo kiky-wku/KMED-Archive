@@ -1340,3 +1340,42 @@ html.pv-open,html.pv-open body{overflow:hidden}
 .segc.full{gap:0}
 .subj-right .segc{margin-top:7px}
 .fl-views{display:inline-flex;align-items:center;gap:3px}.fl-views .icon{width:13px;height:13px}
+/* ---------- 자료 검색 · 댓글 ---------- */
+.fl-search{display:flex;align-items:center;gap:8px;height:44px;margin:0 0 14px;padding:0 14px;border-radius:14px;background:#fff;border:1px solid #E6E8EB;color:var(--faint);transition:border-color .15s}
+.fl-search:focus-within{border-color:var(--text)}
+.fl-search input{flex:1;min-width:0;border:0;outline:0;background:none;font-size:16px;color:var(--text)}
+.fl-none{padding:40px 0;text-align:center;font-size:15px;font-weight:600;color:var(--sub);animation:rise .3s var(--ease) both}
+.fl-cm{display:inline-flex;align-items:center;gap:3px;padding:2px 7px;margin:-2px 0;border-radius:7px;color:var(--faint);cursor:pointer;transition:background-color .15s,color .15s}
+.fl-cm .icon{width:13px;height:13px}
+.fl-cm:hover{background:var(--surface);color:var(--sub)}
+.fl-cm.has{color:var(--text);background:var(--surface)}
+.scrim.top{z-index:150}
+.drawer.cm-drawer{z-index:151;width:420px}
+.cm-drawer .drawer-body{padding-bottom:12px}
+.cm-file{display:flex;align-items:center;gap:7px;margin:-2px 0 12px;padding:9px 12px;border-radius:11px;background:var(--surface2);font-size:14px;font-weight:700;color:var(--sub)}
+.cm-file span{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.cm-list{display:flex;flex-direction:column;gap:4px}
+.cm-empty{display:flex;flex-direction:column;align-items:center;gap:10px;padding:48px 0;color:var(--faint);font-size:14px;font-weight:600}
+.cm-empty .icon{width:28px;height:28px}
+.cm-i{display:flex;gap:10px;padding:10px 4px;animation:rise .25s var(--ease) both;transition:opacity .2s,transform .2s}
+.cm-i.gone{opacity:0;transform:translateX(20px)}
+.avatar.sm{width:32px;height:32px;font-size:13px}
+.cm-i.mine .avatar{background:var(--text);color:#fff}
+.cm-main{flex:1;min-width:0}
+.cm-top{display:flex;align-items:baseline;gap:7px}
+.cm-top b{font-size:14px;font-weight:800}
+.cm-top span{font-size:12px;font-weight:600;color:var(--faint)}
+.cm-body{margin:3px 0 0;font-size:15px;line-height:1.5;white-space:pre-wrap;word-break:break-word}
+.cm-acts{display:flex;gap:2px;margin:4px 0 0 -6px}
+.cm-acts button{padding:3px 6px;border-radius:6px;font-size:12.5px;font-weight:700;color:var(--faint)}
+.cm-acts button:hover{color:var(--sub);background:var(--surface)}
+.cm-acts .del:hover{color:var(--red)}
+.cm-acts .ok{color:var(--text)}
+.cm-compose{display:flex;align-items:flex-end;gap:8px;padding:10px 14px calc(12px + var(--safe-b));border-top:1px solid #F2F4F6;background:#fff}
+.cm-in{flex:1;min-width:0;box-sizing:border-box;resize:none;border:1.5px solid var(--line);border-radius:18px;padding:9px 14px;font:inherit;font-size:15px;line-height:1.45;outline:0;background:var(--surface2);transition:border-color .15s,background-color .15s}
+.cm-in:focus{border-color:var(--text);background:#fff}
+.cm-in.edit{width:100%;margin-top:4px;border-radius:12px}
+.cm-send{flex:none;width:40px;height:40px;border-radius:50%;display:grid;place-items:center;background:#E5E8EB;color:#fff;transition:background-color .2s,transform .15s var(--spring)}
+.cm-send.on{background:var(--text)}
+.cm-send:active{transform:scale(.9)}
+.fl-search input::-webkit-search-cancel-button{filter:grayscale(1) brightness(.6)}

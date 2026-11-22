@@ -2,6 +2,8 @@ import { h, icon, toast, seg, modal, popover } from '../ui.js';
 import { sb } from '../sb.js';
 import { listFiles, addFile, replaceFile, deleteFile, myOldVersions, fmtSize, loadViews, markViewed } from '../data/files.js';
 import { openPdf } from '../views/pdf-viewer.js';
+import { openComments } from '../views/comments.js';
+import { commentCounts } from '../data/comments.js';
 
 // ─────────────────────────────────────────────
 // 자료 (써머리 · 기타 자료 한 목록) : 네이버 카페 대신
@@ -17,7 +19,8 @@ const latest = (fs) => fs.reduce((t, f) => (f.updated_at > t ? f.updated_at : t)
 export function filesBlock(ctx, el) {
   let alive = true;
   let all = [];
-  let seen = new Map(); let counts = new Map();
+  let seen = new Map(); let counts = new Map(); let ccount = new Map();
+  let q = '';
   // NEW : 안 본 파일(2주 안에 올라온 것) 또는 내가 본 뒤 바뀐 파일
   const isNew = (f) => (seen.has(f.id) ? seen.get(f.id) !== f.key : Date.now() - new Date(f.updated_at).getTime() < 14 * 86400e3);
   const anyNew = (fs) => fs.some(isNew);
@@ -25,17 +28,32 @@ export function filesBlock(ctx, el) {
   const list = h('div', { class: 'fl' });
   const canWrite = !!ctx.canWrite;
 
-  el.append(list);
+  const sInp = h('input', { type: 'search', placeholder: '자료 검색', spellcheck: 'false' });
+  const search = h('label', { class: 'fl-search', style: { display: 'none' } }, icon('search', 'icon s'), sInp);
+  let st = 0;
+  sInp.addEventListener('input', () => { clearTimeout(st); st = setTimeout(() => { q = sInp.value.trim().toLowerCase().replace(/\s+/g, ''); draw(); }, 120); });
+  el.append(search, list);
   const upBtn = () => (canWrite ? h('button', { class: 'tool-pill fl-up', onclick: () => uploadModal({}) }, icon('plus', 'icon s'), h('span', {}, '업로드')) : null);
 
   async function load() {
     list.replaceChildren(...[0, 1, 2].map(() => h('i', { class: 'skel fl-sk' })));
     try {
       all = await listFiles(ctx.subject.id, ctx.range?.id);
-      ({ mine: seen, counts } = await loadViews(all.map((f) => f.id)).catch(() => ({ mine: new Map(), counts: new Map() })));
+      const ids = all.map((f) => f.id);
+      [{ mine: seen, counts }, ccount] = await Promise.all([
+        loadViews(ids).catch(() => ({ mine: new Map(), counts: new Map() })),
+        commentCounts(ids).catch(() => new Map()),
+      ]);
     }
     catch { list.replaceChildren(h('div', { class: 'box-empty' }, '자료를 불러올 수 없습니다')); return; }
     if (alive) draw();
+    // 알림에서 넘어온 경우 : 댓글 바로 열기
+    const cid = ctx.openComments; ctx.openComments = null;
+    const cf = cid && all.find((f) => f.id === cid);
+    if (cf) setTimeout(() => comments(cf), 300);
+  }
+  function comments(f) {
+    openComments(f, { canMod: canWrite, onChange: (n) => { ccount.set(f.id, n); if (alive) draw(); } });
   }
 
   function draw() {
@@ -46,9 +64,15 @@ export function filesBlock(ctx, el) {
         canWrite ? h('button', { class: 'btn sm ink', onclick: () => uploadModal({}) }, icon('plus', 'icon s'), '업로드') : null));
       return;
     }
+    search.style.display = all.length >= 4 ? '' : 'none';
+    // 검색 : 이름 · 파일 이름 · 주차 · 올린 사람
+    const norm = (s) => String(s || '').toLowerCase().replace(/\s+/g, '');
+    const hit = (f) => !q || [f.series, f.filename, f.week, f.uploader_name].some((x) => norm(x).includes(q));
+    const shown = q ? all.filter((f) => hit(f) || norm(f.series).includes(q)) : all;
+    if (!shown.length) { list.replaceChildren(h('div', { class: 'fl-none' }, `'${sInp.value.trim()}' 자료가 없습니다`)); return; }
     // 묶기 : 같은 방식 · 종류 · 이름이면 한 칸
     const groups = [];
-    all.forEach((f) => {
+    shown.forEach((f) => {
       const key = `${f.mode}|${catOf(f)}|${f.series}`;
       let g = groups.find((x) => x.key === key);
       if (!g) { g = { key, mode: f.mode, category: catOf(f), series: f.series, items: [] }; groups.push(g); }
@@ -71,7 +95,9 @@ export function filesBlock(ctx, el) {
     h('span', {}, `${md(f.updated_at)} ${f.created_at === f.updated_at ? '올림' : '업데이트'}`),
     f.uploader_name ? h('span', {}, f.uploader_name) : null,
     h('span', {}, fmtSize(f.size)),
-    counts.get(f.id) ? h('span', { class: 'fl-views' }, icon('eye', 'icon s'), counts.get(f.id)) : null);
+    counts.get(f.id) ? h('span', { class: 'fl-views' }, icon('eye', 'icon s'), counts.get(f.id)) : null,
+    h('span', { class: 'fl-cm' + (ccount.get(f.id) ? ' has' : ''), role: 'button', tabindex: 0, title: '댓글',
+      onclick: (e) => { e.stopPropagation(); comments(f); } }, icon('chat', 'icon s'), ccount.get(f.id) || '댓글'));
 
   // 파일 한 줄 (묶음 안)
   const fileRow = (f, scope) => h('div', { class: 'fl-wk fl-file' },
@@ -122,7 +148,7 @@ export function filesBlock(ctx, el) {
 
   // 펼치는 카드
   function foldCard(g, i, head, rows, addBtn) {
-    const isOpen = open.has(g.key) || i === 0;
+    const isOpen = open.has(g.key) || i === 0 || !!q;
     const card = h('article', { class: 'fl-card wk' + (isOpen ? ' open' : ''), style: { animationDelay: `${i * 0.03}s` } },
       h('button', { class: 'fl-main', onclick: () => { card.classList.toggle('open'); card.classList.contains('open') ? open.add(g.key) : open.delete(g.key); } },
         h('span', { class: 'fl-ic stack' }, 'PDF'), head, icon('down', 'icon fl-chev')),
@@ -140,10 +166,10 @@ export function filesBlock(ctx, el) {
       setTimeout(() => { if (alive) draw(); }, 400);
     }
     const old = await myOldVersions(f).catch(() => []);
-    if (!old.length) { openPdf(f); return; }
+    if (!old.length) { openPdf(f, { onComments: () => comments(f) }); return; }
     const m = modal({ title: f.series || fname(f), body: h('div', { class: 'menu-list fl-ver' },
-      h('button', { onclick: () => { m.close(); openPdf(f); } }, h('span', {}, '지금 파일'), h('small', {}, md(f.updated_at))),
-      ...old.map((v) => h('button', { onclick: () => { m.close(); openPdf(f, { key: v.key, label: `이전 파일 ${md(v.created_at)}` }); } }, h('span', {}, '이전 파일 (내 필기)'), h('small', {}, md(v.created_at))))) });
+      h('button', { onclick: () => { m.close(); openPdf(f, { onComments: () => comments(f) }); } }, h('span', {}, '지금 파일'), h('small', {}, md(f.updated_at))),
+      ...old.map((v) => h('button', { onclick: () => { m.close(); openPdf(f, { key: v.key, label: `이전 파일 ${md(v.created_at)}`, onComments: () => comments(f) }); } }, h('span', {}, '이전 파일 (내 필기)'), h('small', {}, md(v.created_at))))) });
   }
 
   // ⋯ 메뉴 : 수정하기 · 파일 추가 · 새 파일로 바꾸기 · 지우기
