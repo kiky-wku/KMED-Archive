@@ -118,8 +118,21 @@ export function pastBlock(ctx, el) {
     const bar = h('div', { class: 'pq-top' },
       h('button', { class: 'tool-ic', 'aria-label': '목록', onclick: () => { off(); show(); } }, icon('back')),
       h('b', {}, exam), wrongOnly ? h('span', { class: 'pq-chip no' }, '틀린 문제') : null, h('div', { class: 'sp' }), tools);
-    area.replaceChildren(bar, stage);
-    const paintRec = () => recBtn.classList.toggle('dot', ids.some((id) => stOf(id)));
+    // 남음, 맞음, 틀림 + 진행 막대
+    const counts = h('div', { class: 'q-counts' });
+    const prog = h('div', { class: 'q-prog pq-prog' }, h('i', { class: 'ok' }), h('i', { class: 'no' }));
+    area.replaceChildren(bar, h('div', { class: 'q-bar pq-cnt' }, counts), prog, stage);
+    const paintRec = () => {
+      const ok = ids.filter((id) => stOf(id) === 'ok').length;
+      const no = ids.filter((id) => stOf(id) === 'no').length;
+      counts.replaceChildren(
+        h('span', {}, h('b', {}, ids.length - ok - no), ' 남음'),
+        h('span', { class: 'ok' }, h('b', {}, ok), ' 맞음'),
+        h('span', { class: 'no' }, h('b', {}, no), ' 틀림'));
+      prog.children[0].style.width = `${ids.length ? (ok / ids.length) * 100 : 0}%`;
+      prog.children[1].style.width = `${ids.length ? (no / ids.length) * 100 : 0}%`;
+      recBtn.classList.toggle('dot', ok + no > 0);
+    };
 
     // ── 기록 서랍 : 문제 번호 격자 (맞음 초록, 틀림 빨강), 누르면 그 문제로 ──
     let rec = null;
