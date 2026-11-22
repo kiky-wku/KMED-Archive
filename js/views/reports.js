@@ -158,7 +158,7 @@ function card(r, i, canResolve, repaint, removed, onEdit) {
 // ─────────────────────────────────────────────
 // 알림 목록
 // ─────────────────────────────────────────────
-const NICON = { report: 'siren', suggest: 'chat', done: 'check', upload: 'file' };
+const NICON = { report: 'siren', suggest: 'chat', done: 'check', upload: 'file', comment: 'chat' };
 export function openNotifs() {
   const list = h('div', { class: 'nt-list' }, skelRows(5, 64));
   const allBtn = h('button', { class: 'nt-all', onclick: async () => { await markAllRead(); list.querySelectorAll('.nt.new').forEach((x) => x.classList.remove('new')); allBtn.disabled = true; } }, '모두 읽음');

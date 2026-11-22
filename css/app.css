@@ -1379,3 +1379,4 @@ html.pv-open,html.pv-open body{overflow:hidden}
 .cm-send.on{background:var(--text)}
 .cm-send:active{transform:scale(.9)}
 .fl-search input::-webkit-search-cancel-button{filter:grayscale(1) brightness(.6)}
+.nt-ic.k-comment{background:#FFF4E0;color:#C46A00}
