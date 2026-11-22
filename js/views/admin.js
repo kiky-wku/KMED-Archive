@@ -2,6 +2,8 @@ import { sb } from '../sb.js';
 import { h, icon, modal, seg, toast, shake, busy, gradeLabel, fmtDate, ago, deviceName, skelRows } from '../ui.js';
 import { S, go } from '../app.js';
 import { shell } from './shell.js';
+import { usage } from '../data/files.js';
+import { fetchAll } from '../data/hanja.js';
 
 // ─────────────────────────────────────────────
 // 관리 화면 : 회원 · 로그인 기록 · 과목
@@ -53,7 +55,7 @@ async function callAdmin(body) {
 export function adminView(q) {
   const tab = q.get('t') || 'members';
   const area = h('div', { class: 'adm-area' });
-  const tabs = seg([['members', '회원'], ['logs', '로그인 기록'], ['subjects', '과목']], tab, (v) => {
+  const tabs = seg([['members', '회원'], ['logs', '로그인 기록'], ['subjects', '과목'], ['storage', '저장 공간']], tab, (v) => {
     history.replaceState(null, '', `#/admin?t=${v}`);
     show(v);
   });
@@ -62,6 +64,7 @@ export function adminView(q) {
     area.classList.remove('swap'); void area.offsetWidth; area.classList.add('swap');
     if (v === 'members') membersTab(area);
     else if (v === 'logs') logsTab(area);
+    else if (v === 'storage') storageTab(area);
     else subjectsTab(area);
   }
   show(tab);
@@ -412,4 +415,58 @@ function openEmojiPicker(anchor, current, onPick) {
   const onDoc = (e) => { if (!pop.contains(e.target) && e.target !== anchor && !anchor.contains(e.target)) close(); };
   setTimeout(() => document.addEventListener('pointerdown', onDoc), 0);
   function close() { pop.classList.add('out'); setTimeout(() => pop.remove(), 180); document.removeEventListener('pointerdown', onDoc); }
+}
+
+// ═════════════ 저장 공간 (R2) ═════════════
+const FREE_GB = 10; const PER_GB = 0.015; const KRW = 1400;
+async function storageTab(area) {
+  const top = h('div', { class: 'sg-top' }, h('i', { class: 'skel', style: { height: '180px' } }));
+  const list = h('div', { class: 'card tbl-card' }, skelRows(4));
+  area.append(top, h('h2', { class: 'sg-h' }, '과목별'), list);
+
+  const [u, files, subs] = await Promise.all([
+    usage().catch((e) => ({ error: e.message })),
+    fetchAll(() => sb.from('files').select('id,subject_id,size').order('id')).catch(() => []),
+    sb.from('subjects').select('id,name,icon,grade,semester').then((r) => r.data || []),
+  ]);
+  const cur = files.reduce((a, f) => a + (f.size || 0), 0);
+
+  if (u.error) {
+    top.replaceChildren(h('div', { class: 'sg-card' }, h('b', { class: 'sg-err' }, u.error)));
+  } else {
+    const gb = u.bytes / 1024 ** 3;
+    const pct = Math.min(100, (gb / FREE_GB) * 100);
+    const usd = Math.max(0, gb - FREE_GB) * PER_GB;
+    const old = Math.max(0, u.bytes - cur);
+    const bar = h('div', { class: 'sg-bar' }, h('i', { style: { width: '0%' } }));
+    top.replaceChildren(h('div', { class: 'sg-card' },
+      h('div', { class: 'sg-row' },
+        h('div', {}, h('span', { class: 'sg-k' }, '사용 중'), h('div', { class: 'sg-big' }, size(u.bytes), h('small', {}, ` / ${FREE_GB}GB 무료`))),
+        h('div', { class: 'sg-cost' }, h('span', { class: 'sg-k' }, '이번 달 예상'), h('div', { class: 'sg-big' + (usd ? ' warn' : '') }, usd ? `약 ${Math.ceil(usd * KRW).toLocaleString()}원` : '0원'))),
+      bar,
+      h('div', { class: 'sg-meta' },
+        h('span', {}, `파일 ${u.count.toLocaleString()}개`),
+        old > 1024 ? h('span', {}, `필기 때문에 보관 중인 이전 파일 ${size(old)}`) : null,
+        h('span', {}, `무료 넘으면 GB당 월 $${PER_GB}, 1달러 ${KRW.toLocaleString()}원 기준`))));
+    requestAnimationFrame(() => requestAnimationFrame(() => { bar.firstChild.style.width = `${Math.max(pct, u.bytes ? 1 : 0)}%`; bar.classList.toggle('hi', pct > 80); }));
+  }
+
+  // 과목별 (지금 올라가 있는 파일 기준)
+  const by = new Map();
+  files.forEach((f) => { const x = by.get(f.subject_id) || { bytes: 0, n: 0 }; x.bytes += f.size || 0; x.n += 1; by.set(f.subject_id, x); });
+  const rows = subs.filter((s) => by.has(s.id)).map((s) => ({ s, ...by.get(s.id) })).sort((a, b) => b.bytes - a.bytes);
+  if (!rows.length) { list.replaceChildren(h('div', { class: 'empty sm' }, '올린 자료가 없습니다')); return; }
+  const max = rows[0].bytes || 1;
+  list.replaceChildren(h('div', { class: 'sg-list' }, rows.map((r, i) => h('div', { class: 'sg-i', style: { animationDelay: `${Math.min(i, 12) * 0.03}s` } },
+    h('span', { class: 'emo' }, r.s.icon || r.s.name.slice(0, 1)),
+    h('div', { class: 'sg-tx' },
+      h('div', { class: 'sg-nm' }, h('b', {}, r.s.name), h('span', {}, gradeLabel(r.s.grade, r.s.semester))),
+      h('div', { class: 'sg-mini' }, h('i', { style: { width: `${Math.max(2, (r.bytes / max) * 100)}%` } }))),
+    h('div', { class: 'sg-sz' }, h('b', {}, size(r.bytes)), h('span', {}, `${r.n}개`))))));
+}
+function size(b) {
+  if (b >= 1024 ** 3) return `${(b / 1024 ** 3).toFixed(2)}GB`;
+  if (b >= 1024 ** 2) return `${(b / 1024 ** 2).toFixed(1)}MB`;
+  if (b >= 1024) return `${Math.round(b / 1024)}KB`;
+  return `${b}B`;
 }

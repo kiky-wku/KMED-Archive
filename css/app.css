@@ -1305,3 +1305,30 @@ html.pv-open,html.pv-open body{overflow:hidden}
 .gd-nav.next.last{animation:popIn .3s var(--spring)}
 .gd-nav .icon{width:22px;height:22px}
 .gd-nav:focus-visible{outline:none}
+/* ---------- 관리 : 저장 공간 ---------- */
+.sg-card{background:#fff;border-radius:22px;box-shadow:var(--sh1);padding:22px 22px 18px;animation:rise .35s var(--ease) both}
+.sg-row{display:flex;justify-content:space-between;gap:16px;flex-wrap:wrap}
+.sg-k{font-size:13px;font-weight:700;color:var(--sub)}
+.sg-big{margin-top:4px;font-size:30px;font-weight:800;letter-spacing:-.02em;font-variant-numeric:tabular-nums}
+.sg-big small{font-size:15px;font-weight:700;color:var(--faint);letter-spacing:0}
+.sg-big.warn{color:#C46A00}
+.sg-cost{text-align:right}
+.sg-bar{margin-top:18px;height:12px;border-radius:6px;background:var(--surface);overflow:hidden}
+.sg-bar i{display:block;height:100%;border-radius:6px;background:var(--blue);transition:width 1s var(--ease)}
+.sg-bar.hi i{background:#F59E0B}
+.sg-meta{display:flex;flex-wrap:wrap;gap:6px 14px;margin-top:12px;font-size:13px;font-weight:600;color:var(--sub)}
+.sg-err{color:var(--red);font-size:15px}
+.sg-h{margin:26px 4px 10px;font-size:16px;font-weight:800}
+.sg-list{display:flex;flex-direction:column}
+.sg-i{display:flex;align-items:center;gap:14px;padding:14px 18px;animation:rise .3s var(--ease) both}
+.sg-i+.sg-i{border-top:1px solid #F2F4F6}
+.sg-i .emo{flex:none;width:40px;height:40px;border-radius:12px;background:var(--surface2);display:grid;place-items:center;font-size:22px}
+.sg-tx{flex:1;min-width:0;display:flex;flex-direction:column;gap:7px}
+.sg-nm{display:flex;align-items:baseline;gap:8px}
+.sg-nm b{font-size:15px;font-weight:800}
+.sg-nm span{font-size:12.5px;font-weight:600;color:var(--faint)}
+.sg-mini{height:6px;border-radius:3px;background:var(--surface);overflow:hidden}
+.sg-mini i{display:block;height:100%;border-radius:3px;background:#B0C8F5}
+.sg-sz{flex:none;display:flex;flex-direction:column;align-items:flex-end;gap:2px;min-width:72px}
+.sg-sz b{font-size:15px;font-weight:800;font-variant-numeric:tabular-nums}
+.sg-sz span{font-size:12.5px;color:var(--sub);font-weight:600}
