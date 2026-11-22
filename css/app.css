@@ -1018,3 +1018,19 @@ html.pv-open,html.pv-open body{overflow:hidden}
 .sz-row{display:flex;align-items:center;gap:6px}
 .sz-row input{flex:1;accent-color:var(--text)}
 @media (max-width:900px){.pv.editing .pv-ttl{display:none}.pv.editing .pv-right .pv-t[title="축소"],.pv.editing .pv-right .pv-t[title="확대"]{display:none}}
+
+/* PDF 보기 상단 : 왼쪽 제목 | 가운데 도구 | 오른쪽 */
+.pv-top{display:grid;grid-template-columns:minmax(0,1fr) auto minmax(0,1fr);gap:12px;padding:calc(10px + var(--safe-t)) 16px 10px}
+.pv-left{display:flex;align-items:center;gap:8px;min-width:0}
+.pv-left .pv-ttl{flex:1}
+.pv.editing .pv-ttl{max-width:none}
+.pv-tools{gap:2px;padding:4px 6px;justify-self:center}
+.pv-tools .pv-div{margin:0 6px;height:20px}
+.pv-sw{gap:2px}
+.pv-c{width:32px;height:32px}
+.pv-right{gap:6px}
+.pv-right .pv-pg{margin:0 2px}
+.pv-edit{margin-right:4px}
+@media (max-width:900px){.pv-top{grid-template-columns:auto auto minmax(0,1fr);gap:8px;padding-left:10px;padding-right:10px}}
+.pv-tools{grid-column:2}
+.pv-right{grid-column:3}

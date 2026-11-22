@@ -51,8 +51,9 @@ export function openPdf(file, { key = null, label = '' } = {}) {
   const list = h('div', { class: 'pv-pages' });
   scroller.append(list);
   const top = h('header', { class: 'pv-top' },
-    h('button', { class: 'pv-t', 'aria-label': '닫기', onclick: close }, icon('x')),
-    h('div', { class: 'pv-ttl' }, h('b', {}, file.series || file.filename), h('span', {}, [file.week, label].filter(Boolean).join('  '))),
+    h('div', { class: 'pv-left' },
+      h('button', { class: 'pv-t', 'aria-label': '닫기', onclick: close }, icon('x')),
+      h('div', { class: 'pv-ttl' }, h('b', {}, file.series || file.filename), h('span', {}, [file.week, label].filter(Boolean).join('  ')))),
     h('div', { class: 'pv-tools' },
       tbtn('pen', 'pen', '펜'), tbtn('hl', 'marker', '형광펜'), tbtn('eraser', 'eraser', '지우개'),
       h('i', { class: 'pv-div' }), swatches, h('i', { class: 'pv-div' }), sizes, h('i', { class: 'pv-div' }), handBtn, undoBtn),
