@@ -37,3 +37,7 @@ do $$ begin
     grant select, insert, update, delete on public.past_questions to service_role;
   end if;
 end $$;
+
+-- 단원 태그, 인정 답안 (빈칸, 단답에서 같은 뜻으로 인정할 다른 표현)
+alter table public.past_questions add column if not exists tag    text  not null default '';
+alter table public.past_questions add column if not exists accept jsonb not null default '[]';

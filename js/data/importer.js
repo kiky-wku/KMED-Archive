@@ -105,7 +105,7 @@ export function check(key, text, ctx = {}) {
     const CIRC = '①②③④⑤⑥⑦⑧⑨⑩';
     let lastExam = ctx.exam || '';
     raw.forEach((r, i) => {
-      const [exam, no, type, passage, question, choices, answer, explain, source] = r;
+      const [exam, no, type, passage, question, choices, answer, explain, source, tag, accept] = r;
       if (!question && !answer) return;
       const ex = exam || lastExam;
       if (!ex) { errors.push(`${at(i)} : 시험 이름이 비어 있습니다`); return; }
@@ -124,7 +124,8 @@ export function check(key, text, ctx = {}) {
         if (!['O', 'X'].includes(a)) warns.push(`${at(i)} : OX 정답이 O 나 X 가 아닙니다`);
       }
       if (!a) warns.push(`${at(i)} : 정답이 비어 있습니다`);
-      rows.push({ exam: ex, no: no || '', type: t, passage: passage || '', question, choices: t === 'mc' ? cs : [], answer: a, explain: explain || '', ai: !/^기출/.test(source || '') });
+      rows.push({ exam: ex, no: no || '', type: t, passage: passage || '', question, choices: t === 'mc' ? cs : [], answer: a, explain: explain || '', ai: !/^기출/.test(source || ''),
+        tag: tag || '', accept: ['blank', 'short'].includes(t) ? String(accept || '').split('|').map((x) => x.trim()).filter(Boolean) : [] });
     });
   }
   if (raw.length && !rows.length && !errors.length) errors.push('읽을 수 있는 행이 없습니다. 칸 순서를 확인하세요');
@@ -236,7 +237,7 @@ export async function apply(rangeId, mode, parsed, { pool } = {}) {
     if (mode === 'replace') ok(await sb.from('past_questions').delete().eq('range_id', rangeId));
     else ok(await sb.from('past_questions').delete().eq('range_id', rangeId).in('exam', exams));
     let s = mode === 'replace' ? -1 : await maxSort('past_questions');
-    const rows = parsed.past.map((r) => ({ range_id: rangeId, exam: r.exam, no: r.no, type: r.type, passage: r.passage, question: r.question, choices: r.choices, answer: r.answer, explain: r.explain, ai: r.ai, sort: ++s }));
+    const rows = parsed.past.map((r) => ({ range_id: rangeId, exam: r.exam, no: r.no, type: r.type, passage: r.passage, question: r.question, choices: r.choices, answer: r.answer, explain: r.explain, ai: r.ai, tag: r.tag, accept: r.accept, sort: ++s }));
     for (const part of chunks(rows)) ok(await sb.from('past_questions').insert(part));
   }
 }

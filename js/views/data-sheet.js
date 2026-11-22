@@ -159,7 +159,7 @@ function previewTable(k, rows) {  // eslint-disable-line no-param-reassign
     jung: [['page', '묶음'], ['hanja', '원문'], ['translation', '해석'], ['notes', '주석']],
     um: [['unit', '단원'], ['sentence', '원문'], ['cards', '카드'], ['orders', '순서'], ['translation', '해석']],
     flash: [['deck', '묶음'], ['front', '앞면'], ['back', '뒷면'], ['hint', '암기법']],
-    past: [['exam', '시험'], ['no', '번호'], ['tlabel', '형식'], ['question', '문제'], ['answer', '정답'], ['src', '근거']],
+    past: [['exam', '시험'], ['no', '번호'], ['tlabel', '형식'], ['tag', '단원'], ['question', '문제'], ['answer', '정답'], ['src', '근거']],
   }[k];
   if (k === 'past') rows = rows.map((r) => ({ ...r, tlabel: { mc: '객관식', ox: 'OX', blank: '빈칸', short: '단답', essay: '서술' }[r.type], src: r.ai ? 'AI' : '기출' }));
   const v = (x) => (Array.isArray(x) ? x.join(k === 'jung' ? ', ' : ' / ') : x);

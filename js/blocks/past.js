@@ -111,6 +111,7 @@ export function pastBlock(ctx, el) {
         h('span', { class: 'idx' }, `${pos + 1}`, h('i', {}, ` / ${ids.length}`)),
         q.no ? h('span', { class: 'pq-chip' }, `${q.no}번`) : null,
         h('span', { class: 'pq-chip' }, TYPE[q.type]),
+        q.tag ? h('span', { class: 'pq-chip tag' }, q.tag) : null,
         it.status ? h('span', { class: `pq-chip ${it.status}` }, it.status === 'ok' ? '맞음' : '틀림') : null,
         h('div', { class: 'sp' }),
         h('button', { class: 'tool-ic sm', 'aria-label': '이전', disabled: pos === 0, onclick: () => move(-1) }, icon('back', 'icon s')),
@@ -130,6 +131,7 @@ export function pastBlock(ctx, el) {
             ctx.canWrite ? h('button', { class: 'pq-fix', title: '정답 고치기', 'aria-label': '정답 고치기', onclick: () => fix(q) }, icon('pen', 'icon s')) : null,
             ctx.canWrite && q.ai ? h('button', { class: 'pq-fix', title: '정답 확인함', 'aria-label': '정답 확인함', onclick: () => confirmAi(q) }, icon('check', 'icon s')) : null),
           h('div', { class: 'pq-a' }, right || '정답이 비어 있습니다'),
+          q.accept?.length ? h('div', { class: 'pq-acc' }, `인정 : ${q.accept.join(', ')}`) : null,
           q.explain ? h('div', { class: 'pq-ex' }, q.explain) : null);
         ans.classList.add('on');
         if (AUTO.has(q.type)) {
@@ -137,9 +139,15 @@ export function pastBlock(ctx, el) {
             ? h('button', { class: 'btn ink pq-next', onclick: () => move(1) }, '다음 문제', h('kbd', {}, 'Enter'))
             : h('button', { class: 'btn ink pq-next', onclick: done }, '결과 보기'));
         } else if (!result) {
+          // 빈칸, 단답 : 쓴 답이 정답이나 인정 답안과 같으면 맞음을, 다르면 틀림을 미리 강조 (고르는 건 직접)
+          const norm = (x) => String(x || '').toLowerCase().replace(/[\s()（）.,·]/g, '');
+          const typed = norm(card.querySelector('.pq-in')?.value);
+          const hint = ['blank', 'short'].includes(q.type) && typed
+            ? ([q.answer, ...(q.accept || [])].some((a) => norm(a) === typed) ? 'ok' : 'no') : null;
           act.replaceChildren(
-            h('button', { class: 'gbtn pq-g no', onclick: () => grade(false) }, icon('x', 'icon s'), '틀림', h('kbd', {}, '←')),
-            h('button', { class: 'gbtn pq-g ok', onclick: () => grade(true) }, icon('check', 'icon s'), '맞음', h('kbd', {}, '→')));
+            h('button', { class: 'gbtn pq-g no' + (hint === 'no' ? ' hint' : ''), onclick: () => grade(false) }, icon('x', 'icon s'), '틀림', h('kbd', {}, '←')),
+            h('button', { class: 'gbtn pq-g ok' + (hint === 'ok' ? ' hint' : ''), onclick: () => grade(true) }, icon('check', 'icon s'), '맞음', h('kbd', {}, '→')));
+          card.querySelector('.pq-in')?.blur();
         }
       }
       function grade(ok, data) {
