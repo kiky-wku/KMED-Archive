@@ -85,7 +85,7 @@ export function settingsView() {
       h('span', {}, isIOS ? '사파리 아래쪽 공유 버튼을 누르고 홈 화면에 추가를 고르면 앱처럼 쓸 수 있습니다.' : '브라우저 메뉴에서 앱 설치 또는 홈 화면에 추가를 고르면 앱처럼 쓸 수 있습니다.'))
     : null;
 
-  const body = h('div', { class: 'st' },
+  const body = h('div', { class: 'stg' },
     infoBox,
     section('알림', pushRow()),
     section('비밀번호 바꾸기', pwForm),

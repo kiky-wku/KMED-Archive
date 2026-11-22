@@ -80,6 +80,11 @@ export function openPdf(file, { key = null, label = '', onComments = null } = {}
   const root = h('div', { class: 'pv', role: 'dialog', 'aria-modal': 'true' }, top, scroller, loading);
   document.body.append(root);
   document.documentElement.classList.add('pv-open');
+  // 좁은 화면 : 필기 도구는 아래쪽 떠 있는 줄로 (위 막대 안에 두면 고정 위치가 안 먹음)
+  const toolsEl = top.querySelector('.pv-tools');
+  const narrow = matchMedia('(max-width: 760px)');
+  const placeTools = () => { if (narrow.matches) root.append(toolsEl); else top.insertBefore(toolsEl, top.querySelector('.pv-right')); };
+  placeTools(); narrow.addEventListener?.('change', placeTools);
   requestAnimationFrame(() => root.classList.add('on'));
   paintTools(); paintMode();
 

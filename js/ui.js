@@ -223,9 +223,13 @@ export function popover(anchor, content, { align = 'left', width } = {}) {
   document.body.append(pop);
   const r = anchor.getBoundingClientRect();
   const w = pop.offsetWidth;
-  pop.style.top = `${r.bottom + 8}px`;
+  // 아래 공간이 모자라면 위로 펼침
+  const ph = pop.offsetHeight;
+  const up = r.bottom + 8 + ph > window.innerHeight - 8 && r.top - 8 - ph > 8;
+  pop.style.top = `${up ? r.top - 8 - ph : r.bottom + 8}px`;
+  if (up) pop.classList.add('up');
   pop.style.left = `${Math.max(12, Math.min(align === 'right' ? r.right - w : r.left, window.innerWidth - w - 12))}px`;
-  pop.style.transformOrigin = align === 'right' ? 'top right' : 'top left';
+  pop.style.transformOrigin = `${up ? 'bottom' : 'top'} ${align === 'right' ? 'right' : 'left'}`;
   anchor.classList.add('open');
   const onDoc = (e) => { if (!pop.contains(e.target) && !anchor.contains(e.target)) close(); };
   setTimeout(() => document.addEventListener('pointerdown', onDoc), 0);

@@ -1,5 +1,5 @@
 import { sb } from '../sb.js';
-import { h, icon, seg } from '../ui.js';
+import { h, icon, seg, popover } from '../ui.js';
 import { S, go, isAdmin } from '../app.js';
 import { openDataSheet } from './data-sheet.js';
 import { openReports } from './reports.js';
@@ -77,14 +77,15 @@ export function subjectView(id, q) {
     });
     const kinds = editKinds(blocks.map((b) => b.kind));
     const edit = (k, query) => openEditSheet({ sub, range: ranges.find((r) => r.id === rangeId), pool: sub.progress_pool || sub.id, kind: k || editKindOf(kind), query, onDone: () => show() });
-    right.append(h('button', { class: 'tool-ic siren-btn', title: '제보하기', 'aria-label': '제보하기', onclick: () => report() }, icon('siren')));
-    if (canWrite && kinds.length) {
-      right.append(h('button', { class: 'tool-ic', title: '데이터 편집', 'aria-label': '데이터 편집', onclick: () => edit() }, icon('editlist')));
-    }
-    if (canWrite && formatsFor(blocks.map((b) => b.kind)).length) {
-      right.append(h('button', { class: 'tool-ic data-btn', title: '데이터 넣기', 'aria-label': '데이터 넣기',
-        onclick: () => openDataSheet(sub, ranges.find((r) => r.id === rangeId), () => show()) }, icon('import')));
-    }
+    // 오른쪽 위 도구 : 넓은 화면은 아이콘 그대로, 휴대폰은 ⋯ 하나로 모음
+    const tools = [['siren', '제보하기', () => report(), 'siren-btn']];
+    if (canWrite && kinds.length) tools.push(['editlist', '데이터 편집', () => edit(), '']);
+    if (canWrite && formatsFor(blocks.map((b) => b.kind)).length) tools.push(['import', '데이터 넣기', () => openDataSheet(sub, ranges.find((r) => r.id === rangeId), () => show()), 'data-btn']);
+    const toolBox = h('div', { class: 'subj-tools' }, tools.map(([ic, label, fn, cls]) => h('button', { class: `tool-ic ${cls}`, title: label, 'aria-label': label, onclick: fn }, icon(ic))));
+    const more = h('button', { class: 'tool-ic subj-more', 'aria-label': '더보기', onclick: () => {
+      const p = popover(more, h('div', { class: 'menu-list' }, tools.map(([ic, label, fn, cls]) => h('button', { class: cls, onclick: () => { p.close(); fn(); } }, icon(ic, 'icon s'), label))), { align: 'right' });
+    } }, icon('more'));
+    right.append(toolBox, more);
     if (ranges.length > 1) right.append(seg(ranges.map((r) => [r.id, r.name]), rangeId, (v) => { rangeId = v; show(); }));
     const tabBtns = blocks.map((b) => h('button', { role: 'tab', class: 'tab', onclick: () => { kind = b.kind; show(); } },
       (BLOCK_KINDS.find((k) => k[0] === b.kind) || [0, b.title])[1]));
