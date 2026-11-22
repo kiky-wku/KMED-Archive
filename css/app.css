@@ -1593,8 +1593,3 @@ html.offline body::after{content:'인터넷 연결 없음. 이 기기에 저장�
   .h-left h1{margin-top:14px;font-size:28px}
   .h-left .date{margin-top:6px;font-size:15px}
 }
-/* 가로 태블릿, PC : 과목 카드가 적으면 흰 박스가 빈 채로 늘어나지 않게 */
-@media (min-width:821px){
-  .h-right{height:auto;max-height:calc(100dvh - 136px - var(--safe-t) - var(--safe-b));min-height:0;align-self:start}
-  .h-right .tiles2{flex:0 1 auto}
-}
