@@ -80,6 +80,18 @@ export function go(hash) {
 
 window.addEventListener('hashchange', route);
 
+// 접속 기록 : 앱을 열 때, 그리고 30분 넘게 다른 앱에 있다가 돌아올 때
+// (supabase 요청은 then 을 붙여야 실제로 보내짐)
+let lastTouch = 0;
+export function touch() {
+  if (!S.profile || !navigator.onLine) return;
+  lastTouch = Date.now();
+  sb.rpc('touch_session', { p_device: deviceName() }).then(() => {}, () => {});
+}
+document.addEventListener('visibilitychange', () => {
+  if (document.visibilityState === 'visible' && Date.now() - lastTouch > 30 * 60e3) touch();
+});
+
 // 앱 시작 : 저장된 로그인 확인 → 접속 기록 → 환영 화면
 (async function boot() {
   document.getElementById('app').replaceChildren(h('div', { class: 'boot' }, h('i')));
@@ -87,7 +99,7 @@ window.addEventListener('hashchange', route);
     const { data: { session } } = await sb.auth.getSession();
     if (session) {
       await loadMe();
-      if (S.profile) { if (navigator.onLine) { sb.rpc('touch_session', { p_device: deviceName() }); syncPush(); flushPending(); } S.welcomed = true; }
+      if (S.profile) { if (navigator.onLine) { touch(); syncPush(); flushPending(); } S.welcomed = true; }
     }
   } catch (e) {
     console.error(e);

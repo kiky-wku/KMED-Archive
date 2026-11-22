@@ -1,6 +1,6 @@
 import { sb } from '../sb.js';
-import { h, icon, shake, toast, deviceName, gradeLabel } from '../ui.js';
-import { S, loadMe, route } from '../app.js';
+import { h, icon, shake, toast, gradeLabel } from '../ui.js';
+import { S, loadMe, route, touch } from '../app.js';
 
 // 아이디 → 로그인용 내부 주소 (@가 있으면 이메일 그대로)
 export const ID_DOMAIN = 'yrr-study.app';
@@ -67,7 +67,7 @@ export function loginView() {
     }
     await loadMe();
     if (!S.profile) { busy(btn, false); err.textContent = '등록되지 않은 계정입니다.'; shake(card); return; }
-    sb.rpc('touch_session', { p_device: deviceName() });
+    touch();
     if (S.profile.must_change_pw) { route(); return; }      // 첫 로그인은 비밀번호 변경 후에 체크
     await doneCheck(() => route({ instant: true }));
   }
