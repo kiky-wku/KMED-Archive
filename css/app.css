@@ -1386,3 +1386,27 @@ html.pv-open,html.pv-open body{overflow:hidden}
 .fl-srch-x{flex:none;width:30px;height:30px;margin-right:5px;border-radius:50%;display:grid;place-items:center;color:var(--faint);opacity:0;pointer-events:none;transition:opacity .2s}
 .fl-srch.on .fl-srch-x{opacity:1;pointer-events:auto}
 .fl-srch-x:hover{background:var(--surface);color:var(--sub)}
+/* ---------- 즐겨찾기 ---------- */
+.fl-fav{display:inline-flex;align-items:center;padding:2px 5px;margin:-2px -4px;border-radius:7px;color:#D1D6DB;cursor:pointer;transition:color .2s,background-color .15s}
+.fl-fav .icon{width:14px;height:14px}
+.fl-fav:hover{background:var(--surface);color:var(--sub)}
+.fl-fav.on{color:#F5B400}
+.fl-fav.on .icon{fill:#F5B400}
+.fl-fav.bump .icon{animation:lit .35s var(--spring)}
+.fav{display:none}
+.fav.on{display:block;animation:rise .3s var(--ease) both}
+.fav-h{display:flex;align-items:center;gap:6px;margin:0 4px 8px;font-size:13px}
+.fav-h b{font-weight:800}
+.fav-h span{color:var(--sub);font-weight:700}
+.fav-h button{margin-left:auto;font-size:13px;font-weight:700;color:var(--sub);padding:2px 4px}
+.fav-list{display:flex;flex-direction:column;gap:6px}
+.fav-i{position:relative;display:flex;align-items:center;border-radius:16px;background:#fff;box-shadow:var(--sh1);animation:rise .3s var(--ease) both}
+.fav-main{flex:1;min-width:0;display:flex;align-items:center;gap:12px;padding:11px 0 11px 12px;text-align:left}
+.fav-main:active{opacity:.7}
+.fav-ic{flex:none;width:36px;height:36px;border-radius:11px;background:var(--surface2);display:grid;place-items:center;font-size:19px;font-weight:800;color:var(--red)}
+.fav-tx{display:flex;flex-direction:column;gap:1px;min-width:0}
+.fav-tx b{font-size:15px;font-weight:800;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.fav-tx span{font-size:12.5px;font-weight:600;color:var(--sub)}
+.fav-x{flex:none;width:40px;height:40px;margin-right:4px;border-radius:12px;display:grid;place-items:center;color:#F5B400}
+.fav-x .icon{fill:#F5B400}
+.fav-x:active{transform:scale(.9)}

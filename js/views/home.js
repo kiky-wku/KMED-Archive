@@ -1,8 +1,12 @@
 import { sb } from '../sb.js';
-import { h, icon, gradeLabel, popover } from '../ui.js';
+import { h, icon, gradeLabel, popover, toast } from '../ui.js';
 import { S, seesAll, go } from '../app.js';
 import { shell } from './shell.js';
 import { openGuide } from './guide.js';
+import { loadFavs, removeFav, resetFavs } from '../data/favs.js';
+import { markViewed } from '../data/files.js';
+import { openPdf } from './pdf-viewer.js';
+import { openComments } from './comments.js';
 import { bellButton, noticeStack, openSuggest, pushNudge } from './reports.js';
 
 // 홈 : 인사 · 이어서 하기 · 과목 목록 (한 박스)
@@ -28,6 +32,7 @@ export function homeView(q) {
       h('div', { class: 'date' }, today),
       h('div', { class: 'h-acts' },
         resume,
+        favBox(),
         pushNudge(),
         stack,
         h('button', { class: 'guide-btn', onclick: openGuide }, icon('book', 'icon s'), '사용법 안내'))),
@@ -78,4 +83,32 @@ async function openSemMenu(anchor, g, s) {
     class: gg === g && ss === s ? 'on' : '',
     onclick: () => { p.close(); go(`#/home?g=${gg}&s=${ss}`); },
   }, gradeLabel(gg, ss), gg === g && ss === s ? icon('check', 'icon s') : null))));
+}
+
+// 즐겨찾기 자료 : 눌러서 바로 열기, ★ 눌러서 빼기
+function favBox() {
+  const el = h('div', { class: 'fav' });
+  let all = false;
+  resetFavs();
+  const paint = (list) => {
+    if (!list.length) { el.replaceChildren(); el.classList.remove('on'); return; }
+    el.classList.add('on');
+    const shown = all ? list : list.slice(0, 3);
+    el.replaceChildren(
+      h('div', { class: 'fav-h' }, h('b', {}, '즐겨찾기'), h('span', {}, `${list.length}`),
+        list.length > 3 ? h('button', { onclick: () => { all = !all; paint(list); } }, all ? '접기' : '모두 보기') : null),
+      h('div', { class: 'fav-list' }, shown.map((x, i) => h('div', { class: 'fav-i', style: { animationDelay: `${i * 0.04}s` } },
+        h('button', { class: 'fav-main', onclick: () => open(x) },
+          h('span', { class: 'fav-ic' }, x.icon || 'PDF'),
+          h('span', { class: 'fav-tx' }, h('b', {}, x.title), h('span', {}, x.sub))),
+        h('button', { class: 'fav-x', 'aria-label': '즐겨찾기 빼기', title: '즐겨찾기 빼기', onclick: async () => { await removeFav(x.id); paint(await loadFavs()); } }, icon('star', 'icon s'))))));
+  };
+  async function open(x) {
+    const { data: f } = await sb.from('files').select('*').eq('id', x.id).maybeSingle();
+    if (!f) { toast('지워진 자료라 즐겨찾기에서 뺐습니다'); await removeFav(x.id); paint(await loadFavs()); return; }
+    markViewed(f);
+    openPdf(f, { onComments: () => openComments(f, {}) });
+  }
+  loadFavs().then(paint).catch(() => {});
+  return el;
 }

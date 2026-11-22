@@ -4,6 +4,7 @@ import { listFiles, addFile, replaceFile, deleteFile, myOldVersions, fmtSize, lo
 import { openPdf } from '../views/pdf-viewer.js';
 import { openComments } from '../views/comments.js';
 import { commentCounts } from '../data/comments.js';
+import { loadFavs, isFav, toggleFav } from '../data/favs.js';
 
 // ─────────────────────────────────────────────
 // 자료 (써머리 · 기타 자료 한 목록) : 네이버 카페 대신
@@ -54,6 +55,7 @@ export function filesBlock(ctx, el) {
       [{ mine: seen, counts }, ccount] = await Promise.all([
         loadViews(ids).catch(() => ({ mine: new Map(), counts: new Map() })),
         commentCounts(ids).catch(() => new Map()),
+        loadFavs().catch(() => []),
       ]);
     }
     catch { list.replaceChildren(h('div', { class: 'box-empty' }, '자료를 불러올 수 없습니다')); return; }
@@ -107,6 +109,13 @@ export function filesBlock(ctx, el) {
     f.uploader_name ? h('span', {}, f.uploader_name) : null,
     h('span', {}, fmtSize(f.size)),
     counts.get(f.id) ? h('span', { class: 'fl-views' }, icon('eye', 'icon s'), counts.get(f.id)) : null,
+    h('span', { class: 'fl-fav' + (isFav(f.id) ? ' on' : ''), role: 'button', tabindex: 0, title: '즐겨찾기', 'aria-label': '즐겨찾기',
+      onclick: async (e) => {
+        e.stopPropagation(); const b = e.currentTarget;
+        b.classList.toggle('on'); b.classList.remove('bump'); void b.offsetWidth; b.classList.add('bump');
+        try { const on = await toggleFav(f, ctx.subject); b.classList.toggle('on', on); toast(on ? '홈에 즐겨찾기로 고정했습니다' : '즐겨찾기에서 뺐습니다'); }
+        catch { b.classList.toggle('on'); toast('저장하지 못했습니다'); }
+      } }, icon('star', 'icon s')),
     h('span', { class: 'fl-cm' + (ccount.get(f.id) ? ' has' : ''), role: 'button', tabindex: 0, title: '댓글',
       onclick: (e) => { e.stopPropagation(); comments(f); } }, icon('chat', 'icon s'), ccount.get(f.id) || '댓글'));
 
