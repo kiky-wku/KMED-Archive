@@ -186,11 +186,15 @@ input{font:inherit;color:inherit}
 .btn .icon{color:inherit}
 
 /* ---------- 세그먼트 ---------- */
-.segc{display:inline-flex;gap:2px;padding:3px;background:var(--surface);border-radius:12px}
-.segc button{height:36px;padding:0 14px;border-radius:9px;font-size:15px;font-weight:700;color:var(--sub);
-  transition:background-color .2s var(--ease),color .2s,box-shadow .2s,transform .15s var(--spring)}
-.segc button.on{background:#fff;color:var(--text);box-shadow:0 1px 3px rgba(0,27,55,.12)}
-.segc button:active{transform:scale(.95)}
+.segc{position:relative;display:inline-flex;align-items:center;gap:4px;padding:0 0 7px;background:none!important;border-radius:0}
+.segc button{position:relative;z-index:1;height:32px;padding:0 8px;border-radius:8px;font-size:16px;font-weight:800;letter-spacing:-.01em;color:#B0B8C1;
+  transition:color .25s var(--ease),transform .15s var(--spring)}
+.segc button.on{color:#191F28}
+.segc button:not(.on):hover{color:#6B7684}
+.segc button:active{transform:scale(.94)}
+.segc-ind{position:absolute;z-index:0;left:0;bottom:0;height:3px;pointer-events:none}
+.segc-ind::after{content:'';position:absolute;left:50%;top:0;width:18px;height:3px;margin-left:-9px;border-radius:2px;background:#191F28}
+.segc.ready .segc-ind{transition:transform .4s var(--spring),width .4s var(--spring)}
 
 /* ---------- 관리 ---------- */
 .adm-head{justify-content:space-between;gap:16px;flex-wrap:wrap}
@@ -1332,3 +1336,6 @@ html.pv-open,html.pv-open body{overflow:hidden}
 .sg-sz{flex:none;display:flex;flex-direction:column;align-items:flex-end;gap:2px;min-width:72px}
 .sg-sz b{font-size:15px;font-weight:800;font-variant-numeric:tabular-nums}
 .sg-sz span{font-size:12.5px;color:var(--sub);font-weight:600}
+.q-bar .segc{margin:0 10px 0 4px}
+.segc.full{gap:0}
+.subj-right .segc{margin-top:7px}

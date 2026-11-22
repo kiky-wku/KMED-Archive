@@ -163,9 +163,19 @@ export function modal({ title, body, actions = [], wide = false, onClose }) {
 // 세그먼트 선택 [A | B | C]
 export function seg(options, value, onChange) {
   const el = h('div', { class: 'segc' });
-  const render = () => el.replaceChildren(...options.map(([v, label]) =>
-    h('button', { type: 'button', class: v === value ? 'on' : '', onclick: () => { value = v; render(); onChange?.(v); } }, label)));
-  render();
+  const ind = h('i', { class: 'segc-ind' });
+  const btns = options.map(([v, label]) => h('button', { type: 'button', onclick: () => { if (value === v) return; value = v; paint(); onChange?.(v); } }, label));
+  el.append(ind, ...btns);
+  // 고른 칸으로 흰 바탕이 미끄러져 감
+  const move = () => {
+    const b = btns[options.findIndex(([v]) => v === value)];
+    if (!b || !b.offsetWidth) return;
+    ind.style.width = `${b.offsetWidth}px`; ind.style.transform = `translateX(${b.offsetLeft}px)`;
+    if (!el.classList.contains('ready')) requestAnimationFrame(() => el.classList.add('ready'));
+  };
+  function paint() { btns.forEach((b, i) => b.classList.toggle('on', options[i][0] === value)); move(); }
+  paint();
+  const ro = new ResizeObserver(move); ro.observe(el); btns.forEach((b) => ro.observe(b));
   el.get = () => value;
   return el;
 }
