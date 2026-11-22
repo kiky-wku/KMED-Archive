@@ -18,13 +18,20 @@ const COLORS = ['#191F28', '#E5484D', '#3182F6', '#16A34A'];
 const HL = ['#FFE066', '#9BE7B5', '#A5D8FF', '#FFB3C7'];
 const ZMIN = 0.5; const ZMAX = 4;
 // 굵기 : 화면 폭 1000 기준 px (슬라이더로 조절)
-const RANGE = { pen: [1, 14, 2.8], hl: [6, 50, 22], er: [6, 60, 20] };
+const RANGE = { pen: [1, 14, 2.8], hl: [6, 50, 22], er: [6, 60, 20], tx: [8, 48, 16] };
+const TXCOLORS = ['#191F28', '#E5484D', '#3182F6', '#16A34A', '#F59E0B', '#8B5CF6'];
+const FONT = '"Malgun Gothic","맑은 고딕","Apple SD Gothic Neo","Noto Sans KR",sans-serif';
 
 export function openPdf(file, { key = null, label = '' } = {}) {
   const fileKey = key || file.key;
   let tool = 'pen'; let color = COLORS[0]; let hl = HL[0]; let zoom = 1;
   const size = { pen: RANGE.pen[2], hl: RANGE.hl[2], er: RANGE.er[2] };
   let eraseMode = localStorage.getItem('kmed:pv-erase') === 'part' ? 'part' : 'stroke'; // 선 지우기 · 부분 지우기
+  // 텍스트 상자 기본값 (기본값으로 고정 가능)
+  const TXDEF = { c: TXCOLORS[0], fs: RANGE.tx[2], b: false };
+  try { Object.assign(TXDEF, JSON.parse(localStorage.getItem('kmed:pv-text') || '{}')); } catch { /* 무시 */ }
+  const txt = { ...TXDEF };
+  let ed = null; // 지금 쓰는 텍스트 상자
   try { const v = JSON.parse(localStorage.getItem('kmed:pv-size2') || '{}'); ['pen', 'hl', 'er'].forEach((k) => { if (typeof v[k] === 'number') size[k] = v[k]; }); } catch { /* 무시 */ }
   let doc = null; let alive = true;
   let editing = false;                                           // 기본은 읽기 모드
@@ -39,7 +46,13 @@ export function openPdf(file, { key = null, label = '' } = {}) {
   const toolBtns = {};
   const tbtn = (t, ic, label) => (toolBtns[t] = h('button', { class: 'pv-t', title: label, 'aria-label': label, onclick: () => setTool(t) }, icon(ic)));
   const swatches = h('div', { class: 'pv-sw' });
-  const sizes = h('button', { class: 'pv-sz', title: '굵기', 'aria-label': '굵기', onclick: openSize });
+  const sizes = h('button', { class: 'pv-sz', title: '굵기', 'aria-label': '굵기', onmousedown: (e) => e.preventDefault(), onclick: openSize });
+  const boldBtn = h('button', { class: 'pv-t pv-bold tx-only', title: '굵게', 'aria-label': '굵게', onmousedown: (e) => e.preventDefault(), onclick: () => { txt.b = !txt.b; applyText(); paintTools(); } }, h('b', {}, 'B'));
+  const pinBtn = h('button', { class: 'pv-pin tx-only', title: '지금 설정을 기본값으로', onmousedown: (e) => e.preventDefault(), onclick: () => {
+    Object.assign(TXDEF, { c: txt.c, fs: txt.fs, b: !!txt.b });
+    try { localStorage.setItem('kmed:pv-text', JSON.stringify(TXDEF)); } catch { /* 무시 */ }
+    paintTools(); toast('새 텍스트 상자는 이 설정으로 시작합니다');
+  } }, icon('pin', 'icon s'), h('span', {}, '기본값으로'));
   const undoBtn = h('button', { class: 'pv-t', title: '실행 취소', 'aria-label': '실행 취소', disabled: true, onclick: undo }, icon('undo'));
   const zoomOut = h('button', { class: 'pv-t', title: '축소', 'aria-label': '축소', onclick: () => zoomBy(1 / 1.25) }, icon('minus'));
   const zoomIn = h('button', { class: 'pv-t', title: '확대', 'aria-label': '확대', onclick: () => zoomBy(1.25) }, icon('plus'));
@@ -56,8 +69,8 @@ export function openPdf(file, { key = null, label = '' } = {}) {
       h('button', { class: 'pv-t', 'aria-label': '닫기', onclick: close }, icon('x')),
       h('div', { class: 'pv-ttl' }, h('b', {}, file.series || file.filename), h('span', {}, [file.week, label].filter(Boolean).join('  ')))),
     h('div', { class: 'pv-tools' },
-      tbtn('pen', 'pen', '펜'), tbtn('hl', 'marker', '형광펜'), tbtn('eraser', 'eraser', '지우개'),
-      h('i', { class: 'pv-div' }), swatches, h('i', { class: 'pv-div' }), sizes, h('i', { class: 'pv-div' }), handBtn, undoBtn),
+      tbtn('pen', 'pen', '펜'), tbtn('hl', 'marker', '형광펜'), tbtn('text', 'type', '텍스트 상자'), tbtn('eraser', 'eraser', '지우개'),
+      h('i', { class: 'pv-div' }), swatches, h('i', { class: 'pv-div' }), sizes, boldBtn, pinBtn, h('i', { class: 'pv-div' }), handBtn, undoBtn),
     h('div', { class: 'pv-right' }, editBtn, zoomOut, zoomIn, pageInfo,
       h('button', { class: 'pv-t', title: '굿노트로 보내기', 'aria-label': '굿노트로 보내기', onclick: share }, icon('share')),
       h('button', { class: 'pv-t', title: '다운로드', 'aria-label': '다운로드', onclick: download }, icon('download'))));
@@ -74,9 +87,12 @@ export function openPdf(file, { key = null, label = '' } = {}) {
     handBtn.classList.toggle('on', handDraw);
     editBtn.replaceChildren(icon(editing ? 'check' : 'pen', 'icon s'), h('span', {}, editing ? '완료' : '편집'));
     editBtn.classList.toggle('on', editing);
+    if (!editing) commitText();
+    root.classList.toggle('texting', editing && tool === 'text');
   }
 
   function close() {
+    commitText();
     alive = false;
     root.classList.remove('on');
     document.documentElement.classList.remove('pv-open');
@@ -84,6 +100,7 @@ export function openPdf(file, { key = null, label = '' } = {}) {
     setTimeout(() => { root.remove(); doc?.destroy?.(); }, 300);
   }
   const onKey = (e) => {
+    if (ed) { if (e.key === 'Escape' || (e.key === 'Enter' && (e.metaKey || e.ctrlKey))) { e.preventDefault(); commitText(); } return; }
     if (e.key === 'Escape') close();
     if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 'z') { e.preventDefault(); undo(); }
   };
@@ -93,6 +110,17 @@ export function openPdf(file, { key = null, label = '' } = {}) {
     Object.entries(toolBtns).forEach(([t, b]) => b.classList.toggle('on', t === tool));
     const set = tool === 'hl' ? HL : COLORS;
     const cur = tool === 'hl' ? hl : color;
+    root.classList.toggle('texting', editing && tool === 'text');
+    if (tool === 'text') {
+      // 텍스트 : 글자색 · 크기 · 굵게 · 기본값으로
+      swatches.replaceChildren(...TXCOLORS.map((c) => h('button', { class: 'pv-c' + (c === txt.c ? ' on' : ''), style: { '--c': c }, 'aria-label': '글자색',
+        onmousedown: (e) => e.preventDefault(), onclick: () => { txt.c = c; applyText(); paintTools(); } })));
+      sizes.replaceChildren(h('b', { class: 'tx-a' }, 'Aa'), h('span', {}, Math.round(txt.fs)));
+      sizes.classList.remove('off');
+      boldBtn.classList.toggle('on', !!txt.b);
+      pinBtn.classList.toggle('same', txt.c === TXDEF.c && txt.fs === TXDEF.fs && !!txt.b === !!TXDEF.b);
+      return;
+    }
     if (tool === 'eraser') {
       // 지우개 : 색 자리에 지우는 방식
       const em = (v, label) => h('button', { class: 'pv-em' + (eraseMode === v ? ' on' : ''), onclick: () => { eraseMode = v; try { localStorage.setItem('kmed:pv-erase', v); } catch { /* 무시 */ } paintTools(); } }, label);
@@ -106,8 +134,9 @@ export function openPdf(file, { key = null, label = '' } = {}) {
     sizes.replaceChildren(h('i', { class: t, style: { width: `${d}px`, height: `${t === 'hl' ? Math.max(3, d * 0.45) : d}px`, background: t === 'hl' ? hl : t === 'er' ? '#fff' : color } }), h('span', {}, Math.round(size[t] * 10) / 10));
     sizes.classList.toggle('off', tool === 'eraser' && eraseMode === 'stroke');
   }
-  function setTool(t) { tool = t; paintTools(); }
+  function setTool(t) { if (t !== 'text') commitText(); tool = t; paintTools(); }
   function openSize() {
+    if (tool === 'text') { openTextSize(); return; }
     const t = tool === 'hl' ? 'hl' : tool === 'eraser' ? 'er' : 'pen';
     const [lo, hi] = RANGE[t];
     const prev = h('div', { class: 'sz-prev' }, h('i'));
@@ -130,6 +159,24 @@ export function openPdf(file, { key = null, label = '' } = {}) {
         h('button', { class: 'pv-t', 'aria-label': '가늘게', onclick: () => step(t === 'pen' ? -0.4 : -2) }, icon('minus')),
         input,
         h('button', { class: 'pv-t', 'aria-label': '굵게', onclick: () => step(t === 'pen' ? 0.4 : 2) }, icon('plus')))), { width: 280 });
+  }
+
+  function openTextSize() {
+    const [lo, hi] = RANGE.tx;
+    const val = h('b', {}); const prev = h('div', { class: 'sz-prev' }, h('span', {}, '가나다 Aa'));
+    const input = h('input', { type: 'range', min: lo, max: hi, step: 1, value: txt.fs });
+    const paint = () => {
+      val.textContent = Math.round(txt.fs);
+      Object.assign(prev.firstChild.style, { fontFamily: FONT, fontSize: `${Math.min(44, txt.fs * 1.2)}px`, color: txt.c, fontWeight: txt.b ? 700 : 400 });
+    };
+    const set = (v) => { txt.fs = Math.max(lo, Math.min(hi, v)); input.value = txt.fs; applyText(); paint(); paintTools(); };
+    input.addEventListener('input', () => set(+input.value));
+    paint();
+    popover(sizes, h('div', { class: 'sz-pop', onmousedown: (e) => { if (e.target.tagName !== 'INPUT') e.preventDefault(); } },
+      h('div', { class: 'sz-head' }, h('span', {}, '글씨 크기'), val), prev,
+      h('div', { class: 'sz-row' },
+        h('button', { class: 'pv-t', 'aria-label': '작게', onclick: () => set(txt.fs - 1) }, icon('minus')), input,
+        h('button', { class: 'pv-t', 'aria-label': '크게', onclick: () => set(txt.fs + 1) }, icon('plus')))), { width: 280 });
   }
 
   // ── 불러오기 ──
@@ -163,6 +210,7 @@ export function openPdf(file, { key = null, label = '' } = {}) {
   let io = null;
   const fitW = () => Math.min(scroller.clientWidth - 32, 1100);
   function layout() {
+    commitText();
     const w = Math.round(fitW() * zoom);
     pages.forEach((pg) => {
       const hgt = Math.round(w * pg.vp.height / pg.vp.width);
@@ -211,6 +259,7 @@ export function openPdf(file, { key = null, label = '' } = {}) {
     [...pg.strokes, ...(extra ? [extra] : [])].forEach((s) => drawStroke(c, s, pg.w));
   }
   function drawStroke(c, s, W) {
+    if (s.t === 'text') { drawText(c, s, W); return; }
     const p = s.p; if (!p.length) return;
     c.save();
     c.lineCap = 'round'; c.lineJoin = 'round';
@@ -232,6 +281,86 @@ export function openPdf(file, { key = null, label = '' } = {}) {
     c.restore();
   }
 
+  // ── 텍스트 상자 ──
+  const LH = 1.35;
+  function drawText(c, s, W) {
+    const fs = (s.fs / 1000) * W;
+    c.save();
+    c.font = `${s.b ? 700 : 400} ${fs}px ${FONT}`; c.fillStyle = s.c; c.textBaseline = 'top';
+    String(s.s).split('\n').forEach((line, i) => c.fillText(line, s.x * W, s.y * W + i * fs * LH + fs * 0.08));
+    c.restore();
+  }
+  function measure(s) {
+    const c = document.createElement('canvas').getContext('2d');
+    c.font = `${s.b ? 700 : 400} ${s.fs}px ${FONT}`;
+    const lines = String(s.s).split('\n');
+    s.w = Math.max(...lines.map((l) => c.measureText(l).width), s.fs * 0.5) / 1000;
+    s.h = (lines.length * s.fs * LH) / 1000;
+  }
+  const hitText = (s, x, y, pad = 0) => s.t === 'text' && x >= s.x - pad && x <= s.x + (s.w || 0) + pad && y >= s.y - pad && y <= s.y + (s.h || 0) + pad;
+
+  function openText(pg, idx, item, isNew) {
+    commitText();
+    const prev = pg.strokes.slice();
+    if (!isNew) { pg.strokes = pg.strokes.filter((x) => x !== item); redraw(pg); }
+    Object.assign(txt, { c: item.c, fs: item.fs, b: !!item.b }); paintTools();
+    const el = h('div', { class: 'pv-txt', contenteditable: 'true', spellcheck: 'false' });
+    el.textContent = item.s || '';
+    const grip = h('div', { class: 'pv-grip', title: '옮기기' }, icon('move', 'icon s'));
+    const box = h('div', { class: 'pv-txtbox' }, grip, el);
+    pg.wrap.append(box);
+    ed = { pg, idx, item, el, box, prev, isNew };
+    applyText();
+    el.addEventListener('paste', (e) => { e.preventDefault(); document.execCommand('insertText', false, (e.clipboardData || window.clipboardData).getData('text/plain')); });
+    // 옮기기
+    grip.addEventListener('pointerdown', (e) => {
+      e.preventDefault(); e.stopPropagation(); grip.setPointerCapture(e.pointerId);
+      const sx = e.clientX; const sy = e.clientY; const ox = item.x; const oy = item.y;
+      const mv = (ev) => { item.x = ox + (ev.clientX - sx) / pg.w; item.y = oy + (ev.clientY - sy) / pg.w; place(); };
+      const up = () => { grip.removeEventListener('pointermove', mv); grip.removeEventListener('pointerup', up); el.focus(); };
+      grip.addEventListener('pointermove', mv); grip.addEventListener('pointerup', up);
+    });
+    setTimeout(() => { el.focus(); const r = document.createRange(); r.selectNodeContents(el); r.collapse(false); const sel = getSelection(); sel.removeAllRanges(); sel.addRange(r); }, 30);
+  }
+  function place() {
+    if (!ed) return;
+    const { pg, item, box } = ed;
+    box.style.left = `${item.x * pg.w}px`; box.style.top = `${item.y * pg.w}px`;
+  }
+  function applyText() {
+    if (!ed) return;
+    const { pg, item, el } = ed;
+    Object.assign(item, { c: txt.c, fs: txt.fs, b: !!txt.b });
+    const fs = (item.fs / 1000) * pg.w;
+    Object.assign(el.style, { fontFamily: FONT, fontSize: `${fs}px`, lineHeight: String(LH), color: item.c, fontWeight: item.b ? 700 : 400, minWidth: `${fs * 2}px` });
+    place();
+  }
+  function commitText() {
+    if (!ed) return;
+    const { pg, idx, item, el, box, prev, isNew } = ed;
+    ed = null;
+    const text = (el.innerText || '').replace(/\u00a0/g, ' ').replace(/\n+$/, '');
+    box.remove();
+    if (text.trim()) {
+      item.s = text; item.x = round(item.x); item.y = round(item.y); measure(item);
+      pg.strokes = [...pg.strokes, item];
+    }
+    if (text.trim() || !isNew) history.push({ i: idx, prev });
+    redraw(pg);
+    undoBtn.disabled = !history.length;
+    saveNotes(file.id, fileKey, idx + 1, pg.strokes);
+  }
+  // 텍스트 도구 : 탭한 자리에 새 상자, 기존 글자를 누르면 고치기
+  function textTap(pg, idx, e) {
+    if (ed) { commitText(); return; }
+    const r = pg.ink.getBoundingClientRect();
+    const x = (e.clientX - r.left) / pg.w; const y = (e.clientY - r.top) / pg.w;
+    const hit = [...pg.strokes].reverse().find((s) => hitText(s, x, y, 0.006));
+    if (hit) { openText(pg, idx, hit, false); return; }
+    const fs = txt.fs / 1000;
+    openText(pg, idx, { t: 'text', x: round(x), y: round(y - fs * 0.6), s: '', c: txt.c, fs: txt.fs, b: !!txt.b }, true);
+  }
+
   // ── 터치 : 그리기 · 넘기기 · 두 손가락 확대 ──
   //  읽기 모드      : 손 · 펜슬 모두 넘기기, 두 손가락 확대
   //  편집 + 기본    : 펜슬 = 그리기, 손가락 하나 = 넘기기, 두 손가락 = 확대
@@ -247,12 +376,12 @@ export function openPdf(file, { key = null, label = '' } = {}) {
       return;
     }
     const stylus = t[0]?.touchType === 'stylus';
-    if (editing && (stylus || handDraw) && e.target.classList?.contains('pv-ink')) e.preventDefault();
+    if (editing && tool !== 'text' && (stylus || handDraw) && e.target.classList?.contains('pv-ink')) e.preventDefault();
   }, { passive: false });
   scroller.addEventListener('touchmove', (e) => {
     if (pinch?.src === 'touch' && e.touches.length >= 2) { e.preventDefault(); movePinch(e.touches); return; }
     const t = e.touches[0];
-    if (editing && t && (t.touchType === 'stylus' || handDraw) && e.target.classList?.contains('pv-ink')) e.preventDefault();
+    if (editing && tool !== 'text' && t && (t.touchType === 'stylus' || handDraw) && e.target.classList?.contains('pv-ink')) e.preventDefault();
   }, { passive: false });
   const touchEnd = (e) => { if (pinch?.src === 'touch' && e.touches.length < 2) endPinch(); };
   scroller.addEventListener('touchend', touchEnd);
@@ -328,7 +457,20 @@ export function openPdf(file, { key = null, label = '' } = {}) {
   function bindInk(pg, idx) {
     let cur = null; let pid = null;
     const pt = (e) => { const r = pg.ink.getBoundingClientRect(); return [(e.clientX - r.left) / pg.w, (e.clientY - r.top) / pg.w, e.pointerType === 'pen' ? (e.pressure || 0.5) : 0.5]; };
+    pg.ink.addEventListener('click', (e) => { if (editing && tool === 'text' && !pinch) textTap(pg, idx, e); });
+    let hold = 0; let lastMove = null;
+    const armHold = () => {
+      clearTimeout(hold);
+      if (!cur || cur.t !== 'hl' || cur.straight) return;
+      hold = setTimeout(() => { // 1.5초 멈추면 처음과 지금을 잇는 직선으로
+        if (!cur || cur.t !== 'hl') return;
+        cur.straight = true; cur.p = [cur.p[0], cur.p[cur.p.length - 1]];
+        redraw(pg, cur);
+        pg.wrap.classList.remove('snap'); void pg.wrap.offsetWidth; pg.wrap.classList.add('snap');
+      }, 1500);
+    };
     pg.ink.addEventListener('pointerdown', (e) => {
+      if (editing && tool === 'text') return;
       if (!drawsWith(e) || pinch) return;
       if (e.pointerType === 'mouse' && e.button !== 0) return;
       e.preventDefault();
@@ -336,19 +478,26 @@ export function openPdf(file, { key = null, label = '' } = {}) {
       pid = e.pointerId; pg.ink.setPointerCapture(pid);
       if (tool === 'eraser') { history.push({ i: idx, prev: pg.strokes.slice() }); erase(pg, pt(e)); cur = { erase: true }; return; }
       cur = { t: tool === 'hl' ? 'hl' : 'pen', c: tool === 'hl' ? hl : color, w: (tool === 'hl' ? size.hl : size.pen) / 1000, p: [pt(e)] };
+      lastMove = pt(e); armHold();
       redraw(pg, cur);
     });
     pg.ink.addEventListener('pointermove', (e) => {
       if (!cur || e.pointerId !== pid || pinch) return;
       const evs = e.getCoalescedEvents ? e.getCoalescedEvents() : [e];
       if (cur.erase) { evs.forEach((x) => erase(pg, pt(x))); return; }
+      if (cur.straight) { cur.p = [cur.p[0], pt(evs[evs.length - 1])]; redraw(pg, cur); return; }
       const before = cur.p.length;
       evs.forEach((x) => cur.p.push(pt(x)));
+      // 조금이라도 움직이면 1.5초 다시 셈
+      const q = cur.p[cur.p.length - 1];
+      if (!lastMove || Math.hypot(q[0] - lastMove[0], q[1] - lastMove[1]) > 0.004) { lastMove = q; armHold(); }
       if (cur.t === 'hl') redraw(pg, cur);
       else { const seg = { ...cur, p: cur.p.slice(Math.max(0, before - 1)) }; drawStroke(pg.ctx, seg, pg.w); }
     });
     const end = (e) => {
+      clearTimeout(hold);
       if (!cur || e.pointerId !== pid) return;
+      delete cur.straight;
       if (!cur.erase && cur.p.length) {
         history.push({ i: idx, prev: pg.strokes.slice() });
         cur.p = cur.p.map(([x, y, pr]) => [round(x), round(y), Math.round(pr * 100) / 100]);
@@ -367,7 +516,7 @@ export function openPdf(file, { key = null, label = '' } = {}) {
     if (eraseMode === 'stroke') {
       // 선 지우기 : 닿은 선을 통째로
       const r = 0.015;
-      const keep = pg.strokes.filter((s) => !s.p.some(([a, b]) => (a - x) ** 2 + (b - y) ** 2 < r * r));
+      const keep = pg.strokes.filter((s) => (s.t === 'text' ? !hitText(s, x, y, r) : !s.p.some(([a, b]) => (a - x) ** 2 + (b - y) ** 2 < r * r)));
       if (keep.length !== pg.strokes.length) { pg.strokes = keep; redraw(pg); }
       return;
     }
@@ -382,6 +531,7 @@ export function openPdf(file, { key = null, label = '' } = {}) {
     let changed = false;
     const out = [];
     pg.strokes.forEach((s) => {
+      if (s.t === 'text') { if (hitText(s, x, y, r)) changed = true; else out.push(s); return; }
       if (!s.p.some((q, i) => near(q) || (i && segHit(s.p[i - 1], q)))) { out.push(s); return; }
       changed = true;
       let part = [];
@@ -392,7 +542,7 @@ export function openPdf(file, { key = null, label = '' } = {}) {
       });
       if (part.length) out.push({ ...s, p: part });
     });
-    if (changed) { pg.strokes = out.filter((s) => s.p.length > 1 || s.t !== 'hl'); redraw(pg); }
+    if (changed) { pg.strokes = out.filter((s) => s.t === 'text' || s.p.length > 1 || s.t !== 'hl'); redraw(pg); }
   }
   function undo() {
     const last = history.pop(); if (!last) return;

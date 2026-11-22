@@ -1060,3 +1060,24 @@ html.pv-open,html.pv-open body{overflow:hidden}
 .pv-em{height:32px;padding:0 10px;border-radius:9px;font-size:13px;font-weight:700;color:var(--sub);white-space:nowrap;transition:background-color .15s,color .15s}
 .pv-em.on{background:#fff;color:var(--text);box-shadow:var(--sh1)}
 .pv-sz i.er{box-shadow:0 0 0 1.5px #8B95A1}
+/* 텍스트 상자 */
+.tx-only{display:none}
+.pv.texting .tx-only{display:inline-flex}
+.pv.texting .pv-ink{cursor:text}
+.pv-bold b{font-size:17px;font-weight:900}
+.pv-bold.on{background:#fff;box-shadow:var(--sh1)}
+.pv-pin{align-items:center;gap:5px;height:32px;padding:0 10px;margin-left:2px;border-radius:9px;font-size:13px;font-weight:700;color:var(--sub);white-space:nowrap}
+.pv-pin .icon{width:15px;height:15px}
+.pv-pin.same{opacity:.45}
+.pv-pin:active{background:#fff}
+.pv-sz .tx-a{font-size:14px;font-weight:800;color:var(--text);font-family:"Malgun Gothic","Apple SD Gothic Neo",sans-serif}
+.sz-prev span{max-width:240px;overflow:hidden;white-space:nowrap}
+.pv-txtbox{position:absolute;z-index:4}
+.pv-txt{white-space:pre;outline:0;padding:0 2px;margin:-1px -3px;border:1.5px dashed var(--blue);border-radius:4px;background:rgba(255,255,255,.55);min-height:1em;cursor:text;caret-color:var(--blue)}
+.pv-grip{position:absolute;left:-30px;top:-4px;width:24px;height:24px;border-radius:7px;background:var(--blue);color:#fff;display:grid;place-items:center;cursor:move;touch-action:none;box-shadow:0 2px 6px rgba(49,130,246,.35)}
+.pv-grip .icon{width:14px;height:14px}
+.pv-page.snap .pv-ink{animation:snapFlash .35s ease}
+@keyframes snapFlash{40%{filter:drop-shadow(0 0 6px rgba(49,130,246,.6))}}
+@media (max-width:1320px){.pv-pin span{display:none}.pv-pin{padding:0 8px}.pv.texting .pv-c{width:28px}}
+.pv-edit{white-space:nowrap;flex:none}
+.pv-edit span{white-space:nowrap}
