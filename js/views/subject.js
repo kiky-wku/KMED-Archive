@@ -11,6 +11,7 @@ import { jungTranslate } from '../blocks/jung-translate.js';
 import { umOrder } from '../blocks/um-order.js';
 import { umAnswers } from '../blocks/um-answers.js';
 import { wordbook } from '../blocks/wordbook.js';
+import { flash } from '../blocks/flash.js';
 
 // 탭 종류 → 화면
 const RENDER = {
@@ -21,10 +22,11 @@ const RENDER = {
   um_order: (ctx, el) => umOrder(ctx, el),
   um_answers: (ctx, el) => umAnswers(ctx, el),
   wordbook: (ctx, el) => wordbook(ctx, el),
+  flash: (ctx, el) => flash(ctx, el),
 };
 
 // 화면에 꼭 맞게 고정 (스크롤 없음)
-const FIT = new Set(['hanja_r', 'hanja_h', 'jung_translate']);
+const FIT = new Set(['hanja_r', 'hanja_h', 'jung_translate', 'flash']);
 
 // 과목 화면 : #/s/{과목}?r={범위}&b={탭}
 export function subjectView(id, q) {

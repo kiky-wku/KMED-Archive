@@ -11,19 +11,25 @@ const once = (key, fn) => { if (!cache.has(key)) cache.set(key, fn().catch((e) =
 // 정한문 해석 : 같은 쪽이 이어지는 줄을 한 묶음으로
 export function loadJung(rangeId) {
   return once(`jung:${rangeId}`, async () => {
-    const rows = await fetchAll(() => sb.from('jung_lines').select('id,page,sort,hanja,eum,translation,notes').eq('range_id', rangeId).order('sort'));
+    const rows = await fetchAll(() => sb.from('jung_lines').select('*').eq('range_id', rangeId).order('sort'));
     const groups = []; let cur = null;
     for (const r of rows) {
-      if (!cur || r.page !== cur.page) { cur = { id: r.id, page: r.page, lines: [] }; groups.push(cur); }
+      if (!cur || r.page !== cur.page) { cur = { id: r.id, page: r.page, lines: [], hint: '' }; groups.push(cur); }
       cur.lines.push(r);
+      if (!cur.hint && r.hint) cur.hint = r.hint;
     }
     return groups;
   });
 }
 
+// 플래시카드
+export function loadFlash(rangeId) {
+  return once(`flash:${rangeId}`, () => fetchAll(() => sb.from('flash_cards').select('*').eq('range_id', rangeId).order('sort')));
+}
+
 // 엄한문 문장
 export function loadSentences(rangeId) {
-  return once(`um:${rangeId}`, () => fetchAll(() => sb.from('um_sentences').select('id,unit_id,sort,sentence,cards,orders,translation,source').eq('range_id', rangeId).order('sort')));
+  return once(`um:${rangeId}`, () => fetchAll(() => sb.from('um_sentences').select('*').eq('range_id', rangeId).order('sort')));
 }
 
 // ── 문항별 기록 (item_progress) : Map(item_id → { status, data }) ──
@@ -93,4 +99,4 @@ async function pump() {
   busy = false;
 }
 
-export function resetStudyCaches() { [...cache.keys()].filter((k) => k.startsWith('jung:') || k.startsWith('um:')).forEach((k) => cache.delete(k)); }
+export function resetStudyCaches() { [...cache.keys()].filter((k) => k.startsWith('jung:') || k.startsWith('um:') || k.startsWith('flash:')).forEach((k) => cache.delete(k)); }

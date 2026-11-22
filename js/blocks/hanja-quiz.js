@@ -1,5 +1,6 @@
 import { h, icon, toast, drawer } from '../ui.js';
-import { loadCards, loadProgress, uniqueCards, readingText, matchReading, setStatus, deckState } from '../data/hanja.js';
+import { loadCards, loadProgress, uniqueCards, readingText, matchReading, setStatus, deckState, loadHints } from '../data/hanja.js';
+import { hint } from './hint.js';
 import { pencilPad } from './pencil.js';
 import { unitPicker } from './units.js';
 
@@ -15,7 +16,7 @@ export function hanjaQuiz(ctx, el, mode) {
     h('i', { class: 'skel card' }), h('i', { class: 'skel act' })));
 
   (async () => {
-    const [{ cards, units }, prog] = await Promise.all([loadCards(ctx.range.id), loadProgress(ctx.pool)]);
+    const [{ cards, units }, prog, hints] = await Promise.all([loadCards(ctx.range.id), loadProgress(ctx.pool), loadHints(ctx.pool)]);
     if (!alive) return;
     el.replaceChildren();
     el.classList.add('q-in');
@@ -102,9 +103,10 @@ export function hanjaQuiz(ctx, el, mode) {
         return;
       }
       const c = cmap.get(cur());
+      const hn = hint(hints.get(c.ch));
       const meta = h('div', { class: 'card-meta' },
         h('span', { class: 'idx' }, `${deck.pos + 1}`, h('i', {}, ` / ${r.length}`)),
-        h('div', { class: 'meta-act' },
+        h('div', { class: 'meta-act' }, hn.btn,
           h('button', { class: 'tool-ic sm', 'aria-label': '이전 문제', title: '이전 문제', disabled: !deck.hist.length, onclick: back }, icon('undo', 'icon s')),
           h('button', { class: 'tool-ic sm', 'aria-label': '건너뛰기', title: '건너뛰기', onclick: skip }, icon('skip', 'icon s'))));
 
@@ -112,7 +114,7 @@ export function hanjaQuiz(ctx, el, mode) {
         const input = h('input', { class: 'ans-in', placeholder: '훈과 음을 입력하세요', autocomplete: 'off', autocapitalize: 'none', autocorrect: 'off', spellcheck: 'false' });
         const verdict = h('div', { class: 'verdict' });
         const flip = h('div', { class: 'flip' },
-          h('div', { class: 'face front' }, meta, h('div', { class: 'glyph' }, c.ch)),
+          h('div', { class: 'face front' }, meta, h('div', { class: 'glyph' }, c.ch), hn.panel),
           h('div', { class: 'face back' }, h('div', { class: 'reading' }, readingText(c)), verdict));
         const submit = () => {
           if (phase !== 'ask') return;
@@ -129,7 +131,7 @@ export function hanjaQuiz(ctx, el, mode) {
       } else {
         const card = h('div', { class: 'qcard rcard' }, meta,
           h('div', { class: 'reading' }, readingText(c)),
-          h('div', { class: 'glyph reveal' }, c.ch));
+          h('div', { class: 'glyph reveal' }, c.ch), hn.panel);
         pad?.destroy(); pad = pencilPad();
         const reveal = () => {
           if (phase !== 'ask') return;

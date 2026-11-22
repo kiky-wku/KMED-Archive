@@ -2,6 +2,7 @@ import { h, icon, toast, seg } from '../ui.js';
 import { loadCards } from '../data/hanja.js';
 import { loadSentences, loadItems, saveItem, clearItems } from '../data/study.js';
 import { unitPicker } from './units.js';
+import { hint } from './hint.js';
 
 // ─────────────────────────────────────────────
 // 엄한문 순서 맞추기 : 해석 순서대로 카드 누르기 → 채점 → 정답 순서 다시 보기
@@ -84,11 +85,13 @@ export function umOrder(ctx, el) {
       const fit = () => { if (!ta.isConnected || !ta.value) { ta.style.height = ''; return; } ta.style.height = 'auto'; ta.style.height = `${ta.scrollHeight}px`; };
       ta.addEventListener('input', () => { fit(); saveItem(KIND, items, s.id, { data: { t: ta.value } }, 700); });
       requestAnimationFrame(fit);
+      const hn = hint(s.hint);
       const node = h('article', { class: 'ox', style: { animationDelay: `${Math.min(i, 8) * 0.03}s` } },
         h('header', {},
           h('span', { class: 'num' }, i + 1),
           h('div', { class: 'sen' }, s.sentence || s.cards.join('')),
-          s.source ? h('span', { class: 'src' }, s.source) : null),
+          s.source ? h('span', { class: 'src' }, s.source) : null, hn.btn),
+        hn.panel,
         row,
         h('div', { class: 'ox-tools' },
           h('button', { class: 'txt-btn', onclick: () => { saveItem(KIND, items, s.id, { status: null, data: { picks: [] } }); paint(s); renderCounts(); } }, icon('undo', 'icon s'), '다시 고르기')),

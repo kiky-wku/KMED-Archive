@@ -2,6 +2,7 @@ import { h, icon } from '../ui.js';
 import { loadCards } from '../data/hanja.js';
 import { loadSentences } from '../data/study.js';
 import { unitPicker } from './units.js';
+import { hint } from './hint.js';
 
 // ─────────────────────────────────────────────
 // 엄한문 문장 모음 : 단원별 문장 · 정답 순서 · 해석 (해석 가리기 가능)
@@ -45,9 +46,11 @@ export function umAnswers(ctx, el) {
           u.label ? h('h3', {}, u.label, h('span', {}, `${arr.length}문장`)) : null,
           h('div', { class: 'ua-card' }, arr.map((s, i) => {
             const seq = s.cards.map((c, ci) => ({ c, o: s.orders[ci] })).sort((a, b) => a.o - b.o);
+            const hn = hint(s.hint);
             const row = h('div', { class: 'ua-row' },
               h('div', { class: 'ua-top' }, h('span', { class: 'n' }, i + 1), h('div', { class: 'sen' }, s.sentence || s.cards.join('')),
-                s.source ? h('span', { class: 'src' }, s.source) : null),
+                s.source ? h('span', { class: 'src' }, s.source) : null, hn.btn),
+              hn.panel,
               h('div', { class: 'seq' }, seq.map((x, n) => h('span', {}, h('b', {}, n + 1), x.c))),
               h('div', { class: 'tr', onclick: () => row.classList.toggle('peek') }, s.translation));
             return row;

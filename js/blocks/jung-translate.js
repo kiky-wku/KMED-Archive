@@ -1,6 +1,7 @@
 import { h, icon, toast, drawer } from '../ui.js';
 import { deckState } from '../data/hanja.js';
 import { loadJung, loadItems, saveItem, clearItems } from '../data/study.js';
+import { hint } from './hint.js';
 
 // ─────────────────────────────────────────────
 // 정한문 해석 쓰기 : 원문 한 쪽씩 → 내 해석 → 정답 확인 → 맞음/틀림
@@ -72,15 +73,17 @@ export function jungTranslate(ctx, el) {
       ta.addEventListener('input', () => saveItem(KIND, items, g.id, { data: { t: ta.value } }, 700));
       ta.addEventListener('keydown', (e) => { if (e.key === 'Enter' && (e.metaKey || e.ctrlKey)) { e.preventDefault(); reveal(); } });
 
+      const hn = hint(g.hint);
       const meta = h('div', { class: 'jt-meta' },
         h('span', { class: 'idx' }, `${deck.pos + 1}`, h('i', {}, ` / ${deck.order.length}`)),
         s ? h('span', { class: 'st ' + s }, s === 'ok' ? '맞음' : '틀림') : null,
-        h('div', { class: 'meta-act' },
+        h('div', { class: 'meta-act' }, hn.btn,
           h('button', { class: 'tool-ic sm', title: '이전', 'aria-label': '이전', disabled: deck.pos === 0, onclick: () => go(-1) }, icon('back', 'icon s')),
           h('button', { class: 'tool-ic sm', title: '다음', 'aria-label': '다음', disabled: deck.pos >= deck.order.length - 1, onclick: () => go(1) }, icon('right', 'icon s'))));
 
       const ask = h('div', { class: 'jt-card jt-q' }, meta,
         h('div', { class: 'jt-han' }, g.lines.map((l) => h('p', {}, l.hanja))),
+        hn.panel,
         h('div', { class: 'jt-div' }),
         ta);
       const ans = h('div', { class: 'jt-card jt-a' },

@@ -17,7 +17,7 @@ export const FORMATS = {
   },
   hanja: {
     sheet: '한자', label: '한자',
-    cols: [['hanja', '한자 한 글자'], ['hun-eum', '훈음']],
+    cols: [['hanja', '한자 한 글자'], ['hun-eum', '훈음'], ['hint', '암기법 (없으면 비움)']],
     rules: [
       '자료에 나온 한자를 모두 모으되 같은 한자는 한 번만, 등장 순서대로.',
       '훈음은 "훈 음" 형태. (예: 스스로 자) 훈이 여러 개면 " / " 로 구분.',
@@ -27,7 +27,7 @@ export const FORMATS = {
   },
   hanja_unit: {
     sheet: '한자', label: '한자 (단원별)',
-    cols: [['unit', '단원 id'], ['hanja', '한자 한 글자'], ['hun-eum', '훈음']],
+    cols: [['unit', '단원 id'], ['hanja', '한자 한 글자'], ['hun-eum', '훈음'], ['hint', '암기법 (없으면 비움)']],
     rules: [
       'unit 은 그 한자가 속한 단원의 id. 단원 탭의 id 와 글자까지 똑같이.',
       '한자 한 글자와 그 한자의 훈음을 짝지어 한 행씩. 빈 칸 · 날짜 · 이름 같은 메타는 건너뜀.',
@@ -38,7 +38,7 @@ export const FORMATS = {
   jung: {
     sheet: '해석', label: '해석',
     cols: [['page', '문장 묶음 번호'], ['hanja', '원문'], ['eum', '음'], ['translation', '해석'],
-      ...Array.from({ length: 10 }, (_, i) => [`note${i + 1}`, `주석 ${i + 1}`])],
+      ...Array.from({ length: 10 }, (_, i) => [`note${i + 1}`, `주석 ${i + 1}`]), ['hint', '암기법 (묶음 첫 행에만, 없으면 비움)']],
     rules: [
       'page 는 문장 묶음 번호 (1, 2, 3…). 같은 묶음의 행은 page 를 반드시 똑같이.',
       '한 묶음이 여러 원문 조각이면 조각마다 한 행. 해석은 대표 행에 넣고 나머지는 비워도 됨.',
@@ -48,7 +48,7 @@ export const FORMATS = {
   },
   um: {
     sheet: '문장', label: '문장',
-    cols: [['unit', '단원 id'], ['sentence', '원문'], ['cards', '카드'], ['order', '순서'], ['translation', '해석'], ['source', '출처']],
+    cols: [['unit', '단원 id'], ['sentence', '원문'], ['cards', '카드'], ['order', '순서'], ['translation', '해석'], ['source', '출처'], ['hint', '암기법 (없으면 비움)']],
     rules: [
       '한 머리 아래 문장이 여러 개면 합치지 말고 문장 수만큼 행을 나눔. (unit 은 같게)',
       'cards : 카드에 해당하는 한자 토큰. 弟子 처럼 2자 이상도 한 토큰. 칸 안에서는 반드시 " / " 로 구분.',
@@ -56,6 +56,15 @@ export const FORMATS = {
       'cards 개수 = order 개수. order 는 문장마다 1부터 빠짐없이.',
       '출처가 없으면 source 는 비움.',
       '숫자·글자가 깨지거나 cards 와 order 개수가 안 맞으면 억지로 맞추지 말고 그 행을 검수용으로 표시.',
+    ],
+  },
+  flash: {
+    sheet: '카드', label: '플래시카드',
+    cols: [['deck', '묶음 (단원, 주차 등)'], ['front', '앞면'], ['back', '뒷면'], ['hint', '암기법 (없으면 비움)']],
+    rules: [
+      '카드 한 장이 한 행. 앞면은 묻는 것(용어, 약재 이름 등), 뒷면은 답(뜻, 효능 등).',
+      '묶음은 단원이나 주차처럼 나눠 볼 단위. 같은 묶음은 이름을 글자까지 똑같이.',
+      '뒷면이 여러 줄이면 한 칸 안에서 줄바꿈해도 됨.',
     ],
   },
 };
@@ -67,6 +76,7 @@ export function formatsFor(kinds) {
   const out = [];
   if (k.has('hanja_r') || k.has('hanja_h') || k.has('hanja_grid') || k.has('wordbook')) out.push('hanja');
   if (k.has('jung_translate')) out.push('jung');
+  if (k.has('flash')) out.push('flash');
   return out;
 }
 
@@ -81,6 +91,7 @@ export function buildRequest(keys, { subject, range }) {
     const f = FORMATS[k];
     L.push(`[${f.sheet} 탭] ${f.cols.length}칸 : ${f.cols.map(([c, d], i) => `(${i + 1})${c} ${d}`).join(', ')}`);
     f.rules.forEach((r) => L.push(`- ${r}`));
+    if (f.cols.some(([c]) => c === 'hint')) L.push(`- ${'암기법은 그 항목을 외우는 데 쓰는 짧은 메모. 자료에 있으면 그대로, 없으면 비움.'}`);
     L.push('');
   });
   L.push('[공통 규칙]', '- 한자, 훈음, 해석은 지어내지 말고 자료에 있는 그대로', '- 자료 구조가 애매하면 먼저 나에게 물어보고, 깨지거나 헷갈리는 부분은 결과 맨 위에 검수 목록으로 알려 줘', '', '다 만들면 .xlsx 파일로 받게 해 줘.');

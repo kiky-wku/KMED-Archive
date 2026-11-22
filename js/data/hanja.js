@@ -109,3 +109,17 @@ export function deckState(key, chars) {
 
 // 데이터를 새로 넣은 뒤 다시 불러오기
 export function resetCaches() { cardCache.clear(); }
+
+// 한자 암기법 : Map(ch → 암기법), 기록 공유 그룹(pool) 단위
+const hintCache = new Map();
+export async function loadHints(pool) {
+  if (hintCache.has(pool)) return hintCache.get(pool);
+  let m = new Map();
+  try {
+    const rows = await fetchAll(() => sb.from('hanja_hints').select('ch,hint').eq('pool', pool).order('ch'));
+    m = new Map(rows.filter((r) => r.hint).map((r) => [r.ch, r.hint]));
+  } catch { /* 08 SQL 전이면 암기법 없이 */ }
+  hintCache.set(pool, m);
+  return m;
+}
+export function resetHints() { hintCache.clear(); }
