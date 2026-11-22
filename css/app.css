@@ -67,18 +67,23 @@ input{font:inherit;color:inherit}
 /* ---------- 로그인 · 첫 로그인 (무채색) ---------- */
 @keyframes logoIn{from{opacity:0;transform:translateY(10px) scale(.96);filter:blur(6px)}to{opacity:1;transform:none;filter:none}}
 .auth{min-height:100vh;min-height:100dvh;display:grid;place-items:center;padding:32px 24px calc(32px + var(--safe-b));background:#fff}
-.auth-card{width:100%;max-width:360px;display:flex;flex-direction:column;gap:12px}
+.auth-card{width:100%;max-width:250px;display:flex;flex-direction:column;gap:8px}
 .auth-card>*{animation:rise .45s var(--ease) both}
 .auth-card>*:nth-child(2){animation-delay:.22s}.auth-card>*:nth-child(3){animation-delay:.28s}
 .auth-card>*:nth-child(4){animation-delay:.34s}.auth-card>*:nth-child(5){animation-delay:.4s}.auth-card>*:nth-child(6){animation-delay:.46s}
-.auth-card>.brand{width:170px;align-self:center;margin:0 0 48px;animation:logoIn .7s var(--ease) both}
-.auth-card>.brand.sm{width:130px;margin-bottom:36px}
-.auth-title{font-size:20px;font-weight:800;letter-spacing:-.03em;margin:0 0 4px}
-.auth .input{height:56px;background:#fff;border:1px solid var(--line);border-radius:12px}
-.auth .input:focus{border-color:var(--text);background:#fff}
+.auth-card>.brand{width:118px;align-self:center;margin:0 0 40px;animation:logoIn .7s var(--ease) both}
+.auth-card>.brand.sm{width:104px;margin-bottom:32px}
+.auth-title{font-size:20px;font-weight:800;letter-spacing:-.03em;margin:0 0 4px;text-align:center}
+.auth .input{height:50px;background:none;border:0;border-bottom:1.5px solid var(--line);border-radius:0;padding:0 2px;font-size:17px;transition:border-color .2s}
+.auth .input:focus,.auth .input:not(:placeholder-shown){border-color:var(--text);background:none}
 .auth .input::placeholder{color:var(--faint)}
-.auth .btn{height:56px;border-radius:12px;background:var(--text);margin-top:8px}
-.auth .btn:active{background:#000}
+.go{width:52px;height:52px;border-radius:50%;display:grid;place-items:center;background:var(--line);color:#fff;flex:none;
+  transition:background-color .2s,scale .15s var(--spring)}
+.go.on{background:var(--text)}
+.go:active{scale:.92}
+.go .icon{width:22px;height:22px;stroke-width:2.4}
+.go .spin{width:20px;height:20px;border-radius:50%;border:2.5px solid rgba(255,255,255,.4);border-top-color:#fff;animation:spin .7s linear infinite}
+.auth .go{align-self:center;margin-top:28px}
 .auth .hint{font-size:14px;font-weight:700;color:var(--sub);padding:0 4px}
 .auth .hint:empty{display:none}
 
@@ -95,12 +100,13 @@ input{font:inherit;color:inherit}
 @keyframes fadeIn{from{opacity:0}to{opacity:1}}
 
 /* ---------- 환영 ---------- */
-.welcome{min-height:100vh;min-height:100dvh;display:flex;flex-direction:column;align-items:center;justify-content:center;
+.welcome{position:relative;min-height:100vh;min-height:100dvh;display:flex;flex-direction:column;align-items:center;justify-content:center;
   padding:24px;padding-bottom:calc(24px + var(--safe-b));text-align:center}
 .wave{display:inline-block;transform-origin:70% 70%;animation:wave 1.4s .5s ease-in-out both}
-.welcome .brand{width:150px;margin-bottom:40px;animation:logoIn .7s var(--ease) both}
-.welcome h1{font-size:34px;font-weight:800;letter-spacing:-.03em;margin:0;line-height:1.3}
-.welcome .meta{font-size:17px;font-weight:600;color:var(--sub);margin-top:10px}
+.welcome .brand.top{position:absolute;top:calc(70px + var(--safe-t));width:92px;height:auto;animation:logoIn .7s var(--ease) both}
+.welcome h1{font-size:28px;font-weight:800;letter-spacing:-.03em;margin:0;line-height:1.3}
+.welcome .meta{font-size:15px;font-weight:600;color:var(--sub);margin-top:8px}
+.welcome .go{margin-top:36px}
 .welcome .btn{background:var(--text);height:56px;border-radius:12px}
 .welcome .btn:active{background:#000}
 .welcome .actions{width:100%;max-width:360px;margin-top:40px;display:flex;flex-direction:column;gap:12px}

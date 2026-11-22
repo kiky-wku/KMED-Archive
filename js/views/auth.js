@@ -1,5 +1,5 @@
 import { sb } from '../sb.js';
-import { h, shake, busy, toast, deviceName, gradeLabel } from '../ui.js';
+import { h, icon, shake, toast, deviceName, gradeLabel } from '../ui.js';
 import { S, loadMe, route } from '../app.js';
 
 // 아이디 → 로그인용 내부 주소 (@가 있으면 이메일 그대로)
@@ -22,12 +22,28 @@ export function doneCheck(next) {
   }, reduce ? 300 : 1000));
 }
 
+
+// 화살표 버튼 : 다 입력하면 진해지고, 누르면 스피너
+function goButton(label) {
+  return h('button', { class: 'go', type: 'submit', 'aria-label': label }, icon('arrow'));
+}
+function busy(btn, on) {
+  btn.disabled = on;
+  btn.replaceChildren(on ? h('i', { class: 'spin' }) : icon('arrow'));
+}
+function watchFilled(btn, inputs) {
+  const sync = () => btn.classList.toggle('on', inputs.every((i) => i.value.trim()));
+  inputs.forEach((i) => i.addEventListener('input', sync));
+  sync();
+}
+
 // 로그인
 export function loginView() {
   const email = h('input', { class: 'input', type: 'text', placeholder: '아이디', autocomplete: 'username', autocapitalize: 'none', autocorrect: 'off', spellcheck: 'false' });
   const pw = h('input', { class: 'input', type: 'password', placeholder: '비밀번호', autocomplete: 'current-password' });
   const err = h('div', { class: 'err' });
-  const btn = h('button', { class: 'btn', type: 'submit' }, '로그인');
+  const btn = goButton('로그인');
+  watchFilled(btn, [email, pw]);
 
   const card = h('form', { class: 'auth-card', novalidate: true, onsubmit: submit },
     h('img', { class: 'brand', src: 'icons/logo.png', alt: '工夫韓醫 YRR STUDY' }),
@@ -44,13 +60,13 @@ export function loginView() {
     busy(btn, true);
     const { error } = await sb.auth.signInWithPassword({ email: idToEmail(email.value), password: pw.value });
     if (error) {
-      busy(btn, false, '로그인');
+      busy(btn, false);
       err.textContent = /invalid/i.test(error.message) ? '아이디 또는 비밀번호가 올바르지 않습니다.' : '로그인할 수 없습니다. 잠시 후 다시 시도하세요.';
       shake(card);
       return;
     }
     await loadMe();
-    if (!S.profile) { busy(btn, false, '로그인'); err.textContent = '등록되지 않은 계정입니다.'; shake(card); return; }
+    if (!S.profile) { busy(btn, false); err.textContent = '등록되지 않은 계정입니다.'; shake(card); return; }
     sb.rpc('touch_session', { p_device: deviceName() });
     if (S.profile.must_change_pw) { route(); return; }      // 첫 로그인은 비밀번호 변경 후에 체크
     await doneCheck(() => route({ instant: true }));
@@ -69,7 +85,8 @@ export function firstView() {
   const sno = h('input', { class: 'input', type: 'text', inputmode: 'numeric', maxlength: '2', placeholder: '학번 (예: 26)', value: p.student_no ?? '', readonly: locked });
   const hint = h('div', { class: 'hint' });
   const err = h('div', { class: 'err' });
-  const btn = h('button', { class: 'btn', type: 'submit' }, '시작');
+  const btn = goButton('시작');
+  watchFilled(btn, [pw1, pw2, sno]);
 
   function showGrade() {
     const n = parseInt(sno.value, 10);
@@ -103,13 +120,13 @@ export function firstView() {
     busy(btn, true);
     const { error } = await sb.auth.updateUser({ password: pw1.value });
     if (error) {
-      busy(btn, false, '시작');
+      busy(btn, false);
       err.textContent = /different/i.test(error.message) ? '기존과 다른 비밀번호를 입력하세요.' : '비밀번호를 바꿀 수 없습니다. 다시 시도하세요.';
       shake(card);
       return;
     }
     const r = await sb.rpc('finish_first_login', { p_student_no: n });
-    if (r.error) { busy(btn, false, '시작'); err.textContent = '저장할 수 없습니다. 다시 시도하세요.'; shake(card); return; }
+    if (r.error) { busy(btn, false); err.textContent = '저장할 수 없습니다. 다시 시도하세요.'; shake(card); return; }
     await loadMe();
     await doneCheck(() => route({ instant: true }));
   }
