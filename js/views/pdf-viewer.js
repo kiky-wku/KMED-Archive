@@ -109,7 +109,8 @@ export function openPdf(file, { key = null, label = '', onComments = null } = {}
     alive = false;
     root.classList.remove('on');
     document.documentElement.classList.remove('pv-open');
-    io?.disconnect(); ro.disconnect(); document.removeEventListener('keydown', onKey);
+    io?.disconnect(); relIo?.disconnect(); ro.disconnect(); document.removeEventListener('keydown', onKey);
+    pages.forEach((pg) => { try { pg.task?.cancel(); } catch { /* 무시 */ } pg.cv.width = 0; pg.cv.height = 0; pg.ink.width = 0; pg.ink.height = 0; });
     setTimeout(() => { root.remove(); doc?.destroy?.(); }, 300);
   }
   const onKey = (e) => {
@@ -230,6 +231,12 @@ export function openPdf(file, { key = null, label = '', onComments = null } = {}
   // ── 크기 · 그리기 ──
   let io = null;
   const fitW = () => Math.min(scroller.clientWidth - 32, 1100);
+  // 메모리 : 아이폰 · 아이패드는 그림판(canvas) 메모리가 작아서, 보이는 근처 쪽만 그리고 먼 쪽은 비움
+  const ua = navigator.userAgent;
+  const IOS = /iPad|iPhone|iPod/.test(ua) || (/Macintosh/.test(ua) && navigator.maxTouchPoints > 1);
+  const MAXPX = IOS ? 3.2e6 : 9e6;   // 한 장 그림판 최대 픽셀
+  const dprOf = (pg) => Math.min(window.devicePixelRatio || 1, IOS ? 2 : 2.5, Math.sqrt(MAXPX / (pg.w * pg.h)));
+  let relIo = null;
   function layout() {
     commitText();
     const w = Math.round(fitW() * zoom);
@@ -238,40 +245,71 @@ export function openPdf(file, { key = null, label = '', onComments = null } = {}
       pg.wrap.style.width = `${w}px`; pg.wrap.style.height = `${hgt}px`;
       pg.w = w; pg.h = hgt;
       if (pg.rendered && pg.rendered !== w) pg.rendered = 0;
-      sizeInk(pg);
+      if (pg.near) sizeInk(pg); else pg.inkW = 0;
     });
-    io?.disconnect();
-    io = new IntersectionObserver((es) => es.forEach((e) => { if (e.isIntersecting) render(pages[+e.target.dataset.i]); }), { root: scroller, rootMargin: '1200px 0px' });
-    pages.forEach((pg) => io.observe(pg.wrap));
+    io?.disconnect(); relIo?.disconnect();
+    // 가까워지면 그리기
+    io = new IntersectionObserver((es) => es.forEach((e) => {
+      const pg = pages[+e.target.dataset.i];
+      if (e.isIntersecting) { pg.near = true; if (pg.inkW !== pg.w) sizeInk(pg); queue(pg); }
+    }), { root: scroller, rootMargin: IOS ? '700px 0px' : '1200px 0px' });
+    // 멀어지면 비우기
+    relIo = new IntersectionObserver((es) => es.forEach((e) => {
+      const pg = pages[+e.target.dataset.i];
+      if (!e.isIntersecting) release(pg);
+    }), { root: scroller, rootMargin: IOS ? '1600px 0px' : '3000px 0px' });
+    pages.forEach((pg) => { io.observe(pg.wrap); relIo.observe(pg.wrap); });
+  }
+  function release(pg) {
+    pg.near = false;
+    if (pg.task) { try { pg.task.cancel(); } catch { /* 무시 */ } }
+    pg.cv.width = 0; pg.cv.height = 0; pg.rendered = 0;
+    pg.ink.width = 0; pg.ink.height = 0; pg.ctx = null; pg.inkW = 0;
+    pg.wrap.classList.remove('in');
+    try { pg.page.cleanup(); } catch { /* 무시 */ }
   }
   const ro = new ResizeObserver(() => { clearTimeout(ro.t); ro.t = setTimeout(() => { if (pages.length) layout(); }, 150); });
   ro.observe(scroller);
 
+  // 그리기는 한 번에 한 쪽씩 (동시에 여러 장 그리면 메모리가 튐)
+  const rq = []; let rbusy = false;
+  function queue(pg) { if (!pg || !pg.near || pg.rendered === pg.w) return; if (!rq.includes(pg)) rq.push(pg); pump(); }
+  async function pump() {
+    if (rbusy || !alive) return;
+    const pg = rq.shift(); if (!pg) return;
+    rbusy = true;
+    await render(pg).catch(() => {});
+    rbusy = false;
+    pump();
+  }
   async function render(pg) {
-    if (!pg || pg.rendered === pg.w || pg.busy) return;
-    pg.busy = true;
-    const dpr = Math.min(window.devicePixelRatio || 1, 2.5, Math.sqrt(14e6 / (pg.w * pg.h)));
-    const scale = (pg.w / pg.vp.width) * dpr;
-    const vp = pg.page.getViewport({ scale });
+    if (!pg || !pg.near || pg.rendered === pg.w) return;
+    const w = pg.w;
+    const dpr = dprOf(pg);
+    const vp = pg.page.getViewport({ scale: (w / pg.vp.width) * dpr });
     const off = document.createElement('canvas');
     off.width = Math.floor(vp.width); off.height = Math.floor(vp.height);
     try {
-      await pg.page.render({ canvasContext: off.getContext('2d'), viewport: vp }).promise;
-      pg.cv.width = off.width; pg.cv.height = off.height;
-      pg.cv.getContext('2d').drawImage(off, 0, 0);
-      pg.rendered = pg.w;
-      pg.wrap.classList.add('in');
+      pg.task = pg.page.render({ canvasContext: off.getContext('2d'), viewport: vp });
+      await pg.task.promise;
+      if (pg.near && pg.w === w) {
+        pg.cv.width = off.width; pg.cv.height = off.height;
+        pg.cv.getContext('2d').drawImage(off, 0, 0);
+        pg.rendered = w;
+        pg.wrap.classList.add('in');
+      }
     } catch { /* 취소 */ }
-    pg.busy = false;
-    if (pg.rendered !== pg.w) render(pg);
+    pg.task = null;
+    off.width = 0; off.height = 0; // 임시 그림판 바로 비우기
+    if (pg.near && pg.rendered !== pg.w) queue(pg);
   }
 
   function sizeInk(pg) {
-    const dpr = Math.min(window.devicePixelRatio || 1, 2.5, Math.sqrt(14e6 / (pg.w * pg.h)));
+    const dpr = dprOf(pg);
     pg.ink.width = Math.round(pg.w * dpr); pg.ink.height = Math.round(pg.h * dpr);
     const ctx = pg.ink.getContext('2d', { desynchronized: true });
     ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
-    pg.ctx = ctx;
+    pg.ctx = ctx; pg.inkW = pg.w;
     redraw(pg);
   }
   function redraw(pg, extra) {
