@@ -1,7 +1,8 @@
 import { sb } from '../sb.js';
-import { h, icon, gradeLabel, popover, modal } from '../ui.js';
+import { h, icon, gradeLabel, popover } from '../ui.js';
 import { S, seesAll, go } from '../app.js';
 import { shell } from './shell.js';
+import { openGuide } from './guide.js';
 import { bellButton, noticeStack, openSuggest, pushNudge } from './reports.js';
 
 // 홈 : 인사 · 이어서 하기 · 과목 목록 (한 박스)
@@ -77,9 +78,4 @@ async function openSemMenu(anchor, g, s) {
     class: gg === g && ss === s ? 'on' : '',
     onclick: () => { p.close(); go(`#/home?g=${gg}&s=${ss}`); },
   }, gradeLabel(gg, ss), gg === g && ss === s ? icon('check', 'icon s') : null))));
-}
-
-// 사용법 안내 (내용은 추후 작성)
-function openGuide() {
-  modal({ title: '사용법 안내', body: h('div', { class: 'guide-empty' }, '준비 중입니다') });
 }
