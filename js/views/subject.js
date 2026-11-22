@@ -3,6 +3,7 @@ import { h, icon, seg } from '../ui.js';
 import { S, go, isAdmin } from '../app.js';
 import { openDataSheet } from './data-sheet.js';
 import { openReports } from './reports.js';
+import { openEditSheet, editKinds, editKindOf } from './edit-sheet.js';
 import { shell } from './shell.js';
 import { BLOCK_KINDS } from './admin.js';
 import { formatsFor } from '../data/formats.js';
@@ -62,8 +63,19 @@ export function subjectView(id, q) {
       subject: sub, range: ranges.find((r) => r.id === rangeId), block: kind,
       tabLabel: tabBtns[blocks.findIndex((b) => b.kind === kind)]?.textContent, here: focusId ? null : ctxNow?.here,
       hash: location.hash, canWrite, focusId,
+      onEdit: canWrite && kinds.length ? (r) => {
+        const item = r.context?.item || '';
+        const k = editKindOf(r.block);
+        const q = !item ? '' : k === 'flash' ? item.split(' / ')[0] : k === 'hanja' ? item.split(' ')[0] : item.slice(0, 10);
+        edit(k, q);
+      } : null,
     });
+    const kinds = editKinds(blocks.map((b) => b.kind));
+    const edit = (k, query) => openEditSheet({ sub, range: ranges.find((r) => r.id === rangeId), pool: sub.progress_pool || sub.id, kind: k || editKindOf(kind), query, onDone: () => show() });
     right.append(h('button', { class: 'tool-ic siren-btn', title: '제보하기', 'aria-label': '제보하기', onclick: () => report() }, icon('siren')));
+    if (canWrite && kinds.length) {
+      right.append(h('button', { class: 'tool-ic', title: '데이터 고치기', 'aria-label': '데이터 고치기', onclick: () => edit() }, icon('editlist')));
+    }
     if (canWrite && formatsFor(blocks.map((b) => b.kind)).length) {
       right.append(h('button', { class: 'tool-ic data-btn', title: '데이터 넣기', 'aria-label': '데이터 넣기',
         onclick: () => openDataSheet(sub, ranges.find((r) => r.id === rangeId), () => show()) }, icon('import')));

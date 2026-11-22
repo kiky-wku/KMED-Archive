@@ -13,7 +13,7 @@ const KLABEL = { typo: '오타', error: '오류', suggest: '건의' };
 //  위 : 쓰기 (오타 / 오류 + 지금 보던 곳 자동 첨부)
 //  아래 : 이 과목 제보 전체 (쓴 사람 이름 공개)
 // ─────────────────────────────────────────────
-export function openReports({ subject, range, block, tabLabel, here, hash, canWrite, focusId }) {
+export function openReports({ subject, range, block, tabLabel, here, hash, canWrite, focusId, onEdit }) {
   let kind = 'typo';
   let attach = true;
   const ctxText = [range?.name, tabLabel, here].filter(Boolean).join(' › ');
@@ -57,7 +57,7 @@ export function openReports({ subject, range, block, tabLabel, here, hash, canWr
   function paint(flash) {
     if (!rows.length) { list.replaceChildren(h('div', { class: 'rp-empty' }, '아직 제보가 없습니다')); return; }
     const open = rows.filter((r) => r.status === 'open'); const done = rows.filter((r) => r.status === 'done');
-    list.replaceChildren(...[...open, ...done].map((r, i) => card(r, i, canWrite, () => paint(), (id) => { rows = rows.filter((x) => x.id !== id); paint(); })));
+    list.replaceChildren(...[...open, ...done].map((r, i) => card(r, i, canWrite, () => paint(), (id) => { rows = rows.filter((x) => x.id !== id); paint(); }, onEdit ? (x) => { d.close(); setTimeout(() => onEdit(x), 250); } : null)));
     if (flash) {
       const el = list.querySelector(`[data-id="${flash}"]`);
       if (el) { el.classList.add('flash'); setTimeout(() => el.scrollIntoView({ block: 'center', behavior: 'smooth' }), 320); }
@@ -105,13 +105,16 @@ export function openSuggest({ focusId } = {}) {
 }
 
 // 제보 · 건의 카드 하나
-function card(r, i, canResolve, repaint, removed) {
+function card(r, i, canResolve, repaint, removed, onEdit) {
   const mine = r.author === S.user.id;
   const el = h('article', { class: `rp-card st-${r.status}`, 'data-id': r.id, style: { animationDelay: `${Math.min(i, 8) * 0.03}s` } });
   const ctx = r.context || {};
   const where = [ctx.range, ctx.tab, ctx.item].filter(Boolean).join(' › ');
   const acts = h('div', { class: 'rp-acts' });
 
+  if (onEdit && r.kind !== 'suggest' && r.block) {
+    acts.append(h('button', { class: 'rp-btn go', onclick: () => onEdit(r) }, icon('pen', 'icon s'), '고치러 가기'));
+  }
   if (canResolve) {
     if (r.status === 'open') {
       acts.append(h('button', { class: 'rp-btn ok', onclick: () => {
