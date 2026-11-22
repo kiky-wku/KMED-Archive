@@ -122,7 +122,8 @@ export function subjectView(id, q) {
 
       // 이어서 하기
       const label = `${sub.name}${ranges.length > 1 ? ' ' + range.name : ''} · ${tabBtns[i].textContent}`;
-      sb.from('user_state').upsert({ user_id: S.user.id, key: 'last', value: { hash: location.hash, label }, updated_at: new Date().toISOString() });
+      // 문제 푸는 탭만 기억 (자료 · 통계 · 목록은 빼고)
+      if (!['summary', 'stats', 'hanja_grid', 'um_answers'].includes(kind)) sb.from('user_state').upsert({ user_id: S.user.id, key: 'last', value: { hash: location.hash, label }, updated_at: new Date().toISOString() });
     }
     show();
     // 알림에서 넘어온 경우
