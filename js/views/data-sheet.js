@@ -1,5 +1,5 @@
 import { h, icon, toast, busy } from '../ui.js';
-import { FORMATS, formatsFor, buildRequest } from '../data/formats.js';
+import { FORMATS, formatsFor, buildRequest, buildPastRequest } from '../data/formats.js';
 import { check, counts, existingCodes, apply } from '../data/importer.js';
 import { resetCaches, resetHints } from '../data/hanja.js';
 import { resetStudyCaches } from '../data/study.js';
@@ -8,8 +8,10 @@ import { resetStudyCaches } from '../data/study.js';
 // 데이터 넣기 (과목 화면 오른쪽 위 아이콘 → 아래에서 올라오는 창)
 //  ① 프롬프트 복사 → (AI 에게 자료와 함께 보내 엑셀 받기) → ② 붙여넣기 → ③ 넣기
 // ─────────────────────────────────────────────
-export function openDataSheet(sub, range, onDone) {
-  const keys = formatsFor((sub.blocks || []).map((b) => b.kind));
+export function openDataSheet(sub, range, onDone, { keys: only } = {}) {
+  // 기출 탭에서 열면 기출 표만
+  const keys = only || formatsFor((sub.blocks || []).map((b) => b.kind));
+  const isPast = keys.length === 1 && keys[0] === 'past';
   if (!keys.length) { toast('이 과목은 넣을 데이터 형식이 없습니다'); return; }
   let step = 0;
   let mode = 'add';
@@ -23,7 +25,7 @@ export function openDataSheet(sub, range, onDone) {
   const prev = h('button', { class: 'btn ghost ds-prev', onclick: () => go(step - 1) }, icon('back', 'icon s'), '이전');
   const sheet = h('div', { class: 'ds', role: 'dialog', 'aria-modal': 'true' },
     h('header', { class: 'ds-head' },
-      h('div', { class: 'ds-ttl' }, h('span', { class: 'emo' }, sub.icon || ''), h('div', {}, h('h2', {}, '데이터 넣기'), h('span', {}, `${sub.name} ${range.name}`))),
+      h('div', { class: 'ds-ttl' }, h('span', { class: 'emo' }, sub.icon || ''), h('div', {}, h('h2', {}, isPast ? '기출문제 넣기' : '데이터 넣기'), h('span', {}, `${sub.name} ${range.name}`))),
       h('button', { class: 'ib', 'aria-label': '닫기', onclick: close }, icon('x'))),
     h('nav', { class: 'ds-steps' }, stepBtns),
     h('div', { class: 'ds-body' }, pages),
@@ -40,7 +42,7 @@ export function openDataSheet(sub, range, onDone) {
 
   // ── ① 준비하기 ──
   const copyBtn = h('button', { class: 'ds-copy', onclick: async () => {
-    const text = buildRequest(keys, { subject: sub.name, range: range.name });
+    const text = isPast ? buildPastRequest({ subject: sub.name, range: range.name }) : buildRequest(keys, { subject: sub.name, range: range.name });
     try { await navigator.clipboard.writeText(text); } catch {
       const t = h('textarea', { style: { position: 'fixed', opacity: '0' } }, text); document.body.append(t); t.select(); document.execCommand('copy'); t.remove();
     }
@@ -53,7 +55,7 @@ export function openDataSheet(sub, range, onDone) {
     h('ol', { class: 'gd-steps' },
       gStep(1, '형식을 복사합니다', h('div', { class: 'gs-act' }, copyBtn)),
       gStep(2, 'Claude에게 자료와 함께 보냅니다',
-        h('p', {}, '새 채팅에 붙여넣고 PDF를 첨부하면 앱에 맞는 엑셀을 만들어 줍니다.')),
+        h('p', {}, isPast ? '새 채팅에 붙여넣고 기출 원본 PDF와 써머리 PDF를 함께 첨부하면, 문제 형식과 정답, 해설을 판단해서 엑셀을 만들어 줍니다.' : '새 채팅에 붙여넣고 PDF를 첨부하면 앱에 맞는 엑셀을 만들어 줍니다.')),
       gStep(3, '받은 엑셀을 탭별로 붙여넣습니다',
         h('p', {}, '탭을 열어 전체 선택하고 복사한 뒤, 다음 화면의 같은 이름 칸에 붙여넣으면 됩니다.'),
         h('div', { class: 'gs-keys' }, h('span', {}, h('kbd', {}, '⌘'), h('kbd', {}, 'A'), '전체 선택'), h('span', {}, h('kbd', {}, '⌘'), h('kbd', {}, 'C'), '복사'), h('span', {}, h('kbd', {}, '⌘'), h('kbd', {}, 'V'), '붙여넣기')))));
@@ -92,8 +94,8 @@ export function openDataSheet(sub, range, onDone) {
   const summary = h('div', { class: 'ds-sum' });
   const opt = (v, t, d) => h('button', { class: 'ds-opt', 'data-v': v, onclick: () => { mode = v; paintOpt(); } }, h('i', { class: 'rd' }), h('div', {}, h('b', {}, t), h('span', {}, d)));
   const opts = h('div', { class: 'ds-opts' },
-    opt('add', '추가하기', keys.includes('um') ? '붙여넣은 단원만 새로 넣습니다. 같은 단원이 이미 있으면 그 단원만 새것으로 바뀝니다.' : keys.includes('flash') ? '붙여넣은 묶음만 새로 넣습니다. 같은 묶음이 이미 있으면 그 묶음만 새것으로 바뀝니다.' : '지금 있는 데이터 뒤에 이어 붙입니다. 이미 있는 한자는 훈음만 새로 고칩니다.'),
-    opt('replace', '전부 바꾸기', `${range.name}에 들어 있던 데이터를 모두 지우고 붙여넣은 것으로 바꿉니다. 해석 쓰기와 순서 맞추기 기록은 사라집니다.`));
+    opt('add', '추가하기', isPast ? '붙여넣은 시험만 새로 넣습니다. 같은 이름의 시험이 이미 있으면 그 시험만 새것으로 바뀝니다.' : keys.includes('um') ? '붙여넣은 단원만 새로 넣습니다. 같은 단원이 이미 있으면 그 단원만 새것으로 바뀝니다.' : keys.includes('flash') ? '붙여넣은 묶음만 새로 넣습니다. 같은 묶음이 이미 있으면 그 묶음만 새것으로 바뀝니다.' : '지금 있는 데이터 뒤에 이어 붙입니다. 이미 있는 한자는 훈음만 새로 고칩니다.'),
+    opt('replace', '전부 바꾸기', isPast ? `${range.name}의 기출문제를 모두 지우고 붙여넣은 것으로 바꿉니다.` : `${range.name}에 들어 있던 데이터를 모두 지우고 붙여넣은 것으로 바꿉니다. 해석 쓰기와 순서 맞추기 기록은 사라집니다.`));
   const paintOpt = () => opts.querySelectorAll('.ds-opt').forEach((b) => b.classList.toggle('on', b.dataset.v === mode));
   paintOpt();
   pages[2].append(summary, h('label', { class: 'imp-lab' }, '넣는 방식'), opts);
@@ -149,7 +151,7 @@ export function openDataSheet(sub, range, onDone) {
   })();
 }
 
-function previewTable(k, rows) {
+function previewTable(k, rows) {  // eslint-disable-line no-param-reassign
   const cols = {
     units: [['code', 'id'], ['label', '이름']],
     hanja: [['ch', '한자'], ['reading', '훈음']],
@@ -157,7 +159,9 @@ function previewTable(k, rows) {
     jung: [['page', '묶음'], ['hanja', '원문'], ['translation', '해석'], ['notes', '주석']],
     um: [['unit', '단원'], ['sentence', '원문'], ['cards', '카드'], ['orders', '순서'], ['translation', '해석']],
     flash: [['deck', '묶음'], ['front', '앞면'], ['back', '뒷면'], ['hint', '암기법']],
+    past: [['exam', '시험'], ['no', '번호'], ['tlabel', '형식'], ['question', '문제'], ['answer', '정답'], ['src', '근거']],
   }[k];
+  if (k === 'past') rows = rows.map((r) => ({ ...r, tlabel: { mc: '객관식', ox: 'OX', blank: '빈칸', short: '단답', essay: '서술' }[r.type], src: r.ai ? 'AI' : '기출' }));
   const v = (x) => (Array.isArray(x) ? x.join(k === 'jung' ? ', ' : ' / ') : x);
   return h('div', { class: 'imp-tbl' }, h('table', {},
     h('thead', {}, h('tr', {}, cols.map(([, l]) => h('th', {}, l)))),

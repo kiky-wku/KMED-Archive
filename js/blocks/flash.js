@@ -42,7 +42,7 @@ export function flash(ctx, el) {
     el.classList.add('q-in');
     const counts = h('div', { class: 'q-counts' });
     const bar = h('div', { class: 'q-prog' }, h('i', { class: 'ok' }), h('i', { class: 'no' }));
-    const recBtn = h('button', { class: 'tool-pill', onclick: openRecords }, icon('list', 'icon s'), h('span', {}, '기록'));
+    const recBtn = h('button', { class: 'tool-ic rec-btn', title: '기록', 'aria-label': '기록', onclick: openRecords }, icon('list'));
     const stage = h('section', { class: 'stage' });
     el.append(
       h('div', { class: 'q-bar' },

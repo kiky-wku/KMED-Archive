@@ -39,7 +39,7 @@ export function hanjaQuiz(ctx, el, mode) {
     // ── 뼈대 ──
     const counts = h('div', { class: 'q-counts' });
     const bar = h('div', { class: 'q-prog' }, h('i', { class: 'ok' }), h('i', { class: 'no' }));
-    const recBtn = h('button', { class: 'tool-pill', onclick: openRecords }, icon('list', 'icon s'), h('span', {}, '기록'));
+    const recBtn = h('button', { class: 'tool-ic rec-btn', title: '기록', 'aria-label': '기록', onclick: openRecords }, icon('list'));
     const toolbar = h('div', { class: 'q-bar' },
       units.length ? unitPicker(units, sel, (v) => { sel = v; try { localStorage.setItem(selKey, JSON.stringify(sel)); } catch { /* 무시 */ } buildDeck(); render(); }) : null,
       counts, h('div', { class: 'sp' }),

@@ -42,6 +42,10 @@ export function filesBlock(ctx, el) {
   const open = new Set();
   const list = h('div', { class: 'fl' });
   const canWrite = !!ctx.canWrite;
+  // 자료 탭 = 써머리 + 기타 자료, 기출문제 탭 = 기출 원본만
+  const PAST = ctx.filesScope === 'past';
+  const CATS = PAST ? CAT.filter(([k]) => k === 'past') : CAT.filter(([k]) => k !== 'past');
+  const inScope = (f) => (PAST ? catOf(f) === 'past' : catOf(f) !== 'past');
 
   const sInp = h('input', { type: 'search', placeholder: '자료 검색', spellcheck: 'false' });
   // 검색 : 업로드 옆 동그란 버튼 → 누르면 옆으로 펼쳐짐
@@ -57,14 +61,14 @@ export function filesBlock(ctx, el) {
   let st = 0;
   sInp.addEventListener('input', () => { clearTimeout(st); st = setTimeout(() => { q = sInp.value.trim().toLowerCase().replace(/\s+/g, ''); draw(); sInp.focus(); }, 120); });
   el.append(list);
-  const up = canWrite ? h('button', { class: 'tool-pill fl-up', onclick: () => uploadModal({}) }, icon('plus', 'icon s'), h('span', {}, '업로드')) : null;
+  const up = canWrite ? h('button', { class: 'tool-ic fl-up', title: '올리기', 'aria-label': '올리기', onclick: () => uploadModal({}) }, icon('plus')) : null;
   if (up) tools.append(up);
   const upBtn = () => tools;
 
   async function load(quiet = false) {
     if (!quiet) list.replaceChildren(...[0, 1, 2].map(() => h('i', { class: 'skel fl-sk' })));
     try {
-      all = await listFiles(ctx.subject.id, ctx.range?.id);
+      all = (await listFiles(ctx.subject.id, ctx.range?.id)).filter(inScope);
       const ids = all.map((f) => f.id);
       [{ mine: seen, counts }, ccount] = await Promise.all([
         loadViews(ids).catch(() => ({ mine: new Map(), counts: new Map() })),
@@ -87,7 +91,7 @@ export function filesBlock(ctx, el) {
     if (!all.length) {
       list.replaceChildren(h('div', { class: 'fl-empty' },
         h('div', { class: 'emo' }, '📄'),
-        h('b', {}, '아직 올라온 자료가 없습니다'),
+        h('b', {}, PAST ? '아직 올라온 기출 원본이 없습니다' : '아직 올라온 자료가 없습니다'),
         canWrite ? h('button', { class: 'btn sm ink', onclick: () => uploadModal({}) }, icon('plus', 'icon s'), '업로드') : null));
       return;
     }
@@ -109,7 +113,7 @@ export function filesBlock(ctx, el) {
     groups.sort((a, b) => (a.category === 'past' && b.category === 'past' ? pastRank(b.series) - pastRank(a.series) : a.t < b.t ? 1 : -1));
     // 써머리 → 기타 자료, 박스 밖 굵은 제목 아래 쭉
     let n = 0;
-    list.replaceChildren(...CAT.flatMap(([k, label]) => {
+    list.replaceChildren(...CATS.flatMap(([k, label]) => {
       const gs = groups.filter((g) => g.category === k);
       if (!gs.length) return [];
       const first = n === 0;
@@ -249,7 +253,7 @@ export function filesBlock(ctx, el) {
     const m = modal({
       title: '수정하기',
       body: h('div', { class: 'form1 fl-form' },
-        isWeek ? null : h('div', { class: 'fld' }, h('span', {}, '종류'), seg(CAT, c, (v) => { c = v; paintC(); })),
+        isWeek || CATS.length < 2 ? null : h('div', { class: 'fld' }, h('span', {}, '종류'), seg(CATS, c, (v) => { c = v; paintC(); })),
         nameRow, past.row,
         count > 1 ? h('p', { class: 'fl-desc' }, `안에 있는 파일 ${count}개가 모두 함께 바뀝니다.`) : null),
       actions: [h('button', { class: 'btn ghost', onclick: () => m.close() }, '취소'), h('button', { class: 'btn ink', onclick: save }, '저장')],
@@ -270,7 +274,7 @@ export function filesBlock(ctx, el) {
   // ── 업로드 창 (여러 파일 한 번에) ──
   function uploadModal(pre) {
     const mode0 = pre.mode || 'single';
-    let mode = mode0; let c = pre.category || 'summary';
+    let mode = mode0; let c = pre.category || (PAST ? 'past' : 'summary');
     const past = pastFields({ n: '', t: '기말' });
     let files = [];
     const fixed = !!pre.fixed;           // 이미 있는 이름 · 주차에 파일 추가
@@ -322,7 +326,7 @@ export function filesBlock(ctx, el) {
     const m = modal({
       title,
       body: h('div', { class: 'form1 fl-form' },
-        sameSeries ? null : h('div', { class: 'fld' }, h('span', {}, '종류'), seg(CAT, c, (v) => { c = v; if (c !== 'past' && modeSeg) mode = modeSeg.get(); paintMode(); })),
+        sameSeries || CATS.length < 2 ? null : h('div', { class: 'fld' }, h('span', {}, '종류'), seg(CATS, c, (v) => { c = v; if (c !== 'past' && modeSeg) mode = modeSeg.get(); paintMode(); })),
         modeRow, nameRow, past.row,
         weekRow, drop, bar),
       actions: [h('button', { class: 'btn ghost', onclick: () => m.close() }, '취소'), go],

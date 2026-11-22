@@ -30,7 +30,7 @@ export function jungTranslate(ctx, el) {
     // ── 뼈대 ──
     const counts = h('div', { class: 'q-counts' });
     const bar = h('div', { class: 'q-prog' }, h('i', { class: 'ok' }), h('i', { class: 'no' }));
-    const recBtn = h('button', { class: 'tool-pill', onclick: openRecords }, icon('list', 'icon s'), h('span', {}, '기록'));
+    const recBtn = h('button', { class: 'tool-ic rec-btn', title: '기록', 'aria-label': '기록', onclick: openRecords }, icon('list'));
     el.append(
       h('div', { class: 'q-bar' }, counts, h('div', { class: 'sp' }),
         h('button', { class: 'tool-ic', title: '섞기', 'aria-label': '섞기', onclick: () => { shuffle(deck.order); deck.pos = 0; deck.save(); render(); toast('순서를 섞었습니다'); } }, icon('shuffle')),

@@ -23,12 +23,12 @@ export function umAnswers(ctx, el) {
     let sel = [];
     let hide = localStorage.getItem('kmed:ans-hide') === '1';
     const body = h('div', { class: 'ua' });
-    const hideBtn = h('button', { class: 'tool-pill', onclick: () => {
+    const hideBtn = h('button', { class: 'tool-ic', title: '해석 가리기', 'aria-label': '해석 가리기', onclick: () => {
       hide = !hide; try { localStorage.setItem('kmed:ans-hide', hide ? '1' : '0'); } catch { /* 무시 */ }
       paintHide(); body.querySelectorAll('.ua-row.peek').forEach((r) => r.classList.remove('peek'));
     } });
     const paintHide = () => {
-      hideBtn.replaceChildren(icon(hide ? 'eyeoff' : 'eye', 'icon s'), h('span', {}, hide ? '해석 가림' : '해석 보임'));
+      hideBtn.replaceChildren(icon(hide ? 'eyeoff' : 'eye'));
       hideBtn.classList.toggle('on', hide);
       body.classList.toggle('hide', hide);
     };

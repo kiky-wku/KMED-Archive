@@ -24,7 +24,7 @@ export function parseTSV(text) {
   return rows.map((r) => r.map((x) => x.trim())).filter((r) => r.some(Boolean));
 }
 
-const HEAD = new Set(['id', 'unit', 'hanja', 'page', '한자', '단원', 'hun-eum', 'label', 'deck', '묶음', 'front', '앞면']);
+const HEAD = new Set(['id', 'unit', 'hanja', 'page', '한자', '단원', 'hun-eum', 'label', 'deck', '묶음', 'front', '앞면', 'exam', '시험 이름', '시험']);
 const splitSlash = (v) => String(v || '').split('/').map((x) => x.replace(/\s+/g, '')).filter(Boolean);
 
 // 형식별 확인 : { rows, errors[], warns[] }
@@ -100,6 +100,32 @@ export function check(key, text, ctx = {}) {
       rows.push({ deck: deck || '', front, back, hint: hint || '' });
     });
     if (rows.length && !rows.some((r) => r.deck)) warns.push('묶음이 비어 있어 모두 한 묶음으로 들어갑니다');
+  } else if (key === 'past') {
+    const TYPE = { 객관식: 'mc', ox: 'ox', OX: 'ox', 빈칸: 'blank', 단답: 'short', 단답형: 'short', 서술: 'essay', 서술형: 'essay', 논술: 'essay', mc: 'mc', blank: 'blank', short: 'short', essay: 'essay' };
+    const CIRC = '①②③④⑤⑥⑦⑧⑨⑩';
+    let lastExam = ctx.exam || '';
+    raw.forEach((r, i) => {
+      const [exam, no, type, passage, question, choices, answer, explain, source] = r;
+      if (!question && !answer) return;
+      const ex = exam || lastExam;
+      if (!ex) { errors.push(`${at(i)} : 시험 이름이 비어 있습니다`); return; }
+      lastExam = ex;
+      if (!question) { errors.push(`${at(i)} : 문제가 비어 있습니다`); return; }
+      let t = TYPE[(type || '').replace(/\s|형$/g, '')] || TYPE[type] || null;
+      const cs = String(choices || '').split('|').map((x) => x.trim().replace(/^[①-⑩]\s*|^\(?\d+[).]\s*/, '')).filter(Boolean);
+      if (!t) { t = cs.length ? 'mc' : 'short'; warns.push(`${at(i)} : 형식 "${type || ''}" 을 몰라 ${t === 'mc' ? '객관식' : '단답'}으로 넣습니다`); }
+      let a = String(answer || '').trim();
+      if (t === 'mc') {
+        a = a.replace(/[①-⑩]/g, (c) => String(CIRC.indexOf(c) + 1)).replace(/번/g, '');
+        if (!cs.length) errors.push(`${at(i)} : 객관식인데 보기가 없습니다`);
+        if (!/^\d+(\s*,\s*\d+)*$/.test(a)) warns.push(`${at(i)} : 객관식 정답 "${answer}" 이 번호가 아닙니다`);
+      } else if (t === 'ox') {
+        a = /^(o|O|○|맞)/.test(a) ? 'O' : /^(x|X|×|틀)/.test(a) ? 'X' : a;
+        if (!['O', 'X'].includes(a)) warns.push(`${at(i)} : OX 정답이 O 나 X 가 아닙니다`);
+      }
+      if (!a) warns.push(`${at(i)} : 정답이 비어 있습니다`);
+      rows.push({ exam: ex, no: no || '', type: t, passage: passage || '', question, choices: t === 'mc' ? cs : [], answer: a, explain: explain || '', ai: !/^기출/.test(source || '') });
+    });
   }
   if (raw.length && !rows.length && !errors.length) errors.push('읽을 수 있는 행이 없습니다. 칸 순서를 확인하세요');
   return { rows, errors, warns };
@@ -108,8 +134,8 @@ export function check(key, text, ctx = {}) {
 // 지금 들어 있는 개수
 export async function counts(rangeId) {
   const c = async (t) => { const { count } = await sb.from(t).select('id', { count: 'exact', head: true }).eq('range_id', rangeId); return count ?? null; };
-  const [units, hanja, jung, um, flash] = await Promise.all([c('hanja_units'), c('hanja_cards'), c('jung_lines'), c('um_sentences'), c('flash_cards').catch(() => null)]);
-  return { units, hanja, hanja_unit: hanja, jung, um, flash };
+  const [units, hanja, jung, um, flash, past] = await Promise.all([c('hanja_units'), c('hanja_cards'), c('jung_lines'), c('um_sentences'), c('flash_cards').catch(() => null), c('past_questions').catch(() => null)]);
+  return { units, hanja, hanja_unit: hanja, jung, um, flash, past };
 }
 
 export async function existingCodes(rangeId) {
@@ -204,5 +230,13 @@ export async function apply(rangeId, mode, parsed, { pool } = {}) {
     let s = mode === 'replace' ? -1 : await maxSort('flash_cards');
     const rows = parsed.flash.map((r) => ({ range_id: rangeId, deck: r.deck, front: r.front, back: r.back, hint: r.hint, sort: ++s }));
     for (const part of chunks(rows)) ok(await sb.from('flash_cards').insert(part));
+  }
+  if (parsed.past) {
+    const exams = [...new Set(parsed.past.map((r) => r.exam))];
+    if (mode === 'replace') ok(await sb.from('past_questions').delete().eq('range_id', rangeId));
+    else ok(await sb.from('past_questions').delete().eq('range_id', rangeId).in('exam', exams));
+    let s = mode === 'replace' ? -1 : await maxSort('past_questions');
+    const rows = parsed.past.map((r) => ({ range_id: rangeId, exam: r.exam, no: r.no, type: r.type, passage: r.passage, question: r.question, choices: r.choices, answer: r.answer, explain: r.explain, ai: r.ai, sort: ++s }));
+    for (const part of chunks(rows)) ok(await sb.from('past_questions').insert(part));
   }
 }

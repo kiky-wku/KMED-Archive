@@ -95,7 +95,7 @@ export function wordbook(ctx, el) {
       swap([
         h('div', { class: 'q-bar' }, h('div', { class: 'q-counts' },
           h('span', {}, h('b', {}, list.length), ' 담음'), h('span', { class: 'ok' }, h('b', {}, ok), ' 맞음'), h('span', { class: 'no' }, h('b', {}, no), ' 틀림')),
-        h('div', { class: 'sp' }), h('button', { class: 'tool-pill', onclick: pick }, icon('plus', 'icon s'), h('span', {}, '한자 담기'))),
+        h('div', { class: 'sp' }), h('button', { class: 'tool-ic', title: '한자 담기', 'aria-label': '한자 담기', onclick: pick }, icon('plus'))),
         h('section', { class: 'wb-test' },
           h('div', { class: 'f' }, h('label', {}, '방식'), seg([['r', '한자 → 훈음'], ['h', '훈음 → 한자']], mode, (v) => { mode = v; try { localStorage.setItem('kmed:wb-mode', v); } catch { /* 무시 */ } })),
           h('div', { class: 'f' }, h('label', {}, '범위'), seg([['all', `전체 ${list.length}`], ...(no ? [['no', `틀린 것 ${no}`]] : []), ...(nw ? [['new', `안 본 것 ${nw}`]] : [])], range, (v) => { range = v; paintStart(); })),
@@ -127,7 +127,7 @@ export function wordbook(ctx, el) {
       search.addEventListener('input', () => { q = search.value.trim(); draw(); });
       draw();
       swap([h('div', { class: 'q-bar' },
-        h('button', { class: 'tool-pill', onclick: home }, icon('back', 'icon s'), h('span', {}, '단어장')),
+        h('button', { class: 'tool-ic', title: '단어장', 'aria-label': '단어장으로', onclick: home }, icon('back')),
         h('label', { class: 'srch' }, icon('search', 'icon s'), search), count, h('div', { class: 'sp' }),
         h('button', { class: 'btn sm ink', onclick: home }, '완료')), body]);
     }
@@ -141,7 +141,7 @@ export function wordbook(ctx, el) {
       const stage = h('section', { class: 'stage' });
       let phase = 'ask';
       swap([h('div', { class: 'q-bar' },
-        h('button', { class: 'tool-pill', onclick: quit }, icon('x', 'icon s'), h('span', {}, '그만하기')),
+        h('button', { class: 'tool-ic', title: '그만하기', 'aria-label': '그만하기', onclick: quit }, icon('x')),
         counter, h('div', { class: 'sp' })), bar, stage], true);
 
       function quit() { if (!T.hist.length) home(); else result(T); }
