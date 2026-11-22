@@ -497,12 +497,14 @@ select.input{appearance:none;-webkit-appearance:none;padding-right:36px;cursor:p
 .h-left .date{margin-top:10px;font-size:16px;font-weight:600;color:var(--sub)}
 .h-acts{display:flex;flex-direction:column;gap:10px;margin-top:32px}
 .resume-slot:empty{display:none}
-.resume3{display:flex;align-items:center;gap:12px;width:100%;padding:16px 16px 16px 20px;border-radius:18px;background:var(--text);color:#fff;text-align:left;box-shadow:0 8px 24px rgba(25,31,40,.18);animation:rise .4s var(--ease) both;transition:transform .15s var(--spring)}
-.resume3:active{transform:scale(.98)}
+.resume3{display:flex;align-items:center;gap:12px;width:100%;padding:12px 14px 12px 12px;border-radius:18px;background:#fff;color:var(--text);border:1px solid #4E5968;text-align:left;animation:rise .4s var(--ease) both;transition:transform .15s var(--spring),background-color .15s}
+.resume3:active{transform:scale(.98);background:var(--surface2)}
+.resume3 .r-emo{flex:none;display:grid;place-items:center;width:44px;height:44px;border-radius:14px;background:var(--surface2);font-size:24px}
+.resume3 .r-emo:empty{display:none}
 .resume3 .r-tx{display:flex;flex-direction:column;gap:2px;flex:1;min-width:0}
-.resume3 .k{font-size:17px;font-weight:800}
-.resume3 .v{font-size:13px;font-weight:600;color:rgba(255,255,255,.6);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.resume3 .r-go{width:36px;height:36px;border-radius:11px;background:rgba(255,255,255,.12);display:grid;place-items:center;flex:none}
+.resume3 .k{font-size:13px;font-weight:700;color:var(--sub)}
+.resume3 .v{font-size:17px;font-weight:800;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.resume3 .r-go{flex:none;display:grid;place-items:center;width:24px;color:var(--text)}
 .guide-btn{display:flex;align-items:center;justify-content:center;gap:8px;height:52px;border-radius:16px;background:#fff;border:1px solid #E6E8EB;font-size:15px;font-weight:700;transition:transform .15s var(--spring),background-color .15s}
 .guide-btn:active{transform:scale(.98);background:var(--page)}
 .guide-empty{padding:40px 0;text-align:center;font-size:15px;font-weight:600;color:var(--sub)}

@@ -43,10 +43,14 @@ export function homeView(q) {
   );
 
   // 이어서 하기
+  let subjList = null;
   sb.from('user_state').select('value').eq('user_id', S.user.id).eq('key', 'last').maybeSingle().then(({ data }) => {
     const v = data?.value;
     if (!v?.hash || !v?.label) return;
-    resume.append(h('button', { class: 'resume3', onclick: () => go(v.hash) },
+    const sid = v.hash.match(/#\/s\/([^?]+)/)?.[1];
+    const ss = subjList?.find((x) => x.id === sid);
+    resume.append(h('button', { class: 'resume3', 'data-sid': sid || '', onclick: () => go(v.hash) },
+      h('span', { class: 'r-emo' }, ss ? ss.icon || ss.name.slice(0, 1) : ''),
       h('span', { class: 'r-tx' }, h('span', { class: 'k' }, '이어서 학습하기'), h('span', { class: 'v' }, v.label)),
       h('span', { class: 'r-go' }, icon('right'))));
   });
@@ -55,6 +59,10 @@ export function homeView(q) {
   sb.from('subjects').select('id,name,sort,icon,ranges(name,sort),blocks(kind)').eq('grade', g).eq('semester', s).order('sort').order('name').then(({ data, error }) => {
     if (error || !data?.length) { list.replaceChildren(h('div', { class: 'box-empty' }, !navigator.onLine || error ? '인터넷에 연결되면 과목이 보입니다' : '등록된 과목이 없습니다')); count.textContent = ''; return; }
     count.textContent = `${data.length}과목`;
+    subjList = data;
+    // 이어서 하기 카드에 과목 이모지
+    const rb = resume.querySelector('.resume3'); const rs = rb && data.find((x) => x.id === rb.dataset.sid);
+    if (rs) rb.querySelector('.r-emo').textContent = rs.icon || rs.name.slice(0, 1);
     list.replaceChildren(...data.map((sub, i) => h('button', { class: 'tile2', style: { animationDelay: `${i * 0.035}s` }, onclick: () => go(`#/s/${sub.id}`) },
       h('span', { class: 'emo' }, sub.icon || sub.name.slice(0, 1)),
       h('span', { class: 'n' }, sub.name),
