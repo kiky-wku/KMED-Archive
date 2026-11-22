@@ -1561,3 +1561,6 @@ html.offline body::after{content:'인터넷 연결 없음. 이 기기에 저장�
 .inapp .btn{background:var(--text)}
 .inapp-skip{margin-top:12px;font-size:14px;font-weight:700;color:var(--faint);padding:8px}
 .subj-right .segc{margin-right:4px}
+/* 새 버전 알림 띠 */
+.upd{position:fixed;left:0;right:0;margin:0 auto;width:max-content;max-width:calc(100% - 24px);bottom:calc(16px + var(--safe-b));z-index:400;display:flex;align-items:center;gap:14px;padding:8px 8px 8px 18px;border-radius:999px;background:#191F28;color:#fff;font-size:14px;font-weight:700;box-shadow:0 10px 30px rgba(0,0,0,.25);animation:rise .3s var(--ease) both}
+.upd button{height:34px;padding:0 14px;border-radius:999px;background:#fff;color:#191F28;font-size:13px;font-weight:800}

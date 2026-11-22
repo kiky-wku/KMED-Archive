@@ -9,6 +9,7 @@ import { adminView } from './views/admin.js';
 import { subjectView } from './views/subject.js';
 import { registerSW, syncPush, disablePush, clearBadge } from './data/push.js';
 import { flushPending } from './data/files.js';
+import { watchUpdates } from './update.js';
 import { markRead } from './data/reports.js';
 
 // 앱 전체 상태
@@ -96,6 +97,7 @@ window.addEventListener('hashchange', route);
 
 // 푸시 알림 받기
 registerSW();
+watchUpdates();
 navigator.serviceWorker?.addEventListener('message', (e) => {
   if (e.data?.type !== 'open') return;
   if (e.data.id && S.user) markRead(e.data.id);

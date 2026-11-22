@@ -3,6 +3,7 @@
 //  CDN 라이브러리(버전 고정)는 저장본 먼저
 //  PDF 는 앱이 직접 Cache Storage(kmed-pdf-v1)에 넣고 꺼냄
 const APP = 'kmed-app-v1';
+// 버전 : 2
 const CDN = /^https:\/\/(cdn\.jsdelivr\.net|esm\.sh)\//;
 
 self.addEventListener('install', () => self.skipWaiting());
@@ -16,7 +17,8 @@ self.addEventListener('fetch', (e) => {
     if (url.pathname.includes('/__pdf/')) return;
     e.respondWith((async () => {
       try {
-        const res = await fetch(req);
+        // 매번 서버에 바뀌었는지 물어봄 (안 바뀌었으면 304 로 가볍게)
+        const res = await fetch(new Request(req.url, { cache: 'no-cache', credentials: 'same-origin' }));
         if (res.ok) { const c = await caches.open(APP); c.put(req, res.clone()); }
         return res;
       } catch {
