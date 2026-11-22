@@ -3,26 +3,22 @@ import { listFiles, addFile, replaceFile, deleteFile, myOldVersions, fmtSize } f
 import { openPdf } from '../views/pdf-viewer.js';
 
 // ─────────────────────────────────────────────
-// 자료 (써머리 · 기타 학습자료) : 네이버 카페 대신
+// 자료 (써머리 · 학습자료 한 목록) : 네이버 카페 대신
 //  한 파일 갱신형 = 같은 자리에 새 파일로 교체
 //  주차별형 = 같은 이름 아래 주차마다 쌓임
 // ─────────────────────────────────────────────
-const CAT = [['summary', '써머리'], ['etc', '기타 자료']];
 const isNew = (t) => Date.now() - new Date(t).getTime() < 3 * 86400e3;
 const md = (t) => { const d = new Date(t); return `${d.getMonth() + 1}월 ${d.getDate()}일`; };
 
 export function filesBlock(ctx, el) {
   let alive = true;
-  let cat = localStorage.getItem('kmed:fcat') === 'etc' ? 'etc' : 'summary';
   let all = [];
   const open = new Set();
   const list = h('div', { class: 'fl' });
   const canWrite = !!ctx.canWrite;
 
-  el.append(h('div', { class: 'q-bar' },
-    seg(CAT, cat, (v) => { cat = v; try { localStorage.setItem('kmed:fcat', v); } catch { /* 무시 */ } draw(); }),
-    h('div', { class: 'sp' }),
-    canWrite ? h('button', { class: 'tool-pill', onclick: () => uploadModal({}) }, icon('plus', 'icon s'), h('span', {}, '올리기')) : null), list);
+  el.append(canWrite ? h('div', { class: 'q-bar' }, h('div', { class: 'sp' }),
+    h('button', { class: 'tool-pill', onclick: () => uploadModal({}) }, icon('plus', 'icon s'), h('span', {}, '올리기'))) : null, list);
 
   async function load() {
     list.replaceChildren(...[0, 1, 2].map(() => h('i', { class: 'skel fl-sk' })));
@@ -32,10 +28,10 @@ export function filesBlock(ctx, el) {
   }
 
   function draw() {
-    const rows = all.filter((f) => f.category === cat);
+    const rows = all;
     if (!rows.length) {
       list.replaceChildren(h('div', { class: 'fl-empty' },
-        h('div', { class: 'emo' }, cat === 'summary' ? '📄' : '🗂️'),
+        h('div', { class: 'emo' }, '📄'),
         h('b', {}, '아직 올라온 자료가 없습니다'),
         canWrite ? h('button', { class: 'btn sm ink', onclick: () => uploadModal({}) }, icon('plus', 'icon s'), '올리기') : null));
       return;
@@ -119,7 +115,7 @@ export function filesBlock(ctx, el) {
 
   // ── 올리기 창 ──
   function uploadModal(pre) {
-    let c = cat; let mode = pre.mode || 'single'; let file = null;
+    let mode = pre.mode || 'single'; let file = null;
     const series = h('input', { class: 'input', placeholder: '예) 본초학 써머리', value: pre.series || '', list: 'fl-series' });
     const names = h('datalist', { id: 'fl-series' }, [...new Set(all.filter((f) => f.mode === 'weekly').map((f) => f.series))].map((s) => h('option', { value: s })));
     const week = h('input', { class: 'input', placeholder: '예) 3주차', value: pre.week || '' });
@@ -149,7 +145,6 @@ export function filesBlock(ctx, el) {
     const m = modal({
       title: pre.series ? `${pre.series}에 주차 추가` : '자료 올리기',
       body: h('div', { class: 'form1 fl-form' },
-        pre.series ? null : h('div', { class: 'fld' }, h('span', {}, '종류'), seg(CAT, c, (v) => { c = v; })),
         pre.series ? null : h('div', { class: 'fld' }, h('span', {}, '올리는 방식'), seg([['single', '한 파일 계속 바꾸기'], ['weekly', '주차별로 쌓기']], mode, (v) => { mode = v; paintMode(); }), modeDesc),
         pre.series ? null : h('label', { class: 'fld' }, h('span', {}, '이름'), series, names),
         weekRow, drop, bar),
@@ -163,9 +158,9 @@ export function filesBlock(ctx, el) {
       if (mode === 'weekly' && !week.value.trim()) { toast('주차를 적어 주세요'); return; }
       go.disabled = true; go.textContent = '올리는 중'; bar.classList.add('on');
       try {
-        await addFile({ subject: ctx.subject, range: ctx.range, category: pre.series ? cat : c, mode, series: name, week: mode === 'weekly' ? week.value.trim() : '', file,
+        await addFile({ subject: ctx.subject, range: ctx.range, category: 'summary', mode, series: name, week: mode === 'weekly' ? week.value.trim() : '', file,
           onProgress: (p) => { bar.firstChild.style.width = `${Math.round(p * 100)}%`; } });
-        m.close(); toast('올렸습니다'); if (pre.series) open.add(name); else cat = c; load();
+        m.close(); toast('올렸습니다'); if (pre.series) open.add(name); load();
       } catch (e) { go.disabled = false; go.textContent = '올리기'; bar.classList.remove('on'); toast(e.message || '올리지 못했습니다'); }
     }
   }
