@@ -1341,9 +1341,6 @@ html.pv-open,html.pv-open body{overflow:hidden}
 .subj-right .segc{margin-top:7px}
 .fl-views{display:inline-flex;align-items:center;gap:3px}.fl-views .icon{width:13px;height:13px}
 /* ---------- 자료 검색 · 댓글 ---------- */
-.fl-search{display:flex;align-items:center;gap:8px;height:44px;margin:0 0 14px;padding:0 14px;border-radius:14px;background:#fff;border:1px solid #E6E8EB;color:var(--faint);transition:border-color .15s}
-.fl-search:focus-within{border-color:var(--text)}
-.fl-search input{flex:1;min-width:0;border:0;outline:0;background:none;font-size:16px;color:var(--text)}
 .fl-none{padding:40px 0;text-align:center;font-size:15px;font-weight:600;color:var(--sub);animation:rise .3s var(--ease) both}
 .fl-cm{display:inline-flex;align-items:center;gap:3px;padding:2px 7px;margin:-2px 0;border-radius:7px;color:var(--faint);cursor:pointer;transition:background-color .15s,color .15s}
 .fl-cm .icon{width:13px;height:13px}
@@ -1378,5 +1375,14 @@ html.pv-open,html.pv-open body{overflow:hidden}
 .cm-send{flex:none;width:40px;height:40px;border-radius:50%;display:grid;place-items:center;background:#E5E8EB;color:#fff;transition:background-color .2s,transform .15s var(--spring)}
 .cm-send.on{background:var(--text)}
 .cm-send:active{transform:scale(.9)}
-.fl-search input::-webkit-search-cancel-button{filter:grayscale(1) brightness(.6)}
 .nt-ic.k-comment{background:#FFF4E0;color:#C46A00}
+.fl-tools{display:flex;align-items:center;gap:8px}
+.fl-srch{position:relative;display:flex;align-items:center;width:40px;height:40px;border-radius:20px;background:#fff;box-shadow:var(--sh1);overflow:hidden;transition:width .35s var(--spring)}
+.fl-srch.on{width:min(260px,52vw)}
+.fl-srch-btn{flex:none;width:40px;height:40px;display:grid;place-items:center;color:var(--text);border-radius:50%}
+.fl-srch input{flex:1;min-width:0;border:0;outline:0;background:none;font-size:15px;color:var(--text);opacity:0;transition:opacity .2s}
+.fl-srch.on input{opacity:1}
+.fl-srch input::-webkit-search-cancel-button{display:none}
+.fl-srch-x{flex:none;width:30px;height:30px;margin-right:5px;border-radius:50%;display:grid;place-items:center;color:var(--faint);opacity:0;pointer-events:none;transition:opacity .2s}
+.fl-srch.on .fl-srch-x{opacity:1;pointer-events:auto}
+.fl-srch-x:hover{background:var(--surface);color:var(--sub)}

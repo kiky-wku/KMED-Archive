@@ -29,11 +29,22 @@ export function filesBlock(ctx, el) {
   const canWrite = !!ctx.canWrite;
 
   const sInp = h('input', { type: 'search', placeholder: '자료 검색', spellcheck: 'false' });
-  const search = h('label', { class: 'fl-search', style: { display: 'none' } }, icon('search', 'icon s'), sInp);
+  // 검색 : 업로드 옆 동그란 버튼 → 누르면 옆으로 펼쳐짐
+  const sClose = h('button', { class: 'fl-srch-x', 'aria-label': '검색 닫기', onclick: (e) => { e.preventDefault(); closeSearch(); } }, icon('x', 'icon s'));
+  const search = h('div', { class: 'fl-srch' },
+    h('button', { class: 'fl-srch-btn', 'aria-label': '자료 검색', title: '자료 검색', onclick: () => openSearch() }, icon('search', 'icon s')),
+    sInp, sClose);
+  const openSearch = () => { search.classList.add('on'); setTimeout(() => sInp.focus(), 60); };
+  function closeSearch() { search.classList.remove('on'); if (sInp.value) { sInp.value = ''; q = ''; draw(); } sInp.blur(); }
+  sInp.addEventListener('keydown', (e) => { if (e.key === 'Escape') closeSearch(); });
+  sInp.addEventListener('blur', () => { setTimeout(() => { if (!sInp.value && document.activeElement !== sInp) search.classList.remove('on'); }, 150); });
+  const tools = h('div', { class: 'fl-tools' }, search);
   let st = 0;
-  sInp.addEventListener('input', () => { clearTimeout(st); st = setTimeout(() => { q = sInp.value.trim().toLowerCase().replace(/\s+/g, ''); draw(); }, 120); });
-  el.append(search, list);
-  const upBtn = () => (canWrite ? h('button', { class: 'tool-pill fl-up', onclick: () => uploadModal({}) }, icon('plus', 'icon s'), h('span', {}, '업로드')) : null);
+  sInp.addEventListener('input', () => { clearTimeout(st); st = setTimeout(() => { q = sInp.value.trim().toLowerCase().replace(/\s+/g, ''); draw(); sInp.focus(); }, 120); });
+  el.append(list);
+  const up = canWrite ? h('button', { class: 'tool-pill fl-up', onclick: () => uploadModal({}) }, icon('plus', 'icon s'), h('span', {}, '업로드')) : null;
+  if (up) tools.append(up);
+  const upBtn = () => tools;
 
   async function load() {
     list.replaceChildren(...[0, 1, 2].map(() => h('i', { class: 'skel fl-sk' })));
@@ -64,12 +75,12 @@ export function filesBlock(ctx, el) {
         canWrite ? h('button', { class: 'btn sm ink', onclick: () => uploadModal({}) }, icon('plus', 'icon s'), '업로드') : null));
       return;
     }
-    search.style.display = all.length >= 4 ? '' : 'none';
+    search.style.display = all.length >= 2 ? '' : 'none';
     // 검색 : 이름 · 파일 이름 · 주차 · 올린 사람
     const norm = (s) => String(s || '').toLowerCase().replace(/\s+/g, '');
     const hit = (f) => !q || [f.series, f.filename, f.week, f.uploader_name].some((x) => norm(x).includes(q));
     const shown = q ? all.filter((f) => hit(f) || norm(f.series).includes(q)) : all;
-    if (!shown.length) { list.replaceChildren(h('div', { class: 'fl-none' }, `'${sInp.value.trim()}' 자료가 없습니다`)); return; }
+    if (!shown.length) { list.replaceChildren(h('div', { class: 'fl-h' }, h('h3', {}, '검색'), tools), h('div', { class: 'fl-none' }, `'${sInp.value.trim()}' 자료가 없습니다`)); return; }
     // 묶기 : 같은 방식 · 종류 · 이름이면 한 칸
     const groups = [];
     shown.forEach((f) => {
