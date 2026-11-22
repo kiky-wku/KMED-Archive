@@ -1549,3 +1549,12 @@ html.offline body::after{content:'인터넷 연결 없음. 이 기기에 저장�
 .pv-f-cnt{flex:none;font-size:13px;font-weight:700;color:var(--sub);font-variant-numeric:tabular-nums;margin-right:4px}
 .pv-find .pv-t{width:34px;height:34px}
 @media (max-width:760px){.pv-right .pv-t[title="굿노트로 보내기"]{display:none}}
+/* 카카오톡 안에서 열었을 때 */
+.inapp{position:fixed;inset:0;z-index:500;display:grid;place-items:center;padding:24px;background:rgba(244,245,247,.98)}
+.inapp[hidden]{display:none}
+.inapp-box{width:min(360px,100%);text-align:center;animation:rise .35s var(--ease) both}
+.inapp-emo{font-size:56px;margin-bottom:14px}
+.inapp h2{margin:0 0 10px;font-size:22px;font-weight:800}
+.inapp p{margin:0 0 22px;font-size:15px;line-height:1.6;color:var(--sub);word-break:keep-all}
+.inapp .btn{background:var(--text)}
+.inapp-skip{margin-top:12px;font-size:14px;font-weight:700;color:var(--faint);padding:8px}
