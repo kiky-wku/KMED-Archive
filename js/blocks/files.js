@@ -1,5 +1,6 @@
 import { h, icon, toast, seg, modal, popover } from '../ui.js';
 import { sb } from '../sb.js';
+import { onLive } from '../data/live.js';
 import { listFiles, addFile, replaceFile, deleteFile, myOldVersions, fmtSize, loadViews, markViewed } from '../data/files.js';
 import { openPdf } from '../views/pdf-viewer.js';
 import { openComments } from '../views/comments.js';
@@ -60,8 +61,8 @@ export function filesBlock(ctx, el) {
   if (up) tools.append(up);
   const upBtn = () => tools;
 
-  async function load() {
-    list.replaceChildren(...[0, 1, 2].map(() => h('i', { class: 'skel fl-sk' })));
+  async function load(quiet = false) {
+    if (!quiet) list.replaceChildren(...[0, 1, 2].map(() => h('i', { class: 'skel fl-sk' })));
     try {
       all = await listFiles(ctx.subject.id, ctx.range?.id);
       const ids = all.map((f) => f.id);
@@ -352,7 +353,14 @@ export function filesBlock(ctx, el) {
   }
 
   load();
-  return () => { alive = false; };
+  // 다른 사람이 올리거나 고치면 바로 목록 갱신 (깜빡임 없이)
+  let lt = 0;
+  const offLive = onLive('files', (p) => {
+    const sid = p?.new?.subject_id || p?.old?.subject_id;
+    if (sid && sid !== ctx.subject.id) return;
+    clearTimeout(lt); lt = setTimeout(() => { if (alive) load(true); }, 400);
+  });
+  return () => { alive = false; offLive(); clearTimeout(lt); };
 }
 
 function pickFile(cb) {

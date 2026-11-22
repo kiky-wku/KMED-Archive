@@ -1,4 +1,5 @@
 import { sb } from '../sb.js';
+import { onLive } from './live.js';
 import { S } from '../app.js';
 
 // ─────────────────────────────────────────────
@@ -62,3 +63,5 @@ export function cleanupNotifs() { sb.rpc('notif_cleanup').then(() => {}, () => {
 // 읽음 상태가 바뀌면 배지 · 홈 카드 새로 그림
 const listeners = new Set();
 export function onNotifChange(f) { listeners.add(f); return () => listeners.delete(f); }
+// 새 알림이 실시간으로 들어오면 같은 곳들을 새로 그림
+onLive('notif', () => listeners.forEach((f) => f()));

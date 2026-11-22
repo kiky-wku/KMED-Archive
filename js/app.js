@@ -11,6 +11,7 @@ import { registerSW, syncPush, disablePush, clearBadge } from './data/push.js';
 import { flushPending } from './data/files.js';
 import { watchUpdates } from './update.js';
 import { markRead } from './data/reports.js';
+import { startLive, stopLive } from './data/live.js';
 
 // 앱 전체 상태
 export const S = { user: null, profile: null, grade: null, sem: null, welcomed: false };
@@ -44,6 +45,7 @@ function paintOnline() { document.documentElement.classList.toggle('offline', !n
 window.addEventListener('online', paintOnline); window.addEventListener('offline', paintOnline); paintOnline();
 
 export async function signOut() {
+  stopLive();
   await disablePush().catch(() => {});
   await sb.auth.signOut();
   S.user = S.profile = null;
@@ -84,6 +86,7 @@ window.addEventListener('hashchange', route);
 // (supabase 요청은 then 을 붙여야 실제로 보내짐)
 let lastTouch = 0;
 export function touch() {
+  if (S.profile) startLive();   // 실시간 연결 (이미 있으면 그대로)
   if (!S.profile || !navigator.onLine) return;
   lastTouch = Date.now();
   sb.rpc('touch_session', { p_device: deviceName() }).then(() => {}, () => {});
