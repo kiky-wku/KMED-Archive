@@ -990,3 +990,7 @@ html.pv-open,html.pv-open body{overflow:hidden}
 .pv-s{width:30px;height:30px;border-radius:9px;display:grid;place-items:center;transition:background-color .15s}
 .pv-s i{display:block;border-radius:50%;background:var(--text)}
 .pv-s.on{background:#fff;box-shadow:var(--sh1)}
+.fl-tx b .fl-name{min-width:0;overflow:hidden;text-overflow:ellipsis}
+.fl-cat{flex:none;font-size:12px;font-weight:800;padding:3px 8px;border-radius:7px}
+.fl-cat.sum{background:#EEF4FF;color:#1B64DA}
+.fl-cat.etc{background:#F2F4F6;color:#4E5968}

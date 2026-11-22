@@ -7,6 +7,8 @@ import { openPdf } from '../views/pdf-viewer.js';
 //  한 파일 갱신형 = 같은 자리에 새 파일로 교체
 //  주차별형 = 같은 이름 아래 주차마다 쌓임
 // ─────────────────────────────────────────────
+const CAT = [['summary', '써머리'], ['etc', '기타 자료']];
+const catTag = (c) => h('span', { class: 'fl-cat ' + (c === 'etc' ? 'etc' : 'sum') }, c === 'etc' ? '기타 자료' : '써머리');
 const isNew = (t) => Date.now() - new Date(t).getTime() < 3 * 86400e3;
 const md = (t) => { const d = new Date(t); return `${d.getMonth() + 1}월 ${d.getDate()}일`; };
 
@@ -42,7 +44,7 @@ export function filesBlock(ctx, el) {
       if (f.mode === 'single') groups.push({ type: 'single', f, t: f.updated_at });
       else {
         let g = groups.find((x) => x.type === 'weekly' && x.series === f.series);
-        if (!g) { g = { type: 'weekly', series: f.series, items: [], t: f.updated_at }; groups.push(g); }
+        if (!g) { g = { type: 'weekly', series: f.series, category: f.category, items: [], t: f.updated_at }; groups.push(g); }
         g.items.push(f); if (f.updated_at > g.t) g.t = f.updated_at;
       }
     });
@@ -59,7 +61,7 @@ export function filesBlock(ctx, el) {
     return h('article', { class: 'fl-card', style: { animationDelay: `${i * 0.03}s` } },
       h('button', { class: 'fl-main', onclick: () => view(f) },
         h('span', { class: 'fl-ic' }, 'PDF'),
-        h('span', { class: 'fl-tx' }, h('b', {}, f.series || f.filename, isNew(f.updated_at) ? h('em', {}, 'NEW') : null), meta(f))),
+        h('span', { class: 'fl-tx' }, h('b', {}, catTag(f.category), h('span', { class: 'fl-name' }, f.series || f.filename), isNew(f.updated_at) ? h('em', {}, 'NEW') : null), meta(f))),
       canWrite ? more(f) : null);
   }
 
@@ -70,11 +72,11 @@ export function filesBlock(ctx, el) {
       h('button', { class: 'fl-wk-main', onclick: () => view(f) },
         h('b', {}, f.week || '자료'), isNew(f.updated_at) ? h('em', {}, 'NEW') : null, meta(f)),
       canWrite ? more(f) : null)),
-    canWrite ? h('button', { class: 'fl-add', onclick: () => uploadModal({ series: g.series, mode: 'weekly', week: nextWeek(items) }) }, icon('plus', 'icon s'), '주차 추가') : null);
+    canWrite ? h('button', { class: 'fl-add', onclick: () => uploadModal({ series: g.series, category: g.category, mode: 'weekly', week: nextWeek(items) }) }, icon('plus', 'icon s'), '주차 추가') : null);
     const card = h('article', { class: 'fl-card wk' + (isOpen ? ' open' : ''), style: { animationDelay: `${i * 0.03}s` } },
       h('button', { class: 'fl-main', onclick: () => { card.classList.toggle('open'); card.classList.contains('open') ? open.add(g.series) : open.delete(g.series); } },
         h('span', { class: 'fl-ic stack' }, 'PDF'),
-        h('span', { class: 'fl-tx' }, h('b', {}, g.series, isNew(g.t) ? h('em', {}, 'NEW') : null),
+        h('span', { class: 'fl-tx' }, h('b', {}, catTag(g.category), h('span', { class: 'fl-name' }, g.series), isNew(g.t) ? h('em', {}, 'NEW') : null),
           h('div', { class: 'fl-meta' }, h('span', {}, `${items.length}개 주차`), h('span', {}, `${md(g.t)} 업데이트`))),
         icon('down', 'icon fl-chev')),
       body);
@@ -115,7 +117,7 @@ export function filesBlock(ctx, el) {
 
   // ── 올리기 창 ──
   function uploadModal(pre) {
-    let mode = pre.mode || 'single'; let file = null;
+    let mode = pre.mode || 'single'; let file = null; let c = pre.category || 'summary';
     const series = h('input', { class: 'input', placeholder: '예) 본초학 써머리', value: pre.series || '', list: 'fl-series' });
     const names = h('datalist', { id: 'fl-series' }, [...new Set(all.filter((f) => f.mode === 'weekly').map((f) => f.series))].map((s) => h('option', { value: s })));
     const week = h('input', { class: 'input', placeholder: '예) 3주차', value: pre.week || '' });
@@ -145,6 +147,7 @@ export function filesBlock(ctx, el) {
     const m = modal({
       title: pre.series ? `${pre.series}에 주차 추가` : '자료 올리기',
       body: h('div', { class: 'form1 fl-form' },
+        pre.series ? null : h('div', { class: 'fld' }, h('span', {}, '종류'), seg(CAT, c, (v) => { c = v; })),
         pre.series ? null : h('div', { class: 'fld' }, h('span', {}, '올리는 방식'), seg([['single', '한 파일 계속 바꾸기'], ['weekly', '주차별로 쌓기']], mode, (v) => { mode = v; paintMode(); }), modeDesc),
         pre.series ? null : h('label', { class: 'fld' }, h('span', {}, '이름'), series, names),
         weekRow, drop, bar),
@@ -158,7 +161,7 @@ export function filesBlock(ctx, el) {
       if (mode === 'weekly' && !week.value.trim()) { toast('주차를 적어 주세요'); return; }
       go.disabled = true; go.textContent = '올리는 중'; bar.classList.add('on');
       try {
-        await addFile({ subject: ctx.subject, range: ctx.range, category: 'summary', mode, series: name, week: mode === 'weekly' ? week.value.trim() : '', file,
+        await addFile({ subject: ctx.subject, range: ctx.range, category: c, mode, series: name, week: mode === 'weekly' ? week.value.trim() : '', file,
           onProgress: (p) => { bar.firstChild.style.width = `${Math.round(p * 100)}%`; } });
         m.close(); toast('올렸습니다'); if (pre.series) open.add(name); load();
       } catch (e) { go.disabled = false; go.textContent = '올리기'; bar.classList.remove('on'); toast(e.message || '올리지 못했습니다'); }
