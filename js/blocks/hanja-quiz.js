@@ -205,7 +205,8 @@ export function hanjaQuiz(ctx, el, mode) {
     }
 
     function render() { renderCounts(); renderStage(); drawRecords(); }
-    render();
+    // 통계에서 '틀린 것 다시 풀기'로 들어온 경우
+    if (ctx.retry) { ctx.retry = false; render(); retryWrong(); } else render();
 
     // ── 단축키 ──
     const onKey = (e) => {

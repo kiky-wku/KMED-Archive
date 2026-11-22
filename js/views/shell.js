@@ -15,6 +15,7 @@ export function shell({ title, active, left, right, body, tone, fit }) {
       h('div', {}, h('div', { class: 'n' }, S.profile.name || S.profile.email), h('div', { class: 'm' }, gradeLabel(S.grade))),
     ),
     nav('home', '홈', '#/home', 'home'),
+    nav('chart', '내 학습', '#/stats', 'stats'),
     nav('gear', '설정', '#/settings', 'settings'),
     isAdmin() ? nav('shield', '관리', '#/admin', 'admin') : null,
     h('div', { class: 'sp' }),

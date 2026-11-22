@@ -15,6 +15,8 @@ import { umAnswers } from '../blocks/um-answers.js';
 import { wordbook } from '../blocks/wordbook.js';
 import { flash } from '../blocks/flash.js';
 import { filesBlock } from '../blocks/files.js';
+import { statsBlock } from '../blocks/stats.js';
+import { hasStats } from '../data/stats.js';
 
 // 탭 종류 → 화면
 const RENDER = {
@@ -27,6 +29,7 @@ const RENDER = {
   wordbook: (ctx, el) => wordbook(ctx, el),
   flash: (ctx, el) => flash(ctx, el),
   summary: (ctx, el) => filesBlock(ctx, el),
+  stats: (ctx, el) => statsBlock(ctx, el),
 };
 
 // 화면에 꼭 맞게 고정 (스크롤 없음)
@@ -49,7 +52,9 @@ export function subjectView(id, q) {
     const { data: sub } = await sb.from('subjects').select('*, ranges(id,name,sort), blocks(kind,title,sort)').eq('id', id).single();
     if (!sub) { area.replaceChildren(h('div', { class: 'empty' }, '과목을 찾을 수 없습니다')); return; }
     const ranges = (sub.ranges || []).sort((a, b) => a.sort - b.sort);
-    const blocks = (sub.blocks || []).sort((a, b) => a.sort - b.sort);
+    const blocks = [...(sub.blocks || [])].filter((b) => b.kind !== 'stats').sort((a, b) => a.sort - b.sort);
+    // 문제가 있는 과목은 맨 끝에 통계 탭
+    if (hasStats(blocks.map((b) => b.kind))) blocks.push({ kind: 'stats', title: '통계', sort: 999 });
     titleEl.replaceChildren(sub.icon ? h('span', { class: 'emo' }, sub.icon) : null, sub.name);
 
     let rangeId = ranges.find((r) => r.id === q.get('r'))?.id || ranges[0]?.id;
@@ -107,7 +112,7 @@ export function subjectView(id, q) {
       area.classList.remove('swap', 'q-in'); void area.offsetWidth; area.classList.add('swap');
       root.classList.toggle('fit', FIT.has(kind));
       const range = ranges.find((r) => r.id === rangeId);
-      const ctx = { openComments: first && q.get('open') === 'comments' ? q.get('id') : null, subject: sub, range, canWrite, pool: sub.progress_pool || sub.id, fit: (on) => root.classList.toggle('fit', !!on), here: null };
+      const ctx = { retry: first && q.get('retry') === '1', openComments: first && q.get('open') === 'comments' ? q.get('id') : null, subject: sub, range, canWrite, pool: sub.progress_pool || sub.id, fit: (on) => root.classList.toggle('fit', !!on), here: null };
       ctxNow = ctx;
       first = false;
       const fn = RENDER[kind];

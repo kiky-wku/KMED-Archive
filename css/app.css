@@ -1416,3 +1416,76 @@ html.pv-open,html.pv-open body{overflow:hidden}
 .fav-off{display:inline-flex;vertical-align:-2px;margin-left:5px;color:var(--faint)}
 .fav-off .icon{width:12px;height:12px}
 html.offline body::after{content:'인터넷 연결 없음. 이 기기에 저장된 자료만 열 수 있습니다';position:fixed;left:0;right:0;margin:0 auto;width:max-content;bottom:calc(16px + var(--safe-b));z-index:300;padding:9px 16px;border-radius:999px;background:#191F28;color:#fff;font-size:13px;font-weight:700;white-space:nowrap;box-shadow:0 8px 24px rgba(0,0,0,.2);animation:rise .3s var(--ease) both;pointer-events:none}
+/* ---------- 통계 ---------- */
+.stb{position:relative;display:flex;height:8px;border-radius:4px;background:#ECEEF1;overflow:hidden}
+.stb i{display:block;height:100%;transition:width .9s var(--ease)}
+.stb .ok{background:var(--green)}
+.stb .no{background:#F2777F}
+.stb.lg{height:12px;border-radius:6px}
+.stx{display:flex;flex-direction:column;gap:12px;max-width:820px;margin:0 auto;width:100%}
+.stx-top{display:grid;grid-template-columns:auto 1fr;align-items:center;gap:18px 28px;padding:22px 24px;border-radius:24px;background:#fff;box-shadow:var(--sh1);animation:rise .35s var(--ease) both}
+.stx-top .stb{grid-column:1/-1}
+.stx-big{display:flex;flex-direction:column;gap:2px}
+.stx-big b{font-size:44px;font-weight:800;letter-spacing:-.03em;line-height:1;font-variant-numeric:tabular-nums}
+.stx-big b small{font-size:22px;margin-left:2px}
+.stx-big span{font-size:13px;font-weight:700;color:var(--sub)}
+.stx-nums{display:flex;justify-content:flex-end;gap:22px}
+.stx-nums div{display:flex;flex-direction:column;align-items:flex-end;gap:2px}
+.stx-nums b{font-size:22px;font-weight:800;font-variant-numeric:tabular-nums}
+.stx-nums b.g{color:var(--green)} .stx-nums b.r{color:#E5484D}
+.stx-nums span{font-size:12.5px;font-weight:700;color:var(--sub)}
+.stx-card{padding:18px 20px;border-radius:20px;background:#fff;border:1px solid #E6E8EB;display:flex;flex-direction:column;gap:10px;animation:rise .35s var(--ease) both}
+.stx-h{display:flex;align-items:baseline;gap:10px}
+.stx-h b{font-size:16px;font-weight:800}
+.stx-h span{font-size:13px;font-weight:600;color:var(--faint)}
+.stx-h em{margin-left:auto;font-style:normal;font-size:17px;font-weight:800;font-variant-numeric:tabular-nums}
+.stx-leg{display:flex;gap:14px;font-size:12.5px;font-weight:700;color:var(--sub)}
+.stx-leg .g{color:var(--green)} .stx-leg .r{color:#E5484D}
+.stx-acts{display:flex;gap:8px;margin-top:2px}
+.stx-btn{display:inline-flex;align-items:center;gap:6px;height:38px;padding:0 14px;border-radius:12px;background:var(--surface);font-size:14px;font-weight:700;color:var(--text);transition:transform .15s var(--spring)}
+.stx-btn:active{transform:scale(.96)}
+.stx-btn.dark{background:var(--text);color:#fff}
+.stx-wrong{display:none;flex-direction:column;gap:6px}
+.stx-card.open .stx-wrong{display:flex}
+.stx-w{display:flex;align-items:baseline;gap:12px;padding:11px 14px;border-radius:12px;background:var(--surface2);text-align:left;animation:rise .25s var(--ease) both}
+.stx-w b{flex:none;max-width:55%;font-family:var(--han);font-size:16px;font-weight:700;line-height:1.4}
+.stx-w span{flex:1;min-width:0;font-size:14px;color:var(--sub);line-height:1.45;filter:blur(5px);transition:filter .25s}
+.stx-w.show span{filter:none}
+/* 내 학습 */
+.ms{width:min(720px,100%);margin:0 auto;display:flex;flex-direction:column;gap:12px}
+.ms-week{padding:22px 24px 16px;border-radius:24px;background:#fff;box-shadow:var(--sh1);animation:rise .35s var(--ease) both}
+.ms-wtop{display:flex;align-items:flex-start;justify-content:space-between}
+.ms-wtop .k{font-size:13px;font-weight:700;color:var(--sub)}
+.ms-wtop b{display:block;margin-top:4px;font-size:32px;font-weight:800;letter-spacing:-.02em}
+.ms-wtop b small{font-size:16px;font-weight:700;color:var(--sub);letter-spacing:0}
+.ms-streak{display:flex;align-items:baseline;gap:3px;padding:8px 12px;border-radius:14px;background:var(--surface);color:var(--faint);font-size:13px;font-weight:700}
+.ms-streak b{font-size:20px;margin:0}
+.ms-streak .fire{filter:grayscale(1);opacity:.5}
+.ms-streak.on{background:#FFF4E0;color:#C46A00}
+.ms-streak.on .fire{filter:none;opacity:1}
+.ms-days{display:grid;grid-template-columns:repeat(7,1fr);gap:8px;margin-top:18px}
+.ms-d{display:flex;flex-direction:column;align-items:center;gap:6px;animation:rise .3s var(--ease) both}
+.ms-d .col{width:100%;max-width:40px;height:84px;border-radius:12px;background:#F2F4F6;display:flex;align-items:flex-end;overflow:hidden}
+.ms-d .col i{display:block;width:100%;background:#C9D2DC;border-radius:12px;transition:height .8s var(--spring)}
+.ms-d.on .col i{background:var(--text)}
+.ms-d span{font-size:13px;font-weight:700;color:var(--sub)}
+.ms-d.today span{color:var(--text);font-weight:800}
+.ms-d em{font-style:normal;font-size:11.5px;font-weight:700;color:var(--faint);min-height:14px}
+.ms-foot{margin-top:10px;font-size:12.5px;font-weight:700;color:var(--faint);text-align:right}
+.ms-h{margin:14px 6px 0;font-size:16px;font-weight:800}
+.ms-subs{display:flex;flex-direction:column;gap:8px}
+.ms-sub{display:flex;align-items:center;gap:14px;width:100%;padding:16px 18px;border-radius:20px;background:#fff;border:1px solid #E6E8EB;text-align:left;animation:rise .3s var(--ease) both;transition:transform .15s var(--spring)}
+.ms-sub:active{transform:scale(.985)}
+.ms-sub .emo{flex:none;width:44px;height:44px;border-radius:14px;background:var(--surface2);display:grid;place-items:center;font-size:24px}
+.ms-sub>.icon{color:var(--faint)}
+.ms-tx{flex:1;min-width:0;display:flex;flex-direction:column;gap:8px}
+.ms-tx>b{font-size:16px;font-weight:800}
+.ms-rows{display:flex;flex-direction:column;gap:7px}
+.ms-r{display:flex;align-items:center;gap:10px}
+.ms-r .rn{flex:none;width:32px;font-size:12.5px;font-weight:700;color:var(--sub)}
+.ms-r .stb{flex:1}
+.ms-r em{flex:none;width:40px;text-align:right;font-style:normal;font-size:14px;font-weight:800;font-variant-numeric:tabular-nums}
+.ms-none{font-size:13px;font-weight:600;color:var(--faint)}
+@media (max-width:560px){.stx-top{grid-template-columns:1fr}.stx-nums{justify-content:flex-start}.stx-nums div{align-items:flex-start}}
+.stx-bigs{display:flex;gap:28px}
+.stx-h em{font-size:14px;color:var(--sub)}

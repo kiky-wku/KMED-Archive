@@ -4,6 +4,7 @@ import { loginView, firstView } from './views/auth.js';
 import { welcomeView } from './views/welcome.js';
 import { homeView } from './views/home.js';
 import { settingsView } from './views/settings.js';
+import { myStatsView } from './views/my-stats.js';
 import { adminView } from './views/admin.js';
 import { subjectView } from './views/subject.js';
 import { registerSW, syncPush, disablePush, clearBadge } from './data/push.js';
@@ -66,6 +67,7 @@ export async function route(opt = {}) {
   if (a === 'home') return mount(homeView(q));
   if (a === 's' && b) return mount(subjectView(b, q));
   if (a === 'settings') return mount(settingsView());
+  if (a === 'stats') return mount(myStatsView());
   if (a === 'admin' && isAdmin()) return mount(adminView(q));
   location.hash = '#/home';
 }

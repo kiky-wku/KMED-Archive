@@ -172,7 +172,8 @@ export function flash(ctx, el) {
     }
 
     function render() { renderCounts(); renderStage(); drawRecords(); }
-    render();
+    // 통계에서 '틀린 것 다시 풀기'로 들어온 경우
+    if (ctx.retry) { ctx.retry = false; render(); retryWrong(); } else render();
 
     const onKey = (e) => {
       if (document.querySelector('.modal-wrap, .drawer.on, .pop, .ds-wrap')) return;
