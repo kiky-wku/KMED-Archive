@@ -2,6 +2,7 @@ import { sb } from '../sb.js';
 import { h, icon, seg } from '../ui.js';
 import { S, go, isAdmin } from '../app.js';
 import { openDataSheet } from './data-sheet.js';
+import { openReports } from './reports.js';
 import { shell } from './shell.js';
 import { BLOCK_KINDS } from './admin.js';
 import { formatsFor } from '../data/formats.js';
@@ -55,6 +56,14 @@ export function subjectView(id, q) {
 
     // 데이터 넣기 : 관리자 · 이 과목 담당
     const canWrite = isAdmin() || !!(await sb.from('subject_writers').select('subject_id').eq('user_id', S.user.id).eq('subject_id', id).maybeSingle()).data;
+    // 제보 (사이렌) : 모두
+    let ctxNow = null;
+    const report = (focusId) => openReports({
+      subject: sub, range: ranges.find((r) => r.id === rangeId), block: kind,
+      tabLabel: tabBtns[blocks.findIndex((b) => b.kind === kind)]?.textContent, here: focusId ? null : ctxNow?.here,
+      hash: location.hash, canWrite, focusId,
+    });
+    right.append(h('button', { class: 'tool-ic siren-btn', title: '제보하기', 'aria-label': '제보하기', onclick: () => report() }, icon('siren')));
     if (canWrite && formatsFor(blocks.map((b) => b.kind)).length) {
       right.append(h('button', { class: 'tool-ic data-btn', title: '데이터 넣기', 'aria-label': '데이터 넣기',
         onclick: () => openDataSheet(sub, ranges.find((r) => r.id === rangeId), () => show()) }, icon('import')));
@@ -85,7 +94,8 @@ export function subjectView(id, q) {
       area.classList.remove('swap', 'q-in'); void area.offsetWidth; area.classList.add('swap');
       root.classList.toggle('fit', FIT.has(kind));
       const range = ranges.find((r) => r.id === rangeId);
-      const ctx = { subject: sub, range, canWrite, pool: sub.progress_pool || sub.id, fit: (on) => root.classList.toggle('fit', !!on) };
+      const ctx = { subject: sub, range, canWrite, pool: sub.progress_pool || sub.id, fit: (on) => root.classList.toggle('fit', !!on), here: null };
+      ctxNow = ctx;
       const fn = RENDER[kind];
       if (fn) cleanup = fn(ctx, area) || null;
       else area.append(h('div', { class: 'empty' }, '준비 중입니다'));
@@ -95,6 +105,8 @@ export function subjectView(id, q) {
       sb.from('user_state').upsert({ user_id: S.user.id, key: 'last', value: { hash: location.hash, label }, updated_at: new Date().toISOString() });
     }
     show();
+    // 알림에서 넘어온 경우
+    if (q.get('open') === 'report') setTimeout(() => report(q.get('id')), 300);
   })();
 
   return root;

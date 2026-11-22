@@ -73,6 +73,7 @@ export function jungTranslate(ctx, el) {
       ta.addEventListener('input', () => saveItem(KIND, items, g.id, { data: { t: ta.value } }, 700));
       ta.addEventListener('keydown', (e) => { if (e.key === 'Enter' && (e.metaKey || e.ctrlKey)) { e.preventDefault(); reveal(); } });
 
+      ctx.here = g.lines.map((l) => l.hanja).join(' ').slice(0, 120);
       const hn = hint(g.hint);
       const meta = h('div', { class: 'jt-meta' },
         h('span', { class: 'idx' }, `${deck.pos + 1}`, h('i', {}, ` / ${deck.order.length}`)),

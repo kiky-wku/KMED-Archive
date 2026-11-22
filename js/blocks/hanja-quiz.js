@@ -103,6 +103,7 @@ export function hanjaQuiz(ctx, el, mode) {
         return;
       }
       const c = cmap.get(cur());
+      ctx.here = `${c.ch} ${c.reading || ''}`.trim();
       const hn = hint(hints.get(c.ch));
       const meta = h('div', { class: 'card-meta' },
         h('span', { class: 'idx' }, `${deck.pos + 1}`, h('i', {}, ` / ${r.length}`)),

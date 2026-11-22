@@ -105,6 +105,7 @@ export function flash(ctx, el) {
         return;
       }
       const c = byId.get(cur());
+      ctx.here = `${c.front} / ${c.back}`.slice(0, 120);
       const q = mode === 'f' ? c.front : c.back;
       const a = mode === 'f' ? c.back : c.front;
       const hn = hint(c.hint);

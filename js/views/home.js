@@ -2,6 +2,7 @@ import { sb } from '../sb.js';
 import { h, icon, gradeLabel, popover, modal } from '../ui.js';
 import { S, seesAll, go } from '../app.js';
 import { shell } from './shell.js';
+import { bellButton, noticeStack, openSuggest } from './reports.js';
 
 // 홈 : 인사 · 이어서 하기 · 과목 목록 (한 박스)
 export function homeView(q) {
@@ -15,6 +16,9 @@ export function homeView(q) {
   const resume = h('div', { class: 'resume-slot' });
   const list = h('div', { class: 'tiles2' }, Array.from({ length: 4 }, () => h('i', { class: 'skel tile-skel' })));
   const count = h('span', { class: 'cnt' });
+  const stack = noticeStack();
+  const bell = bellButton();
+  const right = [h('button', { class: 'tool-ic', title: '건의하기', 'aria-label': '건의하기', onclick: () => openSuggest() }, icon('chat')), bell];
 
   const body = h('div', { class: 'home2' },
     h('aside', { class: 'h-left' },
@@ -23,6 +27,7 @@ export function homeView(q) {
       h('div', { class: 'date' }, today),
       h('div', { class: 'h-acts' },
         resume,
+        stack,
         h('button', { class: 'guide-btn', onclick: openGuide }, icon('book', 'icon s'), '사용법 안내'))),
     h('section', { class: 'h-right' },
       h('div', { class: 'r-head' }, semBtn, count),
@@ -50,7 +55,15 @@ export function homeView(q) {
 
   const logo = h('button', { class: 'logo-btn', 'aria-label': '홈', onclick: () => go('#/home') },
     h('img', { class: 'logo-h', src: 'icons/logo-h.png', alt: '夜淚冷 YRR STUDY' }));
-  return shell({ title: logo, active: 'home', body, tone: 'gray', fit: 'home-fit' });
+  const root = shell({ title: logo, active: 'home', body, right, tone: 'gray', fit: 'home-fit' });
+  const prev = root.cleanup;
+  root.cleanup = () => { prev?.(); stack.cleanup?.(); bell.cleanup?.(); };
+  // 알림에서 넘어온 경우
+  if (q.get('open') === 'suggest') {
+    history.replaceState(null, '', '#/home');
+    setTimeout(() => openSuggest({ focusId: q.get('id') }), 250);
+  }
+  return root;
 }
 
 // 학기 이동 (전체 열람 계정)
