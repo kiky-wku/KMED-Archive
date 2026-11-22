@@ -574,7 +574,7 @@ select.input{appearance:none;-webkit-appearance:none;padding-right:36px;cursor:p
 .jt-skel{display:grid;grid-template-columns:1fr 1fr;gap:16px}
 .jt-skel .skel{display:block;height:min(60vh,520px);border-radius:28px}
 .jt-stage.nx .jt-grid{animation:cardNext .35s var(--ease) both}
-.jt-stage.pv .jt-grid{animation:cardPrev .35s var(--ease) both}
+.jt-stage.go-prev .jt-grid{animation:cardPrev .35s var(--ease) both}
 @keyframes cardPrev{from{opacity:0;transform:translateX(-18px)}to{opacity:1;transform:none}}
 .jt-grid{display:grid;grid-template-columns:1fr 1fr;gap:16px;align-items:stretch}
 .jt-card{position:relative;display:flex;flex-direction:column;min-height:min(60vh,520px);max-height:calc(100dvh - 300px);border-radius:28px;background:#fff;box-shadow:var(--sh2);overflow:hidden}
@@ -758,7 +758,7 @@ select.input{appearance:none;-webkit-appearance:none;padding-right:36px;cursor:p
 html{touch-action:manipulation;overscroll-behavior:none;-webkit-text-size-adjust:100%}
 body{overscroll-behavior:none}
 html:has(.fit){overflow:hidden;height:100%}
-.fit{height:100vh;height:100dvh;display:flex;flex-direction:column;overflow:hidden;overflow:clip;min-height:0}
+.fit{height:100vh;height:100dvh;display:flex;flex-direction:column;overflow:hidden;min-height:0}
 .fit>.top{flex:none}
 .fit>.page{flex:1;min-height:0;display:flex;flex-direction:column;padding-bottom:calc(20px + var(--safe-b))}
 .fit>.page>*{flex:1;min-height:0;display:flex;flex-direction:column}
@@ -1353,7 +1353,7 @@ html.pv-open,html.pv-open body{overflow:hidden}
 .fl-cm .icon{width:13px;height:13px}
 .fl-cm:hover{background:var(--surface);color:var(--sub)}
 .fl-cm.has{color:var(--text);background:var(--surface)}
-.scrim.top{z-index:150}
+.scrim.scrim-top{z-index:150}
 .drawer.cm-drawer{z-index:151;width:420px}
 .cm-drawer .drawer-body{padding-bottom:12px}
 .cm-file{display:flex;align-items:center;gap:7px;margin:-2px 0 12px;padding:9px 12px;border-radius:11px;background:var(--surface2);font-size:14px;font-weight:700;color:var(--sub)}
@@ -1623,9 +1623,3 @@ html.offline body::after{content:'인터넷 연결 없음. 이 기기에 저장�
 /* 쪽 위치 계산 기준 (offsetTop 이 스크롤 영역 기준이 되게) */
 .pv-scroll,.pv-th{position:relative}
 
-/* 한 화면 고정 : 페이지 영역도 스크롤로 밀리지 않게 */
-.fit>.page{overflow:hidden;overflow:clip}
-.fit .block-area{overflow:clip}
-/* 한 화면 고정(fit) 화면은 창에 못 박기 : 사파리가 문서를 키보드나 커서 때문에 밀어도 화면은 그대로 */
-.fit{position:fixed;inset:0;width:100%}
-html:has(.fit),html:has(.fit) body{overflow:hidden;overscroll-behavior:none}

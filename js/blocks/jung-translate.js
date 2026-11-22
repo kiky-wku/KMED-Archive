@@ -59,7 +59,7 @@ export function jungTranslate(ctx, el) {
       const n = deck.pos + d;
       if (n < 0 || n >= deck.order.length) return;
       deck.pos = n; deck.save();
-      stage.classList.remove('nx', 'pv'); void stage.offsetWidth; stage.classList.add(d > 0 ? 'nx' : 'pv');
+      stage.classList.remove('nx', 'go-prev'); void stage.offsetWidth; stage.classList.add(d > 0 ? 'nx' : 'go-prev');   // 'pv' 는 PDF 보기 화면 이름이라 쓰면 안 됨
       renderStage();
     }
 

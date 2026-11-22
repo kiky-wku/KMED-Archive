@@ -16,7 +16,7 @@ export function openComments(file, { canMod = false, onChange } = {}) {
   const body = h('div', { class: 'cm' }, h('div', { class: 'cm-file' }, icon('file', 'icon s'), h('span', {}, title)), list);
   const d = drawer({ title: '댓글', body });
   d.panel.classList.add('cm-drawer');
-  [...document.querySelectorAll('.scrim')].pop()?.classList.add('top');
+  [...document.querySelectorAll('.scrim')].pop()?.classList.add('scrim-top');   // 'top' 은 상단 막대 이름이라 따로
   d.panel.append(h('div', { class: 'cm-compose' }, ta, send));
 
   let rows = [];
