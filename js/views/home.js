@@ -2,7 +2,6 @@ import { sb } from '../sb.js';
 import { h, icon, gradeLabel, popover, toast } from '../ui.js';
 import { S, seesAll, go } from '../app.js';
 import { shell } from './shell.js';
-import { openGuide } from './guide.js';
 import { loadFavs, removeFav, resetFavs } from '../data/favs.js';
 import { markViewed } from '../data/files.js';
 import { openPdf } from './pdf-viewer.js';
@@ -35,8 +34,7 @@ export function homeView(q) {
         resume,
         favBox(),
         pushNudge(),
-        stack,
-        h('button', { class: 'guide-btn', onclick: openGuide }, icon('book', 'icon s'), '사용법 안내'))),
+        stack)),
     h('section', { class: 'h-right' },
       h('div', { class: 'r-head' }, semBtn, count),
       list),

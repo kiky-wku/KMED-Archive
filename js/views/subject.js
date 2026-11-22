@@ -40,6 +40,10 @@ export function subjectView(id, q) {
   const titleEl = h('div', { class: 'ttl subj-ttl' });
   const right = h('div', { class: 'subj-right' });
   const tabs = h('nav', { class: 'tabs', role: 'tablist' });
+  // 오른쪽에 탭이 더 있으면 끝을 흐리게
+  const fade = () => tabs.classList.toggle('more', tabs.scrollWidth - tabs.clientWidth - tabs.scrollLeft > 4);
+  tabs.addEventListener('scroll', fade, { passive: true });
+  new ResizeObserver(fade).observe(tabs);
   const area = h('div', { class: 'block-area' });
   const back = h('button', { class: 'ib', 'aria-label': '뒤로', onclick: () => go('#/home') }, icon('back'));
   const root = shell({ title: titleEl, left: back, right, body: h('div', { class: 'subj-body' }, tabs, area), tone: 'gray' });

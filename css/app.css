@@ -1573,3 +1573,23 @@ html.offline body::after{content:'인터넷 연결 없음. 이 기기에 저장�
 .upd{position:fixed;left:0;right:0;margin:0 auto;width:max-content;max-width:calc(100% - 24px);bottom:calc(16px + var(--safe-b));z-index:400;display:flex;align-items:center;gap:14px;padding:8px 8px 8px 18px;border-radius:999px;background:#191F28;color:#fff;font-size:14px;font-weight:700;box-shadow:0 10px 30px rgba(0,0,0,.25);animation:rise .3s var(--ease) both}
 .upd button{height:34px;padding:0 14px;border-radius:999px;background:#fff;color:#191F28;font-size:13px;font-weight:800}
 @supports (-webkit-touch-callout:none){.pv-top,.pv.editing .pv-tools,.pv-find{backdrop-filter:none!important;-webkit-backdrop-filter:none!important;background:#fff!important}}
+
+/* ═══════════════ 다듬기 : 검정, 빨강, 초록 팔레트로 정리 ═══════════════ */
+.rp-tag.error{background:var(--red-soft);color:var(--red)}
+.pr.warn .pr-s{color:var(--sub)}
+.es-hint{color:var(--red)}
+.sg-big.warn{color:var(--red)}
+.sg-bar.hi i{background:var(--red)}
+.nt-ic.k-comment,.nt-ic.k-upload,.nt-ic.k-suggest,.nt.new .nt-ic.k-suggest{background:var(--surface);color:var(--text)}
+.nt.new{background:none}
+.nt.new .nt-ic{position:relative}
+.nt.new .nt-ic::after{content:"";position:absolute;top:-2px;right:-2px;width:9px;height:9px;border-radius:50%;background:var(--red);box-shadow:0 0 0 2px #fff}
+.nt:not(.new) .nt-t{color:#4E5968}
+/* 탭이 넘칠 때 오른쪽 끝 흐리게 */
+.tabs.more{-webkit-mask-image:linear-gradient(to right,#000 calc(100% - 40px),transparent);mask-image:linear-gradient(to right,#000 calc(100% - 40px),transparent)}
+/* 모바일 홈 인사말 크기 줄이기 */
+@media (max-width:820px){
+  .wave-hand{font-size:40px}
+  .h-left h1{margin-top:14px;font-size:28px}
+  .h-left .date{margin-top:6px;font-size:15px}
+}

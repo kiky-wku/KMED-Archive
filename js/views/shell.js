@@ -1,5 +1,6 @@
 import { h, icon, gradeLabel } from '../ui.js';
 import { S, isAdmin, signOut, go } from '../app.js';
+import { openGuide } from './guide.js';
 
 // 상단 바 + 숨겨진 사이드바(☰)
 export function shell({ title, active, left, right, body, tone, fit }) {
@@ -18,6 +19,7 @@ export function shell({ title, active, left, right, body, tone, fit }) {
     nav('chart', '내 학습', '#/stats', 'stats'),
     nav('gear', '설정', '#/settings', 'settings'),
     isAdmin() ? nav('shield', '관리', '#/admin', 'admin') : null,
+    h('button', { class: 'nav-i', onclick: () => { close(); setTimeout(openGuide, 200); } }, icon('book'), '사용법 안내'),
     h('div', { class: 'sp' }),
     h('button', { class: 'nav-i', onclick: () => { close(); signOut(); } }, icon('out'), '로그아웃'),
   );

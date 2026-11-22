@@ -52,7 +52,7 @@ export function statsBlock(ctx, el) {
     } }, icon('list', 'icon s'), h('span', {}, '틀린 것 보기'));
     const c = h('section', { class: 'stx-card', style: { animationDelay: `${0.05 + i * 0.04}s` } },
       h('div', { class: 'stx-h' }, h('b', {}, p.label), h('span', {}, `${p.ok + p.no} / ${p.total} 풀음`),
-        h('em', {}, p.ok + p.no ? `정답률 ${pct(p.ok, p.ok + p.no)}%` : '아직 안 풀음')),
+        h('em', {}, p.ok + p.no ? `정답률 ${pct(p.ok, p.ok + p.no)}%` : '아직 풀지 않음')),
       statBar(p),
       h('div', { class: 'stx-leg' }, h('span', { class: 'g' }, `맞음 ${p.ok}`), h('span', { class: 'r' }, `틀림 ${p.no}`), h('span', {}, `안 푼 것 ${p.total - p.ok - p.no}`)),
       p.no ? h('div', { class: 'stx-acts' }, toggle,
