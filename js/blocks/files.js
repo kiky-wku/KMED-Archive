@@ -1,4 +1,5 @@
 import { h, icon, toast, seg, modal, popover } from '../ui.js';
+import { sb } from '../sb.js';
 import { listFiles, addFile, replaceFile, deleteFile, myOldVersions, fmtSize } from '../data/files.js';
 import { openPdf } from '../views/pdf-viewer.js';
 
@@ -86,6 +87,7 @@ export function filesBlock(ctx, el) {
         h('span', { class: 'fl-tx' }, h('b', {}, h('span', { class: 'fl-name' }, g.series), isNew(g.t) ? h('em', {}, 'NEW') : null),
           h('div', { class: 'fl-meta' }, h('span', {}, `${items.length}개 주차`), h('span', {}, `${md(g.t)} 업데이트`))),
         icon('down', 'icon fl-chev')),
+      canWrite ? h('button', { class: 'tool-ic sm fl-more fl-more-g', 'aria-label': '묶음 정보 수정', title: '이름, 종류 바꾸기', onclick: (e) => { e.stopPropagation(); editModal({ group: g }); } }, icon('pen', 'icon s')) : null,
       body);
     return card;
   }
@@ -110,6 +112,7 @@ export function filesBlock(ctx, el) {
         try { await deleteFile(f); toast('지웠습니다'); all = all.filter((x) => x.id !== f.id); draw(); } catch (err) { toast(err.message); }
       } }, h('span', {}, '지우기'));
       const menu = h('div', { class: 'menu-list' },
+        h('button', { onclick: () => { b.pop?.close?.(); editModal(f.mode === 'weekly' ? { week: f } : { file: f }); } }, h('span', {}, f.mode === 'weekly' ? '주차 이름 바꾸기' : '이름, 종류 바꾸기')),
         h('button', { onclick: () => { b.pop?.close?.(); pickFile((file) => doReplace(f, file)); } }, h('span', {}, '새 파일로 바꾸기')), del);
       b.pop = popover(b, menu, { align: 'right', width: 220 });
     } }, icon('more', 'icon s'));
@@ -120,6 +123,32 @@ export function filesBlock(ctx, el) {
     const t = progressToast('바꾸는 중');
     try { await replaceFile(f, file, t.set); t.done('새 파일로 바꿨습니다'); load(); }
     catch (e) { t.fail(e.message); }
+  }
+
+  // ── 이름 · 종류 · 주차 바꾸기 ──
+  function editModal({ file, group, week }) {
+    const cur = file || group || week;
+    let c = (file?.category || group?.category) === 'etc' ? 'etc' : 'summary';
+    const name = h('input', { class: 'input', value: week ? week.week : (file ? file.series : group.series) });
+    const m = modal({
+      title: week ? '주차 이름 바꾸기' : group ? '묶음 이름, 종류 바꾸기' : '이름, 종류 바꾸기',
+      body: h('div', { class: 'form1 fl-form' },
+        h('label', { class: 'fld' }, h('span', {}, week ? '주차' : '이름'), name),
+        week ? null : h('div', { class: 'fld' }, h('span', {}, '종류'), seg(CAT, c, (v) => { c = v; })),
+        group ? h('p', { class: 'fl-desc' }, `안에 있는 ${group.items.length}개 주차가 모두 함께 바뀝니다.`) : null),
+      actions: [h('button', { class: 'btn ghost', onclick: () => m.close() }, '취소'), h('button', { class: 'btn ink', onclick: save }, '저장')],
+    });
+    setTimeout(() => name.focus(), 60);
+    async function save() {
+      const v = name.value.trim(); if (!v) { toast(week ? '주차를 적어 주세요' : '이름을 적어 주세요'); return; }
+      const ids = group ? group.items.map((x) => x.id) : [cur.id];
+      const patch = week ? { week: v } : { series: v, category: c };
+      const { error } = await sb.from('files').update(patch).in('id', ids);
+      if (error) { toast('바꾸지 못했습니다'); return; }
+      all = all.map((x) => (ids.includes(x.id) ? { ...x, ...patch } : x));
+      if (group && open.has(group.series)) { open.delete(group.series); open.add(v); }
+      m.close(); toast('바꿨습니다'); draw();
+    }
   }
 
   // ── 올리기 창 ──

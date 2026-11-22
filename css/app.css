@@ -1034,3 +1034,7 @@ html.pv-open,html.pv-open body{overflow:hidden}
 @media (max-width:900px){.pv-top{grid-template-columns:auto auto minmax(0,1fr);gap:8px;padding-left:10px;padding-right:10px}}
 .pv-tools{grid-column:2}
 .pv-right{grid-column:3}
+.fl-card.wk .fl-main{padding-right:96px}
+.fl-more-g{top:34px;right:56px;transform:translateY(-50%)}
+.fl-card.wk .fl-chev{position:absolute;right:22px;top:34px;transform:translateY(-50%)}
+.fl-card.wk.open .fl-chev{transform:translateY(-50%) rotate(180deg)}
