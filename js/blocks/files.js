@@ -42,10 +42,10 @@ export function filesBlock(ctx, el) {
   const open = new Set();
   const list = h('div', { class: 'fl' });
   const canWrite = !!ctx.canWrite;
-  // 자료 탭 = 써머리 + 기타 자료, 기출문제 탭 = 기출 원본만
+  // 자료 탭 = 전부 (써머리, 기출, 기타 자료), 기출문제 탭의 원본 PDF = 기출만
   const PAST = ctx.filesScope === 'past';
-  const CATS = PAST ? CAT.filter(([k]) => k === 'past') : CAT.filter(([k]) => k !== 'past');
-  const inScope = (f) => (PAST ? catOf(f) === 'past' : catOf(f) !== 'past');
+  const CATS = PAST ? CAT.filter(([k]) => k === 'past') : CAT;
+  const inScope = (f) => (PAST ? catOf(f) === 'past' : true);
 
   const sInp = h('input', { type: 'search', placeholder: '자료 검색', spellcheck: 'false' });
   // 검색 : 업로드 옆 동그란 버튼 → 누르면 옆으로 펼쳐짐

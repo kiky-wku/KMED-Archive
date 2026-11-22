@@ -70,6 +70,7 @@ const P = {
   down: '<path d="M6 9l6 6 6-6"/>',
   right: '<path d="M9 6l6 6-6 6"/>',
   arrow: '<path d="M5 12h14M13 6l6 6-6 6"/>',
+  xcircle: '<circle cx="12" cy="12" r="9"/><path d="M9.5 9.5l5 5M14.5 9.5l-5 5"/>',
   sidebar: '<rect x="3" y="4" width="18" height="16" rx="2.5"/><path d="M9.5 4v16"/>',
   back: '<path d="M15 6l-6 6 6 6"/>',
   check: '<path d="M5 12l5 5 9-10"/>',

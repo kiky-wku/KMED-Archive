@@ -1,5 +1,5 @@
 import { sb } from '../sb.js';
-import { h, icon, toast, seg, modal, busy } from '../ui.js';
+import { h, icon, toast, seg, modal, busy, drawer } from '../ui.js';
 import { fetchAll } from '../data/hanja.js';
 import { loadItems, saveItem, clearItems } from '../data/study.js';
 import { filesBlock } from './files.js';
@@ -83,25 +83,76 @@ export function pastBlock(ctx, el) {
   // ── 한 문제씩 풀기 ──
   async function quiz(exam, wrongOnly = false) {
     const all = (await data()).filter((q) => q.exam === exam);
-    const key = `kmed:pastpos:${ctx.range.id}:${exam}`;
-    const ids = wrongOnly ? all.filter((q) => items.get(q.id)?.status === 'no').map((q) => q.id) : all.map((q) => q.id);
     const byId = new Map(all.map((q) => [q.id, q]));
-    let pos = 0;
-    if (!wrongOnly) { try { pos = Math.min(Number(localStorage.getItem(key)) || 0, ids.length - 1); } catch { pos = 0; } }
+    const base = all.map((q) => q.id);
+    // 순서와 위치 : 시험마다 기기에 기억 (섞기, 원래 순서)
+    const key = `kmed:pastord:${ctx.range.id}:${exam}`;
+    let saved = null; try { saved = JSON.parse(localStorage.getItem(key) || 'null'); } catch { saved = null; }
+    let order = Array.isArray(saved?.order) ? saved.order.filter((id) => byId.has(id)) : base.slice();
+    base.forEach((id) => { if (!order.includes(id)) order.push(id); });
+    let ids = wrongOnly ? order.filter((id) => items.get(id)?.status === 'no') : order;
+    let pos = wrongOnly ? 0 : Math.min(Number(saved?.pos) || 0, Math.max(0, ids.length - 1));
+    const save = () => { if (!wrongOnly) { try { localStorage.setItem(key, JSON.stringify({ order, pos })); } catch { /* 무시 */ } } };
     // 틀린 것만 다시 : 이번에 다시 푼 문제만 결과로 셈 (저장된 기록은 새로 채점할 때 바뀜)
     const touched = new Set();
     const stOf = (id) => (wrongOnly && !touched.has(id) ? null : items.get(id)?.status);
     head.style.display = 'none';
     const stage = h('div', { class: 'pq-stage' });
+    const shuffle = (a) => { for (let i = a.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [a[i], a[j]] = [a[j], a[i]]; } return a; };
+    const setOrder = (o, p, msg) => { order = o; ids = order; pos = p; save(); render(); toast(msg); };
+    const tool = (ic, label, fn, cls = '') => h('button', { class: `tool-ic ${cls}`, title: label, 'aria-label': label, onclick: fn }, icon(ic));
+    const recBtn = tool('list', '기록', () => openRecords(), 'rec-btn');
+    const tools = wrongOnly ? h('div', { class: 'pq-tools' }, recBtn) : h('div', { class: 'pq-tools' },
+      tool('shuffle', '전체 섞기', () => setOrder(shuffle(base.slice()), 0, '전체 문제를 섞었습니다')),
+      tool('shuffle', '안 푼 문제 섞기', () => {
+        const done = order.filter((id) => items.get(id)?.status); const rest = shuffle(order.filter((id) => !items.get(id)?.status));
+        if (!rest.length) { toast('안 푼 문제가 없습니다'); return; }
+        setOrder([...done, ...rest], done.length, '안 푼 문제를 섞었습니다');
+      }, 'un'),
+      tool('restore', '원래 순서', () => setOrder(base.slice(), 0, '원래 순서로 되돌렸습니다')),
+      tool('xcircle', '틀린 문제만', () => {
+        if (!order.some((id) => items.get(id)?.status === 'no')) { toast('틀린 문제가 없습니다'); return; }
+        off(); quiz(exam, true);
+      }),
+      recBtn);
     const bar = h('div', { class: 'pq-top' },
       h('button', { class: 'tool-ic', 'aria-label': '목록', onclick: () => { off(); show(); } }, icon('back')),
-      h('b', {}, exam), wrongOnly ? h('span', { class: 'pq-chip no' }, '틀린 문제') : null);
+      h('b', {}, exam), wrongOnly ? h('span', { class: 'pq-chip no' }, '틀린 문제') : null, h('div', { class: 'sp' }), tools);
     area.replaceChildren(bar, stage);
+    const paintRec = () => recBtn.classList.toggle('dot', ids.some((id) => stOf(id)));
+
+    // ── 기록 서랍 : 문제 번호 격자 (맞음 초록, 틀림 빨강), 누르면 그 문제로 ──
+    let rec = null;
+    function openRecords() {
+      const body = h('div', { class: 'rec' });
+      rec = { body, d: drawer({ title: '기록', body, onClose: () => { rec = null; } }) };
+      drawRecords();
+    }
+    let armed = false;
+    function drawRecords() {
+      if (!rec) return;
+      const wrong = ids.filter((id) => stOf(id) === 'no').length;
+      rec.body.replaceChildren(
+        h('div', { class: 'jt-rec' }, ids.map((id, i) => {
+          const q = byId.get(id); const st = stOf(id);
+          return h('button', { class: 'jr ' + (st || '') + (i === pos ? ' cur' : ''), onclick: () => { pos = i; save(); rec.d.close(); render(); } },
+            h('b', {}, q.no || i + 1), h('span', {}, TYPE[q.type]));
+        })),
+        h('div', { class: 'rec-foot' },
+          h('button', { class: 'btn', disabled: !wrong, onclick: () => { rec.d.close(); off(); quiz(exam, true); } }, wrong ? `틀린 ${wrong}개만` : '틀린 문제 없음'),
+          wrongOnly ? null : h('button', { class: 'btn ghost', onclick: (e) => {
+            const btn = e.currentTarget;
+            if (!armed) { armed = true; const t = btn.textContent; btn.textContent = '한 번 더 누르면 초기화'; setTimeout(() => { armed = false; if (document.contains(btn)) btn.textContent = t; }, 2500); return; }
+            armed = false;
+            clearItems(KIND, items, base.filter((id) => items.has(id)));
+            rec.d.close(); setOrder(base.slice(), 0, '기록을 지웠습니다');
+          } }, '전체 초기화')));
+    }
     let revealed = false;
 
     function render(dir = 0) {
       revealed = false;
-      if (!wrongOnly) { try { localStorage.setItem(key, pos); } catch { /* 무시 */ } }
+      save(); paintRec(); drawRecords();
       const q = byId.get(ids[pos]);
       const it0 = items.get(q.id) || { status: null, data: {} };
       const it = wrongOnly && !touched.has(q.id) ? { status: null, data: {} } : it0;
@@ -111,12 +162,12 @@ export function pastBlock(ctx, el) {
         h('span', { class: 'idx' }, `${pos + 1}`, h('i', {}, ` / ${ids.length}`)),
         q.no ? h('span', { class: 'pq-chip' }, `${q.no}번`) : null,
         h('span', { class: 'pq-chip' }, TYPE[q.type]),
-        q.tag ? h('span', { class: 'pq-chip tag' }, q.tag) : null,
         it.status ? h('span', { class: `pq-chip ${it.status}` }, it.status === 'ok' ? '맞음' : '틀림') : null,
         h('div', { class: 'sp' }),
         h('button', { class: 'tool-ic sm', 'aria-label': '이전', disabled: pos === 0, onclick: () => move(-1) }, icon('back', 'icon s')),
         h('button', { class: 'tool-ic sm', 'aria-label': '다음', disabled: pos >= ids.length - 1, onclick: () => move(1) }, icon('right', 'icon s')));
       card.append(meta);
+      if (q.tag) card.append(h('div', { class: 'pq-tag' }, icon('bookmark', 'icon s'), q.tag));
       if (q.passage) card.append(h('div', { class: 'pq-passage' }, q.passage));
       card.append(h('div', { class: 'pq-q' }, q.question));
 
@@ -126,13 +177,13 @@ export function pastBlock(ctx, el) {
       function reveal(result) {
         if (revealed) return; revealed = true;
         const right = q.type === 'mc' ? [...ansSet(q)].map((n) => `${num(n - 1)} ${q.choices[n - 1] || ''}`).join('\n') : q.answer;
-        ans.replaceChildren(
+        ans.replaceChildren(...[
           h('div', { class: 'pq-a-h' }, h('b', {}, '정답'), q.ai ? h('span', { class: 'pq-ai' }, 'AI 추정') : null,
             ctx.canWrite ? h('button', { class: 'pq-fix', title: '정답 고치기', 'aria-label': '정답 고치기', onclick: () => fix(q) }, icon('pen', 'icon s')) : null,
             ctx.canWrite && q.ai ? h('button', { class: 'pq-fix', title: '정답 확인함', 'aria-label': '정답 확인함', onclick: () => confirmAi(q) }, icon('check', 'icon s')) : null),
           h('div', { class: 'pq-a' }, right || '정답이 비어 있습니다'),
           q.accept?.length ? h('div', { class: 'pq-acc' }, `인정 : ${q.accept.join(', ')}`) : null,
-          q.explain ? h('div', { class: 'pq-ex' }, q.explain) : null);
+          q.explain ? h('div', { class: 'pq-ex' }, q.explain) : null].filter(Boolean));
         ans.classList.add('on');
         if (AUTO.has(q.type)) {
           act.replaceChildren(pos < ids.length - 1
@@ -153,6 +204,7 @@ export function pastBlock(ctx, el) {
       function grade(ok, data) {
         touched.add(q.id);
         saveItem(KIND, items, q.id, { status: ok ? 'ok' : 'no', ...(data ? { data } : {}) }, 0);
+        paintRec(); drawRecords();
         if (AUTO.has(q.type)) return;
         if (pos < ids.length - 1) move(1); else done();
       }
@@ -179,9 +231,14 @@ export function pastBlock(ctx, el) {
         const ta = h('textarea', { class: 'pq-in', placeholder: q.type === 'essay' ? '답안을 적어보세요' : '답을 적어보세요', spellcheck: 'false', rows: q.type === 'essay' ? 5 : 2 });
         ta.value = it.data?.t || '';
         ta.addEventListener('input', () => saveItem(KIND, items, q.id, { data: { t: ta.value } }, 700));
-        ta.addEventListener('keydown', (e) => { if (e.key === 'Enter' && (e.metaKey || e.ctrlKey)) { e.preventDefault(); reveal(); } });
+        ta.addEventListener('keydown', (e) => {
+        // ↓ : 커서가 글 맨 끝이면 정답 확인 (중간이면 원래대로 줄 이동), Esc : 입력칸에서 빠져나오기
+        if (e.isComposing) return;
+        if (e.key === 'ArrowDown' && ta.selectionStart === ta.value.length && ta.selectionEnd === ta.value.length) { e.preventDefault(); ta.blur(); reveal(); }
+        else if (e.key === 'Escape') { e.preventDefault(); ta.blur(); }
+      });
         card.append(ta);
-        act.replaceChildren(h('button', { class: 'btn ink pq-next', onclick: () => reveal() }, icon('eye', 'icon s'), '정답 확인', h('kbd', {}, '⌘ Enter')));
+        act.replaceChildren(h('button', { class: 'btn ink pq-next', onclick: () => reveal() }, icon('eye', 'icon s'), '정답 확인', h('kbd', {}, '↓')));
       }
       card.append(ans);
       stage.replaceChildren(card, act);
@@ -195,7 +252,7 @@ export function pastBlock(ctx, el) {
     function done() {
       const ok = ids.filter((id) => stOf(id) === 'ok').length;
       const no = ids.filter((id) => stOf(id) === 'no').length;
-      if (!wrongOnly) { try { localStorage.setItem(key, 0); } catch { /* 무시 */ } }
+      pos = 0; save();
       stage.replaceChildren(h('div', { class: 'pq-done' },
         h('div', { class: 'emo' }, no ? '📝' : '🎉'),
         h('b', {}, `${ids.length}문제 중 ${ok}문제 맞음`),
@@ -214,12 +271,13 @@ export function pastBlock(ctx, el) {
       const selfGrade = revealed && !AUTO.has(q.type) && stage.querySelector('.pq-g');
       if (/^[1-9]$/.test(e.key) && q.type === 'mc') { e.preventDefault(); card.pick?.(Number(e.key) - 1); }
       else if (q.type === 'ox' && /^[oOxX]$/.test(e.key)) { e.preventDefault(); card.pick?.(e.key.toUpperCase() === 'O' ? 0 : 1); }
-      else if (e.key === 'Enter') { e.preventDefault(); if (!revealed && !AUTO.has(q.type)) stage.reveal?.(); else stage.querySelector('.pq-next')?.click(); }
+      else if (e.key === 'ArrowDown' && !revealed && !AUTO.has(q.type)) { e.preventDefault(); stage.reveal?.(); }
+      else if (e.key === 'Enter') { e.preventDefault(); if (revealed) stage.querySelector('.pq-next')?.click(); }
       else if (e.key === 'ArrowLeft') { e.preventDefault(); if (selfGrade) stage.querySelector('.pq-g.no').click(); else move(-1); }
       else if (e.key === 'ArrowRight') { e.preventDefault(); if (selfGrade) stage.querySelector('.pq-g.ok').click(); else move(1); }
     };
     document.addEventListener('keydown', onKey);
-    function off() { document.removeEventListener('keydown', onKey); }
+    function off() { document.removeEventListener('keydown', onKey); rec?.d.close(); }
     sub = off;
 
     // 정답 고치기 (담당자) : 고치면 AI 추정 표시가 빠짐

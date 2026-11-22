@@ -71,7 +71,12 @@ export function jungTranslate(ctx, el) {
       const ta = h('textarea', { class: 'jt-in', placeholder: '해석을 적어보세요', spellcheck: 'false' });
       ta.value = it?.data?.t || '';
       ta.addEventListener('input', () => saveItem(KIND, items, g.id, { data: { t: ta.value } }, 700));
-      ta.addEventListener('keydown', (e) => { if (e.key === 'Enter' && (e.metaKey || e.ctrlKey)) { e.preventDefault(); reveal(); } });
+      ta.addEventListener('keydown', (e) => {
+      // ↓ : 커서가 글 맨 끝이면 정답 확인 (중간이면 원래대로 줄 이동), Esc : 입력칸에서 빠져나오기
+      if (e.isComposing) return;
+      if (e.key === 'ArrowDown' && ta.selectionStart === ta.value.length && ta.selectionEnd === ta.value.length) { e.preventDefault(); ta.blur(); reveal(); }
+      else if (e.key === 'Escape') { e.preventDefault(); ta.blur(); }
+      });
 
       ctx.here = g.lines.map((l) => l.hanja).join(' ').slice(0, 120);
       const hn = hint(g.hint);
@@ -88,7 +93,7 @@ export function jungTranslate(ctx, el) {
         h('div', { class: 'jt-div' }),
         ta);
       const ans = h('div', { class: 'jt-card jt-a' },
-        h('button', { class: 'jt-reveal', onclick: reveal }, icon('eye'), h('span', {}, '정답 확인'), h('kbd', {}, '⌘ Enter')));
+        h('button', { class: 'jt-reveal', onclick: reveal }, icon('eye'), h('span', {}, '정답 확인'), h('kbd', {}, '↓')));
       const act = h('div', { class: 'stage-act jt-act' });
 
       function reveal() {
@@ -163,7 +168,7 @@ export function jungTranslate(ctx, el) {
       const tag = (e.target.tagName || '').toUpperCase();
       if (tag === 'TEXTAREA' || tag === 'INPUT') return;
       if (!shown) {
-        if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); stage.reveal?.(); }
+        if (e.key === 'ArrowDown' || e.key === 'Enter' || e.key === ' ') { e.preventDefault(); stage.reveal?.(); }
         else if (e.key === 'ArrowLeft') { e.preventDefault(); go(-1); }   // 기본 동작(화면 밀기) 막기
         else if (e.key === 'ArrowRight') { e.preventDefault(); go(1); }
         return;
