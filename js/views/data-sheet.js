@@ -1,5 +1,5 @@
 import { h, icon, toast, busy } from '../ui.js';
-import { FORMATS, formatsFor, SAMPLE_DESC, buildPrompt } from '../data/formats.js';
+import { FORMATS, formatsFor, buildRequest } from '../data/formats.js';
 import { check, counts, existingCodes, apply } from '../data/importer.js';
 import { resetCaches } from '../data/hanja.js';
 import { resetStudyCaches } from '../data/study.js';
@@ -16,14 +16,14 @@ export function openDataSheet(sub, range, onDone) {
   const parsed = {};
   let cnt = {}; let units = [];
 
-  const stepBtns = ['프롬프트 복사', '붙여넣기', '넣기'].map((t, i) =>
+  const stepBtns = ['준비하기', '붙여넣기', '넣기'].map((t, i) =>
     h('button', { class: 'ds-step', onclick: () => go(i) }, h('b', {}, i + 1), h('span', {}, t)));
   const pages = [h('section', { class: 'ds-page' }), h('section', { class: 'ds-page' }), h('section', { class: 'ds-page' })];
   const next = h('button', { class: 'btn ink ds-next' });
   const prev = h('button', { class: 'btn ghost ds-prev', onclick: () => go(step - 1) }, icon('back', 'icon s'), '이전');
   const sheet = h('div', { class: 'ds', role: 'dialog', 'aria-modal': 'true' },
     h('header', { class: 'ds-head' },
-      h('div', { class: 'ds-ttl' }, h('span', { class: 'emo' }, sub.icon || ''), h('div', {}, h('h2', {}, '데이터 넣기'), h('span', {}, `${sub.name} · ${range.name}`))),
+      h('div', { class: 'ds-ttl' }, h('span', { class: 'emo' }, sub.icon || ''), h('div', {}, h('h2', {}, '데이터 넣기'), h('span', {}, `${sub.name} ${range.name}`))),
       h('button', { class: 'ib', 'aria-label': '닫기', onclick: close }, icon('x'))),
     h('nav', { class: 'ds-steps' }, stepBtns),
     h('div', { class: 'ds-body' }, pages),
@@ -38,36 +38,40 @@ export function openDataSheet(sub, range, onDone) {
     setTimeout(() => wrap.remove(), 320);
   }
 
-  // ── ① 프롬프트 ──
-  const dkey = `kmed:desc:${sub.id}`;
-  const desc = h('textarea', { class: 'imp-desc', rows: 8, placeholder: '예) 왼쪽 단에 원문 · 해석, 오른쪽 표에 훈음. 문장은 가로 구분선으로 나뉨.' });
-  desc.value = localStorage.getItem(dkey) ?? (keys.includes('um') ? SAMPLE_DESC.um : keys.includes('jung') ? SAMPLE_DESC.jung : '');
-  desc.addEventListener('input', () => { try { localStorage.setItem(dkey, desc.value); } catch { /* 무시 */ } });
+  // ── ① 준비하기 : 처음 하는 사람도 따라 할 수 있게 ──
+  const tabNames = keys.map((k) => `"${FORMATS[k].sheet}"`).join(', ');
   let copied = false;
   const copyBtn = h('button', { class: 'ds-copy', onclick: async () => {
-    const text = buildPrompt(keys, desc.value);
+    const text = buildRequest(keys, { subject: sub.name, range: range.name });
     try { await navigator.clipboard.writeText(text); } catch {
       const t = h('textarea', { style: { position: 'fixed', opacity: '0' } }, text); document.body.append(t); t.select(); document.execCommand('copy'); t.remove();
     }
-    copied = true; copyBtn.classList.add('done'); copyBtn.lastChild.textContent = '복사했습니다'; toast('프롬프트를 복사했습니다'); paintFoot();
-    setTimeout(() => { if (copyBtn.isConnected) { copyBtn.classList.remove('done'); copyBtn.lastChild.textContent = '프롬프트 복사'; } }, 2200);
-  } }, icon('copy'), h('span', {}, '프롬프트 복사'));
+    copied = true; copyBtn.classList.add('ok'); copyBtn.lastChild.textContent = '복사했습니다'; paintFoot();
+    setTimeout(() => { if (copyBtn.isConnected) { copyBtn.classList.remove('ok'); copyBtn.lastChild.textContent = '부탁 글 복사'; } }, 2200);
+  } }, icon('copy'), h('span', {}, '부탁 글 복사'));
+  const gStep = (n, ic, title, ...body) => h('li', { class: 'gs', style: { animationDelay: `${n * 0.05}s` } },
+    h('div', { class: 'gs-n' }, n), h('div', { class: 'gs-b' }, h('div', { class: 'gs-t' }, icon(ic, 'icon s'), title), ...body));
   pages[0].append(
-    flow(),
-    h('label', { class: 'imp-lab' }, '이번 자료 설명'),
-    desc,
-    h('div', { class: 'ds-row' },
-      h('div', { class: 'imp-tabs' }, keys.map((k) => h('span', {}, FORMATS[k].sheet))),
-      h('div', { class: 'sp' }),
-      h('button', { class: 'txt-btn', onclick: () => { pre.hidden = !pre.hidden; if (!pre.hidden) pre.textContent = buildPrompt(keys, desc.value); } }, '전체 보기'),
-      copyBtn),
-    h('pre', { class: 'imp-pre', hidden: true }));
-  const pre = pages[0].querySelector('.imp-pre');
+    h('div', { class: 'gd-intro' },
+      h('b', {}, '자료를 앱에 넣는 방법'),
+      h('p', {}, 'PDF를 바로 넣을 수는 없어서, Claude가 앱에 맞는 엑셀로 바꿔 주고 그걸 붙여넣는 방식입니다. 처음 한 번만 해 보면 금방 익숙해집니다.')),
+    h('ol', { class: 'gd-steps' },
+      gStep(1, 'copy', '부탁 글을 복사합니다',
+        h('p', {}, '앱이 받을 수 있는 표 모양이 적힌 글입니다. 내용은 고칠 필요 없습니다.'),
+        h('div', { class: 'gs-act' }, copyBtn)),
+      gStep(2, 'spark', 'Claude 채팅에 보냅니다',
+        h('p', {}, '새 채팅을 열고 복사한 글을 붙여넣은 뒤, 넣을 자료(써머리 PDF 등)를 첨부해서 보냅니다.'),
+        h('p', { class: 'tip' }, '자료가 특이하게 생겼다면 "왼쪽에 원문, 오른쪽에 훈음이 있어"처럼 한두 줄 덧붙이면 더 정확해집니다.')),
+      gStep(3, 'sheet', '엑셀 파일을 받습니다',
+        h('p', {}, `Claude가 ${tabNames} 탭이 들어 있는 엑셀을 줍니다. 맨 위에 검수 목록이 있으면 한 번 훑어보세요.`)),
+      gStep(4, 'import', '탭마다 복사해서 붙여넣습니다',
+        h('p', {}, '엑셀에서 탭을 하나 누르고, 전체 선택한 다음 복사합니다. 다음 단계에서 같은 이름 칸에 붙여넣으면 됩니다.'),
+        h('div', { class: 'gs-keys' }, h('span', {}, h('kbd', {}, '⌘'), h('kbd', {}, 'A'), '전체 선택'), h('span', {}, h('kbd', {}, '⌘'), h('kbd', {}, 'C'), '복사'), h('span', {}, h('kbd', {}, '⌘'), h('kbd', {}, 'V'), '붙여넣기')))));
 
   // ── ② 붙여넣기 ──
   const cards = keys.map((k) => {
     const f = FORMATS[k];
-    const ta = h('textarea', { class: 'imp-paste', rows: 4, placeholder: `엑셀의 "${f.sheet}" 탭 → 전체 선택(⌘A) → 복사 → 여기에 붙여넣기`, spellcheck: 'false' });
+    const ta = h('textarea', { class: 'imp-paste', rows: 4, placeholder: `엑셀의 "${f.sheet}" 탭을 복사해서 여기에 붙여넣으세요`, spellcheck: 'false' });
     const res = h('div', { class: 'imp-res' });
     const now = h('span', { class: 'now' });
     const card = h('section', { class: 'imp-card' },
@@ -92,14 +96,14 @@ export function openDataSheet(sub, range, onDone) {
     ta.addEventListener('input', () => { clearTimeout(ta.t); ta.t = setTimeout(() => { card.run(); if (k === 'units') cards.forEach((c) => c !== card && c.run()); }, 250); });
     return card;
   });
-  pages[1].append(h('p', { class: 'ds-lead' }, 'AI 가 준 엑셀의 탭을 하나씩 복사해서 붙여넣습니다. 넣을 탭만 붙여넣어도 됩니다.'), ...cards);
+  pages[1].append(h('p', { class: 'ds-lead' }, '엑셀의 탭을 하나씩 복사해서 같은 이름 칸에 붙여넣으세요. 넣을 탭만 붙여넣어도 됩니다. 붙여넣으면 바로 검사해서 틀린 곳을 알려 드립니다.'), ...cards);
 
   // ── ③ 넣기 ──
   const summary = h('div', { class: 'ds-sum' });
   const opt = (v, t, d) => h('button', { class: 'ds-opt', 'data-v': v, onclick: () => { mode = v; paintOpt(); } }, h('i', { class: 'rd' }), h('div', {}, h('b', {}, t), h('span', {}, d)));
   const opts = h('div', { class: 'ds-opts' },
-    opt('add', '추가하기', keys.includes('um') ? '붙여넣은 단원만 새로 넣습니다. 같은 단원이 이미 있으면 그 단원만 새것으로 바뀝니다.' : '지금 데이터 뒤에 이어 붙입니다. 이미 있는 한자는 훈음만 고칩니다.'),
-    opt('replace', '전부 바꾸기', `${range.name} 범위의 해당 데이터를 모두 지우고 붙여넣은 것으로 바꿉니다. 해석 · 문장 풀이 기록은 사라집니다.`));
+    opt('add', '추가하기', keys.includes('um') ? '붙여넣은 단원만 새로 넣습니다. 같은 단원이 이미 있으면 그 단원만 새것으로 바뀝니다.' : '지금 있는 데이터 뒤에 이어 붙입니다. 이미 있는 한자는 훈음만 새로 고칩니다.'),
+    opt('replace', '전부 바꾸기', `${range.name}에 들어 있던 데이터를 모두 지우고 붙여넣은 것으로 바꿉니다. 해석 쓰기와 순서 맞추기 기록은 사라집니다.`));
   const paintOpt = () => opts.querySelectorAll('.ds-opt').forEach((b) => b.classList.toggle('on', b.dataset.v === mode));
   paintOpt();
   pages[2].append(summary, h('label', { class: 'imp-lab' }, '넣는 방식'), opts);
@@ -116,7 +120,7 @@ export function openDataSheet(sub, range, onDone) {
     const ready = keys.filter((k) => parsed[k]);
     const bad = ready.some((k) => parsed[k].errors.length);
     next.disabled = false;
-    if (step === 0) { next.replaceChildren(copied ? '다음' : '건너뛰고 붙여넣기', icon('right', 'icon s')); next.onclick = () => go(1); }
+    if (step === 0) { next.replaceChildren(copied ? '엑셀 받았어요' : '엑셀이 이미 있어요', icon('right', 'icon s')); next.onclick = () => go(1); }
     else if (step === 1) {
       next.disabled = !ready.length || bad;
       next.replaceChildren(bad ? '오류를 먼저 고쳐 주세요' : ready.length ? '다음' : '붙여넣은 표가 없습니다', ...(ready.length && !bad ? [icon('right', 'icon s')] : []));
@@ -155,14 +159,6 @@ export function openDataSheet(sub, range, onDone) {
   })();
 }
 
-// 흐름 그림 : 프롬프트 → AI → 엑셀 → 앱
-function flow() {
-  const s = (ic, t) => h('div', { class: 'fl-s' }, h('div', { class: 'fl-ic' }, icon(ic)), h('span', {}, t));
-  const a = () => h('div', { class: 'fl-a' }, icon('right', 'icon s'));
-  return h('div', { class: 'ds-flow' },
-    s('copy', '프롬프트 복사'), a(), s('spark', 'AI 에게 자료와 함께'), a(), s('sheet', '엑셀 받기'), a(), s('import', '앱에 붙여넣기'));
-}
-
 function previewTable(k, rows) {
   const cols = {
     units: [['code', 'id'], ['label', '이름']],
@@ -171,7 +167,7 @@ function previewTable(k, rows) {
     jung: [['page', '묶음'], ['hanja', '원문'], ['translation', '해석'], ['notes', '주석']],
     um: [['unit', '단원'], ['sentence', '원문'], ['cards', '카드'], ['orders', '순서'], ['translation', '해석']],
   }[k];
-  const v = (x) => (Array.isArray(x) ? x.join(k === 'jung' ? ' · ' : ' / ') : x);
+  const v = (x) => (Array.isArray(x) ? x.join(k === 'jung' ? ', ' : ' / ') : x);
   return h('div', { class: 'imp-tbl' }, h('table', {},
     h('thead', {}, h('tr', {}, cols.map(([, l]) => h('th', {}, l)))),
     h('tbody', {}, rows.slice(0, 5).map((r) => h('tr', {}, cols.map(([c]) => h('td', {}, v(r[c]))))))),

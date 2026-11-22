@@ -813,7 +813,7 @@ html:has(.fit){overflow:hidden;height:100%}
 .ds-row .sp{flex:1}
 .ds-copy{display:inline-flex;align-items:center;gap:8px;height:48px;padding:0 20px;border-radius:14px;background:var(--text);color:#fff;font-size:15px;font-weight:800;transition:transform .15s var(--spring),background-color .2s}
 .ds-copy:active{transform:scale(.96)}
-.ds-copy.done{background:var(--green)}
+.ds-copy.ok{background:var(--green)}
 .ds-copy .icon{width:18px;height:18px}
 .ds-lead{margin:0 4px;font-size:15px;font-weight:600;color:#4E5968}
 .tab-chip{font-size:12px;font-weight:800;padding:3px 8px;border-radius:7px;background:var(--page);color:var(--sub);margin-right:8px}
@@ -844,3 +844,21 @@ html:has(.fit){overflow:hidden;height:100%}
   .fit .rcard .reading{font-size:clamp(28px,3.6vh,40px)}
   .fit .rcard .reveal{font-size:clamp(56px,8vh,100px)}
 }
+
+/* 데이터 넣기 : 준비하기 안내 */
+.gd-intro{padding:20px 22px;border-radius:22px;background:var(--text);color:#fff;animation:rowIn .38s var(--ease) both}
+.gd-intro b{display:block;font-size:18px;font-weight:800}
+.gd-intro p{margin:6px 0 0;font-size:15px;font-weight:500;line-height:1.6;color:rgba(255,255,255,.75);word-break:keep-all}
+.gd-steps{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:10px}
+.gs{display:flex;gap:16px;padding:18px 20px;border-radius:20px;background:#fff;border:1px solid #E6E8EB;animation:rowIn .38s var(--ease) both}
+.gs-n{flex:none;width:30px;height:30px;border-radius:50%;background:var(--page);display:grid;place-items:center;font-size:15px;font-weight:800;color:var(--sub)}
+.gs-b{flex:1;min-width:0}
+.gs-t{display:flex;align-items:center;gap:8px;font-size:16px;font-weight:800;padding-top:4px}
+.gs-t .icon{color:var(--sub)}
+.gs-b p{margin:6px 0 0;font-size:15px;font-weight:500;line-height:1.6;color:#4E5968;word-break:keep-all}
+.gs-b p.tip{padding:10px 12px;border-radius:12px;background:var(--page);font-size:14px;color:#4E5968}
+.gs-act{margin-top:12px}
+.gs-keys{display:flex;flex-wrap:wrap;gap:12px;margin-top:10px;font-size:13px;font-weight:600;color:var(--sub)}
+.gs-keys span{display:inline-flex;align-items:center;gap:4px}
+.gs-keys kbd{font:inherit;font-weight:800;min-width:24px;height:24px;padding:0 6px;border-radius:7px;background:var(--page);border:1px solid #E6E8EB;display:inline-grid;place-items:center;color:var(--text)}
+.gs-keys span kbd:last-of-type{margin-right:4px}

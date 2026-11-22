@@ -37,8 +37,8 @@ export function check(key, text, ctx = {}) {
     const seen = new Set();
     raw.forEach((r, i) => {
       const [code, label, order] = r;
-      if (!code || !label) { errors.push(`${at(i)} : id 와 단원 이름이 필요합니다`); return; }
-      if (!/^[a-z0-9_]+$/.test(code)) warns.push(`${at(i)} : id "${code}" 에 소문자 · 숫자 말고 다른 글자가 있습니다`);
+      if (!code || !label) { errors.push(`${at(i)} : id와 단원 이름이 필요합니다`); return; }
+      if (!/^[a-z0-9_]+$/.test(code)) warns.push(`${at(i)} : id "${code}" 에 소문자, 숫자 말고 다른 글자가 있습니다`);
       if (seen.has(code)) { warns.push(`${at(i)} : id "${code}" 가 중복되어 한 번만 넣습니다`); return; }
       seen.add(code); rows.push({ code, label, order: parseFloat(order) || rows.length + 1 });
     });
@@ -85,7 +85,7 @@ export function check(key, text, ctx = {}) {
       if (!unit) { errors.push(`${at(i)} : 단원 id 가 비어 있습니다`); return; }
       if (ctx.codes && !ctx.codes.has(unit)) { errors.push(`${at(i)} : 단원 id "${unit}" 가 단원 표에 없습니다`); return; }
       if (!cs.length) { errors.push(`${at(i)} : 카드가 비어 있습니다`); return; }
-      if (cs.length !== os.length) { errors.push(`${at(i)} : 카드 ${cs.length}개 · 순서 ${os.length}개로 개수가 다릅니다`); return; }
+      if (cs.length !== os.length) { errors.push(`${at(i)} : 카드는 ${cs.length}개인데 순서는 ${os.length}개라 개수가 다릅니다`); return; }
       const sorted = os.slice().sort((a, b) => a - b);
       if (sorted.some((v, j) => v !== j + 1)) { errors.push(`${at(i)} : 순서가 1부터 ${os.length}까지 빠짐없이 있어야 합니다`); return; }
       if (!tr) warns.push(`${at(i)} : 해석이 비어 있습니다`);
