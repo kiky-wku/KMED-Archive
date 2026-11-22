@@ -104,11 +104,11 @@ export function pastBlock(ctx, el) {
     const recBtn = tool('list', '기록', () => openRecords(), 'rec-btn');
     const tools = wrongOnly ? h('div', { class: 'pq-tools' }, recBtn) : h('div', { class: 'pq-tools' },
       tool('shuffle', '전체 섞기', () => setOrder(shuffle(base.slice()), 0, '전체 문제를 섞었습니다')),
-      tool('shuffle', '안 푼 문제 섞기', () => {
+      tool('shuffleun', '안 푼 문제 섞기', () => {
         const done = order.filter((id) => items.get(id)?.status); const rest = shuffle(order.filter((id) => !items.get(id)?.status));
         if (!rest.length) { toast('안 푼 문제가 없습니다'); return; }
         setOrder([...done, ...rest], done.length, '안 푼 문제를 섞었습니다');
-      }, 'un'),
+      }),
       tool('restore', '원래 순서', () => setOrder(base.slice(), 0, '원래 순서로 되돌렸습니다')),
       tool('xcircle', '틀린 문제만', () => {
         if (!order.some((id) => items.get(id)?.status === 'no')) { toast('틀린 문제가 없습니다'); return; }
