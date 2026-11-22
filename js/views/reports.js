@@ -4,6 +4,7 @@ import {
   listReports, listSuggests, sendReport, resolveReport, deleteReport,
   listNotifs, unreadNotifs, markRead, markAllRead, onNotifChange, cleanupNotifs,
 } from '../data/reports.js';
+import { pushState, enablePush, disablePush, testPush } from '../data/push.js';
 
 const KLABEL = { typo: '오타', error: '오류', suggest: '건의' };
 
@@ -158,7 +159,7 @@ const NICON = { report: 'siren', suggest: 'chat', done: 'check', upload: 'file' 
 export function openNotifs() {
   const list = h('div', { class: 'nt-list' }, skelRows(5, 64));
   const allBtn = h('button', { class: 'nt-all', onclick: async () => { await markAllRead(); list.querySelectorAll('.nt.new').forEach((x) => x.classList.remove('new')); allBtn.disabled = true; } }, '모두 읽음');
-  const d = drawer({ title: '알림', body: h('div', {}, h('div', { class: 'nt-bar' }, allBtn), list) });
+  const d = drawer({ title: '알림', body: h('div', {}, pushRow(), h('div', { class: 'nt-bar' }, allBtn), list) });
   listNotifs().then((rows) => {
     allBtn.disabled = !rows.some((n) => !n.read_at);
     if (!rows.length) { list.replaceChildren(h('div', { class: 'rp-empty' }, '알림이 없습니다')); return; }
@@ -248,5 +249,65 @@ export function noticeStack() {
     c.addEventListener('pointerup', up);
     c.addEventListener('pointercancel', up);
   }
+  return el;
+}
+
+// ─────────────────────────────────────────────
+// 푸시 알림 켜기 · 끄기 (알림 서랍 맨 위)
+// ─────────────────────────────────────────────
+const PUSH_SUB = {
+  on: '휴대폰 알림으로도 받습니다',
+  off: '앱을 닫아 둬도 알림이 옵니다',
+  denied: '기기 설정에서 이 앱의 알림을 허용해 주세요',
+  install: '공유 버튼에서 홈 화면에 추가한 뒤 그 앱에서 켤 수 있습니다',
+  unsupported: '이 브라우저에서는 쓸 수 없습니다',
+};
+export function pushRow() {
+  const sw = h('button', { class: 'sw', role: 'switch', 'aria-label': '푸시 알림' }, h('i'));
+  const sub = h('span', { class: 'pr-s' });
+  const test = h('button', { class: 'pr-test', onclick: async () => { test.disabled = true; try { await testPush(); toast('시험 알림을 보냈습니다'); } catch (e) { toast(e.message); } test.disabled = false; } }, '시험');
+  const row = h('div', { class: 'pr' }, h('span', { class: 'pr-ic' }, icon('bell', 'icon s')),
+    h('span', { class: 'pr-tx' }, h('b', {}, '푸시 알림'), sub), test, sw);
+  let st = 'off';
+  const paint = () => {
+    sub.textContent = PUSH_SUB[st];
+    sw.classList.toggle('on', st === 'on');
+    sw.disabled = st === 'install' || st === 'unsupported';
+    sw.setAttribute('aria-checked', st === 'on');
+    test.style.display = st === 'on' ? '' : 'none';
+    row.classList.toggle('warn', st === 'denied' || st === 'install');
+  };
+  pushState().then((s) => { st = s; paint(); });
+  sw.addEventListener('click', async () => {
+    if (sw.classList.contains('busy')) return;
+    sw.classList.add('busy');
+    try {
+      if (st === 'on') { await disablePush(); st = 'off'; toast('푸시 알림을 껐습니다'); }
+      else { sw.classList.add('on'); await enablePush(); st = 'on'; toast('푸시 알림을 켰습니다'); }
+    } catch (e) { toast(e.message || '바꾸지 못했습니다'); st = await pushState(); }
+    sw.classList.remove('busy'); paint();
+  });
+  paint();
+  return row;
+}
+
+// 홈 : 아직 안 켠 사람에게 한 번 권하기 (닫으면 다시 안 뜸)
+export function pushNudge() {
+  const el = h('div', { class: 'pn' });
+  let gone = false;
+  try { gone = localStorage.getItem('kmed:push-nudge') === 'x'; } catch { /* 무시 */ }
+  if (gone) return el;
+  pushState().then((s) => {
+    if (s !== 'off' && s !== 'install') return;
+    const close = () => { try { localStorage.setItem('kmed:push-nudge', 'x'); } catch { /* 무시 */ } el.classList.add('out'); setTimeout(() => el.replaceChildren(), 250); };
+    el.replaceChildren(h('div', { class: 'pn-card' },
+      h('span', { class: 'pr-ic' }, icon('bell', 'icon s')),
+      h('span', { class: 'pr-tx' }, h('b', {}, '새 자료 알림 받기'), h('span', { class: 'pr-s' }, s === 'install' ? PUSH_SUB.install : '새 써머리가 올라오면 알려드립니다')),
+      s === 'off' ? h('button', { class: 'btn sm', onclick: async (e) => {
+        const b = e.currentTarget; b.disabled = true;
+        try { await enablePush(); toast('푸시 알림을 켰습니다'); close(); } catch (err) { toast(err.message); b.disabled = false; }
+      } }, '켜기') : null,
+      h('button', { class: 'pn-x', 'aria-label': '닫기', onclick: close }, icon('x', 'icon s'))));
+  });
   return el;
 }

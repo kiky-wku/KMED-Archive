@@ -2,7 +2,7 @@ import { sb } from '../sb.js';
 import { h, icon, gradeLabel, popover, modal } from '../ui.js';
 import { S, seesAll, go } from '../app.js';
 import { shell } from './shell.js';
-import { bellButton, noticeStack, openSuggest } from './reports.js';
+import { bellButton, noticeStack, openSuggest, pushNudge } from './reports.js';
 
 // 홈 : 인사 · 이어서 하기 · 과목 목록 (한 박스)
 export function homeView(q) {
@@ -27,6 +27,7 @@ export function homeView(q) {
       h('div', { class: 'date' }, today),
       h('div', { class: 'h-acts' },
         resume,
+        pushNudge(),
         stack,
         h('button', { class: 'guide-btn', onclick: openGuide }, icon('book', 'icon s'), '사용법 안내'))),
     h('section', { class: 'h-right' },
