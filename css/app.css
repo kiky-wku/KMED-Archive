@@ -836,3 +836,11 @@ html:has(.fit){overflow:hidden;height:100%}
 .ds-foot .btn{width:auto;height:52px;padding:0 22px;font-size:16px}
 .ds-foot .btn .icon{width:18px;height:18px}
 @media (max-width:640px){.ds-step span{display:none}.ds-step{justify-content:center}.ds-flow{flex-wrap:wrap}.fl-a{display:none}}
+/* 세로 화면 : 훈음 카드 위 · 쓰기 칸 아래 */
+@media (orientation:portrait){
+  .h-row{grid-template-columns:1fr}
+  .fit .h-row{grid-template-rows:minmax(0,2fr) minmax(0,3fr)}
+  .fit .rcard{gap:6px}
+  .fit .rcard .reading{font-size:clamp(28px,3.6vh,40px)}
+  .fit .rcard .reveal{font-size:clamp(56px,8vh,100px)}
+}
