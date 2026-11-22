@@ -164,8 +164,8 @@ export function jungTranslate(ctx, el) {
       if (tag === 'TEXTAREA' || tag === 'INPUT') return;
       if (!shown) {
         if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); stage.reveal?.(); }
-        else if (e.key === 'ArrowLeft') go(-1);
-        else if (e.key === 'ArrowRight') go(1);
+        else if (e.key === 'ArrowLeft') { e.preventDefault(); go(-1); }   // 기본 동작(화면 밀기) 막기
+        else if (e.key === 'ArrowRight') { e.preventDefault(); go(1); }
         return;
       }
       if (e.key === 'ArrowLeft') { e.preventDefault(); grade(false); }

@@ -1625,3 +1625,4 @@ html.offline body::after{content:'인터넷 연결 없음. 이 기기에 저장�
 
 /* 한 화면 고정 : 페이지 영역도 스크롤로 밀리지 않게 */
 .fit>.page{overflow:hidden;overflow:clip}
+.fit .block-area,.fit .subj-body{overflow:clip}

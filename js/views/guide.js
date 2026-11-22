@@ -87,8 +87,8 @@ export function openGuide() {
     to(Math.abs(dx) > 50 ? base + (dx < 0 ? 1 : -1) : base);
   }
   const onKey = (e) => {
-    if (e.key === 'ArrowRight') to(idx + 1);
-    else if (e.key === 'ArrowLeft') to(idx - 1);
+    if (e.key === 'ArrowRight') { e.preventDefault(); to(idx + 1); }
+    else if (e.key === 'ArrowLeft') { e.preventDefault(); to(idx - 1); }
     else if (e.key === 'Escape') close();
   };
   document.addEventListener('keydown', onKey);
