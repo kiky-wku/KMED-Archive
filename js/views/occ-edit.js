@@ -25,7 +25,7 @@ export function openOccEditor({ sub, range, set: s0, decks = [], onSaved, nav = 
   set.boxes = Array.isArray(set.boxes) ? set.boxes : [];
   const origImg = s0?.img || null;
   const temp = new Set();            // 이번에 올렸지만 아직 저장 안 한 그림
-  let dirty = false; let sel = null; let pick = null; // pick : 다음 테이프에 붙일 이름
+  let dirty = false; let sel = null; let grab = false; let pick = null; // pick : 다음 테이프에 붙일 이름
   const hist = [];                   // 되돌리기 (테이프 목록 스냅숏)
   const snap = () => { hist.push(JSON.stringify(set.boxes)); if (hist.length > 60) hist.shift(); };
   let lastSize = null;               // 마지막으로 그린 테이프 크기 (빈 곳을 톡 누르면 같은 크기로)
@@ -73,12 +73,16 @@ export function openOccEditor({ sub, range, set: s0, decks = [], onSaved, nav = 
   }
   const onKey = (e) => {
     const tag = (e.target.tagName || '').toUpperCase();
-    if (e.key === 'Escape') { e.preventDefault(); e.stopPropagation(); if (cropper) { cropper.cancel(); return; } if (sel) { sel = null; stage?.draw(); paintPanel(); return; } close(); return; }
+    if (e.key === 'Escape') { e.preventDefault(); e.stopPropagation(); if (cropper) { cropper.cancel(); return; } if (sel) { sel = null; grab = false; stage?.draw(); paintPanel(); return; } close(); return; }
     if (e.key === 'Enter' && cropper && !e.isComposing && tag !== 'INPUT' && tag !== 'TEXTAREA' && tag !== 'SELECT') { e.preventDefault(); cropper.enter(); return; }
     if (tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT') return;
     if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 'z') { e.preventDefault(); undo(); return; }
     if ((e.key === 'Backspace' || e.key === 'Delete') && sel) { e.preventDefault(); removeBox(sel); return; }
-    if (e.key === 'Enter' && stage && !e.isComposing) { e.preventDefault(); save({ next: hasNext() }); return; }
+    if (e.key === 'Enter' && stage && !e.isComposing) {
+      e.preventDefault();
+      if (grab) { grab = false; sel = null; stage.draw(); paintPanel(); return; }   // 잡은 테이프 놓기
+      save({ next: hasNext() }); return;
+    }
     if (sel && stage && e.key.startsWith('Arrow')) {
       e.preventDefault();
       const d = e.shiftKey ? 10 : 1;
@@ -147,7 +151,7 @@ export function openOccEditor({ sub, range, set: s0, decks = [], onSaved, nav = 
     const band = h('i', { class: 'oe-crop', hidden: true });
     const holder = h('div', { class: 'oe-pdfbox' }, canvas, band);
     const scroller = h('div', { class: 'oe-pdfscroll' }, holder);
-    const cutBtn = h('button', { class: 'btn ink sm', disabled: true, onclick: () => cut() }, icon('check', 'icon s'), '오리기');
+    const cutBtn = h('button', { class: 'btn ink sm oe-cut', disabled: true, onclick: () => cut(batch && hasNext()) });
     const bar = h('div', { class: 'oe-cbar' },
       h('button', { class: 'tool-ic', 'aria-label': '뒤로', title: '뒤로', onclick: () => cancel() }, icon('back')),
       sel2,
@@ -158,11 +162,11 @@ export function openOccEditor({ sub, range, set: s0, decks = [], onSaved, nav = 
       h('div', { class: 'sp' }),
       h('button', { class: 'btn ghost sm', onclick: () => { rect = { x: 0, y: 0, w: 1, h: 1 }; drawBand(); } }, '장 전체'),
       cutBtn);
-    const tip = h('div', { class: 'oe-ctip' }, '그림 부분을 쭉 그어서 네모로 고르세요');
-    const nextTip = h('div', { class: 'oe-ntip', hidden: true });
-    const paintTip = () => nextTip.replaceChildren(h('kbd', {}, 'Enter'), batch && hasNext() ? '오리고 다음 그림으로' : '오리고 테이프 붙이기');
+    cutBtn.title = '그림 부분을 쭉 그어서 네모로 고른 뒤 누르세요';
+    // 안내는 그림 위가 아니라 위 막대의 오리기 버튼에
+    const paintTip = () => cutBtn.replaceChildren(icon('check', 'icon s'), batch && hasNext() ? '오리고 다음' : '오리기', h('kbd', { class: 'k' }, 'Enter'));
     paintTip();
-    stageWrap.replaceChildren(h('div', { class: 'oe-cropper' }, bar, scroller, tip, nextTip));
+    stageWrap.replaceChildren(h('div', { class: 'oe-cropper' }, bar, scroller));
     cropper = { cancel, paintTip, enter: () => { if (rect) cut(batch && hasNext()); } };
 
     async function load() {
@@ -198,8 +202,6 @@ export function openOccEditor({ sub, range, set: s0, decks = [], onSaved, nav = 
       cutBtn.disabled = !rect;
       band.hidden = !rect;
       if (rect) Object.assign(band.style, { left: `${rect.x * 100}%`, top: `${rect.y * 100}%`, width: `${rect.w * 100}%`, height: `${rect.h * 100}%` });
-      tip.classList.toggle('off', !!rect);
-      nextTip.hidden = !rect;
     }
     // 네모 고르기 (손가락 · 펜슬 · 마우스 하나)
     let st = null;
@@ -291,12 +293,11 @@ export function openOccEditor({ sub, range, set: s0, decks = [], onSaved, nav = 
     // 테이프 그리기
     function drawBoxes() {
       layer.replaceChildren(...set.boxes.map((b, i) => {
-        const on = sel === b.id;
-        const el = h('div', { class: 'oe-box' + (on ? ' on' : '') + (b.name ? '' : ' oe-nm'), 'data-id': b.id, style: { left: pc(b.x), top: pc(b.y), width: pc(b.w), height: pc(b.h) } },
+        const on = sel === b.id; const hd = on && grab;
+        const el = h('div', { class: 'oe-box' + (on ? ' on' : '') + (hd ? ' grab' : '') + (b.name ? '' : ' oe-nm'), 'data-id': b.id, style: { left: pc(b.x), top: pc(b.y), width: pc(b.w), height: pc(b.h) } },
           h('span', { class: 'oe-bn' }, i + 1),
           set.kind === 'label' ? h('span', { class: 'oe-bl' }, b.name || '이름 없음') : null,
-          ...(on ? ['nw', 'ne', 'sw', 'se'].map((c) => h('i', { class: `oe-hd ${c}`, 'data-h': c })) : []),
-          on ? h('button', { class: 'oe-bx', 'aria-label': '테이프 지우기', onpointerdown: (e) => e.stopPropagation(), onclick: (e) => { e.stopPropagation(); removeBox(b.id); } }, icon('x', 'icon s')) : null);
+          ...(hd ? ['nw', 'ne', 'sw', 'se'].map((c) => h('i', { class: `oe-hd ${c}`, 'data-h': c })) : []));
         return el;
       }));
     }
@@ -324,13 +325,13 @@ export function openOccEditor({ sub, range, set: s0, decks = [], onSaved, nav = 
       const be = e.target.closest?.('.oe-box');
       const before = JSON.stringify(set.boxes);
       const sx0 = e.clientX; const sy0 = e.clientY;
-      if (hd && sel) {
+      if (hd && sel && grab) {
         const b = set.boxes.find((q) => q.id === sel);
         act = { kind: 'resize', box: b, h: hd.dataset.h, orig: { ...b }, before, sx0, sy0 };
         canvasEl.classList.add('drag');
       } else if (be) {
         const b = set.boxes.find((q) => q.id === be.dataset.id);
-        sel = b.id; if (b.name) pick = null;
+        sel = b.id; grab = true; if (b.name) pick = null;
         act = { kind: 'move', box: b, sx: x, sy: y, orig: { ...b }, moved: false, before, sx0, sy0 };
         drawBoxes(); paintPanel();
       } else if (set.kind === 'label') {
@@ -357,7 +358,7 @@ export function openOccEditor({ sub, range, set: s0, decks = [], onSaved, nav = 
         if (!act.moved && Math.hypot(e.clientX - act.sx0, e.clientY - act.sy0) < TAP) return;
         if (!act.moved) { act.moved = true; set.boxes.push(b); canvasEl.classList.add('drag'); }
         b.x = Math.min(act.sx, x); b.y = Math.min(act.sy, y); b.w = Math.abs(x - act.sx); b.h = Math.abs(y - act.sy);
-        sel = b.id;
+        sel = b.id; grab = false;
       } else if (act.kind === 'move') {
         const dx = x - act.sx; const dy = y - act.sy;
         if (!act.moved && Math.hypot(e.clientX - act.sx0, e.clientY - act.sy0) < TAP) return;
@@ -397,17 +398,17 @@ export function openOccEditor({ sub, range, set: s0, decks = [], onSaved, nav = 
         const tiny = !a.moved || b.w * r.width < TAP || b.h * r.height < TAP;
         if (tiny) {
           set.boxes = set.boxes.filter((q) => q !== b);
-          if (a.prevSel) sel = null;                     // 고른 테이프가 있었으면 고르기만 풂
+          if (a.prevSel && grab) { sel = null; grab = false; }   // 잡고 있던 테이프가 있었으면 놓기만
           else if (lastSize) {                           // 빈 곳을 톡 : 마지막 크기 그대로 테이프 하나
             b.w = lastSize.w; b.h = lastSize.h;
             b.x = clamp(a.sx - b.w / 2, 0, 1 - b.w); b.y = clamp(a.sy - b.h / 2, 0, 1 - b.h);
             set.boxes.push(b);
-            b.name = pick || nextName() || ''; pick = null; sel = b.id;
+            b.name = pick || nextName() || ''; pick = null; sel = b.id; grab = false;
             hist.push(a.before); mark();
           } else sel = null;
         } else {
           b.name = pick || nextName() || '';           // 다음 이름 자동으로
-          pick = null; sel = b.id; lastSize = { w: b.w, h: b.h };
+          pick = null; sel = b.id; grab = false; lastSize = { w: b.w, h: b.h };
           hist.push(a.before); mark();
         }
       } else if (a.kind === 'resize' || (a.kind === 'move' && a.moved)) {
@@ -497,6 +498,8 @@ export function openOccEditor({ sub, range, set: s0, decks = [], onSaved, nav = 
       const named = set.boxes.filter((b) => b.name).length;
       parts.push(h('div', { class: 'oe-sec' },
         h('div', { class: 'oe-lab' }, h('b', {}, '이름'), h('span', {}, `테이프 ${set.boxes.length}개${set.boxes.length ? `, 이름 ${named}개` : ''}`)),
+        cur ? h('div', { class: 'oe-cur' }, h('span', { class: 'oe-cur-n' }, set.boxes.indexOf(cur) + 1), h('b', {}, cur.name || '이름 없음'),
+          h('button', { class: 'tool-ic sm', title: '이 테이프 지우기', 'aria-label': '이 테이프 지우기', onclick: () => removeBox(cur.id) }, icon('trash', 'icon s'))) : null,
         h('p', { class: 'oe-help' }, cur ? `${set.boxes.indexOf(cur) + 1}번 테이프에 붙일 이름을 누르세요` : nx ? `다음에 그리는 테이프는 ${nx}${lastSize ? '. 빈 곳을 누르면 같은 크기로 붙습니다' : ''}` : '이름 자리에 네모를 그리세요'),
         h('div', { class: 'oe-chips' }, names.map((n) => {
           const no = used.get(n);
