@@ -1726,3 +1726,14 @@ html.offline body::after{content:'인터넷 연결 없음. 이 기기에 저장�
 .hg-top .q-counts{padding:0 2px 7px}
 .hg-find{display:flex;align-items:center;gap:8px}
 .hg-find .srch{flex:1;min-width:0}
+
+/* 학생 목록 학년 줄 */
+.tbl tr.day .day-n{font-weight:600;color:var(--faint)}
+/* 로그인 기록 : 확인 필요 */
+.lg-warn{margin-bottom:14px;padding:14px 16px;border-radius:16px;background:#FFF4F4}
+.lg-warn-h{display:flex;align-items:center;gap:6px;font-size:14px;font-weight:800;color:var(--red);margin-bottom:10px}
+.lg-warn-l{display:flex;flex-wrap:wrap;gap:8px}
+.lg-chip{display:inline-flex;align-items:baseline;gap:8px;height:36px;padding:0 14px;border-radius:10px;background:#fff;box-shadow:var(--sh1);font-size:15px;transition:transform .15s var(--spring)}
+.lg-chip:active{transform:scale(.95)}
+.lg-chip b{font-weight:800;line-height:36px}
+.lg-chip span{font-size:13px;font-weight:700;color:var(--red)}

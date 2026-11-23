@@ -86,11 +86,19 @@ window.addEventListener('hashchange', route);
 // 접속 기록 : 앱을 열 때, 그리고 30분 넘게 다른 앱에 있다가 돌아올 때
 // (supabase 요청은 then 을 붙여야 실제로 보내짐)
 let lastTouch = 0;
+// 이 기기 고유 번호 (처음 한 번 만들어 기기에 보관)
+function deviceId() {
+  try {
+    let d = localStorage.getItem('kmed:did');
+    if (!d) { d = crypto.randomUUID?.() || String(Math.random()).slice(2) + Date.now(); localStorage.setItem('kmed:did', d); }
+    return d;
+  } catch { return null; }
+}
 export function touch() {
   if (S.profile) startLive();   // 실시간 연결 (이미 있으면 그대로)
   if (!S.profile || !navigator.onLine) return;
   lastTouch = Date.now();
-  sb.rpc('touch_session', { p_device: deviceName() }).then(() => {}, () => {});
+  sb.rpc('touch_session', { p_device: deviceName(), p_did: deviceId() }).then(() => {}, () => {});
 }
 document.addEventListener('visibilitychange', () => {
   if (document.visibilityState === 'visible' && Date.now() - lastTouch > 30 * 60e3) touch();

@@ -63,7 +63,7 @@ export function adminView(q) {
     area.replaceChildren();
     area.classList.remove('swap'); void area.offsetWidth; area.classList.add('swap');
     if (v === 'members') membersTab(area);
-    else if (v === 'logs') logsTab(area);
+    else if (v === 'logs') logsTab(area, q.get('u'));
     else if (v === 'storage') storageTab(area);
     else subjectsTab(area);
   }
@@ -94,17 +94,28 @@ async function membersTab(area) {
     const k = search.value.trim().toLowerCase();
     const items = rows.filter((p) => !k || (p.name || '').toLowerCase().includes(k) || (p.username || '').includes(k));
     if (!items.length) { list.replaceChildren(h('div', { class: 'empty sm' }, rows.length ? '검색 결과가 없습니다' : '등록된 회원이 없습니다')); return; }
+    // 학년별로 묶기 (학년 없는 계정은 맨 아래)
+    const gk = (p) => gradeOf(p) || 99;
+    items.sort((a, b) => gk(a) - gk(b) || (a.student_no ?? 1e9) - (b.student_no ?? 1e9) || (a.name || '').localeCompare(b.name || '', 'ko'));
+    const body = []; let lastG = null;
+    items.forEach((p, i) => {
+      const g = gk(p);
+      if (g !== lastG) { body.push(h('tr', { class: 'day' }, h('td', { colspan: '6' }, g === 99 ? '학년 없음' : gradeLabel(g), h('span', { class: 'day-n' }, ` ${items.filter((x) => gk(x) === g).length}명`)))); lastG = g; }
+      body.push(row(p, i));
+    });
     list.replaceChildren(h('table', { class: 'tbl' },
       h('thead', {}, h('tr', {}, ['이름', '아이디', '학년', '역할', '열람', '마지막 접속'].map((t) => h('th', {}, t)))),
-      h('tbody', {}, items.map((p, i) => h('tr', { style: { animationDelay: `${Math.min(i, 12) * 0.025}s` }, onclick: () => memberModal(p, reload) },
+      h('tbody', {}, body)));
+  }
+  function row(p, i) {
+    return (h('tr', { style: { animationDelay: `${Math.min(i, 12) * 0.025}s` }, onclick: () => memberModal(p, reload) },
         h('td', { class: 'strong' }, p.name || '—', p.must_change_pw ? h('span', { class: 'tag' }, '첫 로그인 전') : null),
         h('td', { class: 'mono' }, p.username || p.email),
         h('td', {}, gradeLabel(gradeOf(p)) || '—'),
         h('td', {}, h('span', { class: `role r-${p.role}` }, ROLE[p.role])),
         h('td', {}, SCOPE[p.scope]),
         h('td', { class: 'sub' }, ago(p.last_seen_at) || '—'),
-      ))),
-    ));
+      ));
   }
   search.addEventListener('input', render);
   reload();
@@ -221,13 +232,27 @@ async function memberModal(p, done) {
 }
 
 // ═════════════ 로그인 기록 ═════════════
-async function logsTab(area) {
+async function logsTab(area, pre) {
   const { data: people } = await sb.from('profiles').select('id,name,username').order('name');
   const sel = h('select', { class: 'input sel' }, h('option', { value: '' }, '전체 회원'),
     (people || []).map((p) => h('option', { value: p.id }, `${p.name || p.username}`)));
   const list = h('div', { class: 'card tbl-card' }, skelRows());
-  area.append(h('div', { class: 'toolbar' }, sel), list);
+  const warn = h('div', { class: 'lg-warn', hidden: true });
+  area.append(warn, h('div', { class: 'toolbar' }, sel), list);
   const nameOf = Object.fromEntries((people || []).map((p) => [p.id, p]));
+  if (pre && nameOf[pre]) sel.value = pre;
+
+  // 확인 필요 : 최근 30일 기기 5대 이상
+  sb.rpc('device_alerts').then(({ data }) => {
+    if (!data?.length) return;
+    warn.hidden = false;
+    warn.replaceChildren(h('div', { class: 'lg-warn-h' }, icon('shield', 'icon s'), '확인 필요'),
+      h('div', { class: 'lg-warn-l' }, data.map((r) => {
+        const p = nameOf[r.user_id] || {};
+        return h('button', { class: 'lg-chip', onclick: () => { sel.value = r.user_id; load(); } },
+          h('b', {}, p.name || p.username || '—'), h('span', {}, `기기 ${r.devices}대`));
+      })));
+  }, () => {});
 
   async function load() {
     const since = new Date(Date.now() - 30 * 86400e3).toISOString();   // 최근 30일만
