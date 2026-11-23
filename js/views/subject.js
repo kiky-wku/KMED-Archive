@@ -66,7 +66,13 @@ export function subjectView(id, q) {
     if (hasStats(blocks.map((b) => b.kind))) blocks.push({ kind: 'stats', title: '통계', sort: 999 });
     titleEl.replaceChildren(sub.icon ? h('span', { class: 'emo' }, sub.icon) : null, sub.name);
 
-    let rangeId = ranges.find((r) => r.id === q.get('r'))?.id || ranges[0]?.id;
+    // 범위(중간, 기말) : 주소에 있으면 그것, 없으면 날짜로 자동
+    //  3월 1일 ~ 4월 : 중간 / 5월 ~ 8월 : 기말 / 9월 ~ 10월 : 중간 / 11월 ~ 2월 : 기말
+    const m = new Date().getMonth() + 1;
+    const nowExam = (m >= 3 && m <= 4) || (m >= 9 && m <= 10) ? '중간' : '기말';
+    let rangeId = ranges.find((r) => r.id === q.get('r'))?.id
+      || ranges.find((r) => r.name.includes(nowExam))?.id
+      || ranges[0]?.id;
     let kind = blocks.find((b) => b.kind === q.get('b'))?.kind || blocks[0]?.kind;
 
     // 데이터 넣기 : 관리자 · 이 과목 담당
