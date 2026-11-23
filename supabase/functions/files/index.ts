@@ -1,4 +1,4 @@
-// PDF 자료 : Cloudflare R2 올리기 · 열기 · 지우기
+// PDF 자료 · 플래시카드 사진 : Cloudflare R2 올리기 · 열기 · 지우기
 //  - R2 열쇠는 Supabase Secrets(R2_ACCOUNT_ID, R2_ACCESS_KEY_ID, R2_SECRET_ACCESS_KEY, R2_BUCKET)에만 있음
 //  - 권한 확인은 요청한 사람의 로그인으로 (RLS 그대로 적용) → 볼 수 있는 자료만 열람 주소 발급
 import { createClient } from 'jsr:@supabase/supabase-js@2';
@@ -13,6 +13,8 @@ const json = (b: unknown, status = 200) =>
   new Response(JSON.stringify(b), { status, headers: { ...cors, 'Content-Type': 'application/json' } });
 
 const MAX = 100 * 1024 * 1024; // 한 파일 100MB
+const IMG_MAX = 8 * 1024 * 1024; // 사진 한 장 8MB (앱에서 줄여서 보내므로 보통 0.5MB 안팎)
+const IMG_KEY = /^[0-9a-f-]{36}\/img\/[0-9a-f-]{36}\.jpg$/;
 
 Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') return new Response('ok', { headers: cors });
@@ -88,6 +90,47 @@ Deno.serve(async (req) => {
       if (!(await canWrite(b.subject_id))) return json({ error: '권한이 없습니다.' }, 403);
       if (String(b.key || '').startsWith(`${b.subject_id}/`)) await remove(b.key);
       return json({ ok: true });
+    }
+
+    // ── 플래시카드 사진 ──
+    // 올리기 주소
+    if (b.action === 'sign_img_upload') {
+      if (!(await canWrite(b.subject_id))) return json({ error: '이 과목에 사진을 올릴 권한이 없습니다.' }, 403);
+      if (Number(b.size) > IMG_MAX) return json({ error: '사진이 너무 큽니다.' }, 400);
+      const key = `${b.subject_id}/img/${crypto.randomUUID()}.jpg`;
+      return json({ key, url: await presign(key, 'PUT', 900) });
+    }
+
+    // 보기 주소 (볼 수 있는 카드에 붙은 사진만, 한 번에 60장까지)
+    if (b.action === 'sign_imgs') {
+      const keys = [...new Set((Array.isArray(b.keys) ? b.keys : []).map(String))].filter((k) => IMG_KEY.test(k)).slice(0, 60);
+      if (!keys.length) return json({ urls: {} });
+      const [f, k2] = await Promise.all([
+        me.from('flash_cards').select('front_img').in('front_img', keys),
+        me.from('flash_cards').select('back_img').in('back_img', keys),
+      ]);
+      const ok = new Set([...(f.data || []).map((r) => r.front_img), ...(k2.data || []).map((r) => r.back_img)]);
+      const urls: Record<string, string> = {};
+      for (const k of keys) if (ok.has(k)) urls[k] = await presign(k, 'GET', 86400, '&response-content-type=image%2Fjpeg');
+      return json({ urls });
+    }
+
+    // 지우기 : 어느 카드에도 안 쓰이는 사진만
+    if (b.action === 'delete_imgs') {
+      const keys = [...new Set((Array.isArray(b.keys) ? b.keys : []).map(String))].filter((k) => IMG_KEY.test(k)).slice(0, 200);
+      const allowed = new Map<string, boolean>();
+      let n = 0;
+      for (const k of keys) {
+        const sid = k.split('/')[0];
+        if (!allowed.has(sid)) allowed.set(sid, await canWrite(sid));
+        if (!allowed.get(sid)) continue;
+        const [a, c] = await Promise.all([
+          svc.from('flash_cards').select('id', { count: 'exact', head: true }).eq('front_img', k),
+          svc.from('flash_cards').select('id', { count: 'exact', head: true }).eq('back_img', k),
+        ]);
+        if ((a.count || 0) + (c.count || 0) === 0) { await remove(k); n++; }
+      }
+      return json({ ok: true, removed: n });
     }
 
     // 사용량 (관리자)

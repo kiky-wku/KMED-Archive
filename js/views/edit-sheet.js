@@ -2,6 +2,7 @@ import { sb } from '../sb.js';
 import { h, icon, toast, shake, skelRows } from '../ui.js';
 import { fetchAll, resetCaches, resetHints } from '../data/hanja.js';
 import { resetStudyCaches } from '../data/study.js';
+import { uploadImg, dropImgs, imgEl, zoomImg } from '../data/images.js';
 
 // ─────────────────────────────────────────────
 // 데이터 고치기 (담당 · 관리자)
@@ -25,6 +26,7 @@ export function openEditSheet({ sub, range, pool, kind: k0, query = '', onDone }
   let kind = kinds.find((k) => k[0] === k0)?.[0] || kinds[0][0];
   let items = []; let units = new Map(); let hints = new Map();
   let shown = 60; let openId = null; let changed = false;
+  const temp = new Set();   // 올렸지만 아직 저장 안 한 사진 (닫을 때 정리)
 
   const search = h('input', { class: 'es-q', type: 'search', placeholder: '검색', value: query, spellcheck: 'false' });
   const count = h('span', { class: 'es-cnt' });
@@ -46,6 +48,7 @@ export function openEditSheet({ sub, range, pool, kind: k0, query = '', onDone }
   function close() {
     wrap.classList.remove('on'); document.removeEventListener('keydown', onKey);
     setTimeout(() => wrap.remove(), 320);
+    if (temp.size) dropImgs([...temp]);
     if (changed) { resetCaches(); resetHints(); resetStudyCaches(); onDone?.(); }
   }
 
@@ -118,13 +121,14 @@ export function openEditSheet({ sub, range, pool, kind: k0, query = '', onDone }
   function row(it, i) {
     const open = openId === it.id;
     let main; let sub2; let hasHint = false;
-    if (kind === 'flash') { main = it.front; sub2 = it.back; hasHint = !!it.hint; }
+    if (kind === 'flash') { main = it.front || '사진'; sub2 = it.back || (it.back_img ? '사진' : ''); hasHint = !!it.hint; }
     else if (kind === 'hanja') { main = h('span', { class: 'es-ch' }, it.ch); sub2 = [it.reading, units.get(it.unit_id)?.label].filter(Boolean).join('   '); hasHint = !!hints.get(it.ch); }
     else if (kind === 'jung') { main = it.lines.map((l) => l.hanja).join(' '); sub2 = it.page ? `${it.page}쪽, ${it.lines.length}줄` : `${it.lines.length}줄`; hasHint = it.lines.some((l) => l.hint); }
     else { main = it.sentence; sub2 = it.translation; hasHint = !!it.hint; }
     const head = h('button', { class: 'es-h', onclick: () => { openId = open ? null : it.id; paint(); } },
       kind === 'flash' && it.deck ? h('span', { class: 'es-deck' }, it.deck) : null,
       h('span', { class: 'es-tx' }, h('span', { class: 'es-m' }, main), sub2 ? h('span', { class: 'es-s' }, sub2) : null),
+      kind === 'flash' && (it.front_img || it.back_img) ? h('span', { class: 'es-hint es-picon', title: '사진 있음' }, icon('image', 'icon s')) : null,
       hasHint ? h('span', { class: 'es-hint', title: '암기법 있음' }, icon('bulb', 'icon s')) : null,
       h('span', { class: 'es-chev' }, icon('down', 'icon s')));
     const el = h('div', { class: 'es-i' + (open ? ' open' : ''), style: { animationDelay: `${Math.min(i, 12) * 0.02}s` } }, head);
@@ -142,6 +146,36 @@ export function openEditSheet({ sub, range, pool, kind: k0, query = '', onDone }
     return wrapF;
   };
 
+  // 사진 칸 하나 : 비어 있으면 올리기, 있으면 미리보기 + 빼기
+  function imgSlot(label, key0) {
+    const slot = { key: key0 || null, busy: false };
+    const input = h('input', { type: 'file', accept: 'image/*', hidden: true, onchange: () => { const fl = input.files?.[0]; input.value = ''; if (fl) slot.put(fl); } });
+    const body = h('div', { class: 'es-pic-b' });
+    slot.el = h('div', { class: 'es-pic' }, h('span', { class: 'es-pic-l' }, label), body, input);
+    function paint() {
+      if (slot.busy) { body.replaceChildren(h('div', { class: 'es-pic-box skel' }, h('i', { class: 'es-pic-bar' }))); return; }
+      if (!slot.key) {
+        body.replaceChildren(h('button', { class: 'es-pic-box es-pic-add', type: 'button', title: '사진 넣기', 'aria-label': `${label} 넣기`, onclick: () => input.click() }, icon('image')));
+        return;
+      }
+      const th = imgEl(slot.key, 'es-pic-box');
+      th.addEventListener('click', () => zoomImg(slot.key));
+      th.append(h('button', { class: 'es-pic-x', type: 'button', title: '사진 빼기', 'aria-label': `${label} 빼기`, onclick: (e) => { e.stopPropagation(); slot.key = null; paint(); } }, icon('x', 'icon s')));
+      body.replaceChildren(th, h('button', { class: 'es-pic-re', type: 'button', title: '다른 사진으로', 'aria-label': `${label} 바꾸기`, onclick: () => input.click() }, icon('restore', 'icon s')));
+    }
+    slot.put = async (file) => {
+      if (slot.busy) return;
+      slot.busy = true; paint();
+      try {
+        const k = await uploadImg(sub.id, file, (p) => { const b = body.querySelector('.es-pic-bar'); if (b) b.style.width = `${Math.round(p * 100)}%`; });
+        temp.add(k); slot.key = k;
+      } catch (e) { toast(e.message || '사진을 올리지 못했습니다'); }
+      slot.busy = false; paint();
+    };
+    paint();
+    return slot;
+  }
+
   function editor(it) {
     const box = h('div', { class: 'es-ed' });
     const saveBtn = h('button', { class: 'btn sm', onclick: () => save() }, '저장');
@@ -152,8 +186,22 @@ export function openEditSheet({ sub, range, pool, kind: k0, query = '', onDone }
 
     if (kind === 'flash') {
       const f = { deck: field('묶음', it.deck), front: field('앞', it.front, { area: true }), back: field('뒤', it.back, { area: true, rows: 3 }), hint: field('암기법', it.hint, { area: true, ph: '없으면 비워 둡니다' }) };
-      box.append(h('div', { class: 'es-grid' }, f.deck, f.front, f.back, f.hint));
-      get = () => ({ deck: f.deck.inp.value.trim(), front: f.front.inp.value.trim(), back: f.back.inp.value.trim(), hint: f.hint.inp.value.trim() });
+      const pic = { front: imgSlot('앞 사진', it.front_img), back: imgSlot('뒤 사진', it.back_img) };
+      box.append(h('div', { class: 'es-grid' }, f.deck, f.front, f.back, f.hint), h('div', { class: 'es-pics' }, pic.front.el, pic.back.el));
+      // 사진 붙여넣기 : 뒤 칸에 커서가 있으면 뒤 사진, 아니면 앞 사진
+      box.addEventListener('paste', (e) => {
+        const file = [...(e.clipboardData?.files || [])].find((x) => x.type.startsWith('image/'));
+        if (!file) return;
+        e.preventDefault();
+        (document.activeElement === f.back.inp ? pic.back : pic.front).put(file);
+      });
+      get = () => {
+        const v = { deck: f.deck.inp.value.trim(), front: f.front.inp.value.trim(), back: f.back.inp.value.trim(), hint: f.hint.inp.value.trim() };
+        if (pic.front.key !== (it.front_img || null)) v.front_img = pic.front.key;
+        if (pic.back.key !== (it.back_img || null)) v.back_img = pic.back.key;
+        v.busy = pic.front.busy || pic.back.busy;
+        return v;
+      };
     } else if (kind === 'hanja') {
       const same = items.filter((x) => x.ch === it.ch).length;
       const f = { reading: field('훈음', it.reading, { ph: '여러 개면 / 로 나눕니다' }), hint: field('암기법', hints.get(it.ch), { area: true, ph: '없으면 비워 둡니다' }) };
@@ -189,7 +237,12 @@ export function openEditSheet({ sub, range, pool, kind: k0, query = '', onDone }
     async function save() {
       const v = get();
       // 확인
-      if (kind === 'flash' && (!v.front || !v.back)) { toast('앞과 뒤를 모두 적어주세요'); shake(box); return; }
+      if (kind === 'flash') {
+        if (v.busy) { toast('사진을 올리는 중입니다'); return; }
+        delete v.busy;
+        const fi = 'front_img' in v ? v.front_img : it.front_img; const bi = 'back_img' in v ? v.back_img : it.back_img;
+        if ((!v.front && !fi) || (!v.back && !bi)) { toast('앞과 뒤에 글이나 사진을 넣어주세요'); shake(box); return; }
+      }
       if (kind === 'um') {
         if (!v.cards.length) { toast('카드를 적어주세요'); shake(box); return; }
         if (v.cards.length !== v.orders.length) { toast(`카드 ${v.cards.length}개, 순서 ${v.orders.length}개로 개수가 다릅니다`); shake(box); return; }
@@ -197,7 +250,13 @@ export function openEditSheet({ sub, range, pool, kind: k0, query = '', onDone }
       }
       saveBtn.disabled = true;
       try {
-        if (kind === 'flash') { ok(await sb.from('flash_cards').update(v).eq('id', it.id)); Object.assign(it, v); }
+        if (kind === 'flash') {
+          const gone = ['front_img', 'back_img'].filter((k) => k in v && it[k]).map((k) => it[k]);
+          ok(await sb.from('flash_cards').update(v).eq('id', it.id));
+          [v.front_img, v.back_img].forEach((k) => k && temp.delete(k));
+          Object.assign(it, v);
+          if (gone.length) dropImgs(gone);
+        }
         else if (kind === 'hanja') {
           if (v.reading !== it.reading) { ok(await sb.from('hanja_cards').update({ reading: v.reading }).eq('id', it.id)); it.reading = v.reading; }
           if (v.hint !== (hints.get(it.ch) || '')) {
@@ -225,7 +284,7 @@ export function openEditSheet({ sub, range, pool, kind: k0, query = '', onDone }
         return;
       }
       try {
-        if (kind === 'flash') ok(await sb.from('flash_cards').delete().eq('id', it.id));
+        if (kind === 'flash') { ok(await sb.from('flash_cards').delete().eq('id', it.id)); dropImgs([it.front_img, it.back_img]); }
         else if (kind === 'hanja') ok(await sb.from('hanja_cards').delete().eq('id', it.id));
         else if (kind === 'jung') ok(await sb.from('jung_lines').delete().in('id', it.lines.map((l) => l.id)));
         else ok(await sb.from('um_sentences').delete().eq('id', it.id));

@@ -3,6 +3,7 @@ import { deckState } from '../data/hanja.js';
 import { loadFlash, loadItems, saveItem, clearItems } from '../data/study.js';
 import { unitPicker } from './units.js';
 import { hint } from './hint.js';
+import { imgEl, zoomImg, preload } from '../data/images.js';
 
 // ─────────────────────────────────────────────
 // 플래시카드 : 앞 → 뒤 / 뒤 → 앞, 뒤집고 맞음 · 틀림, 💡 암기법
@@ -108,6 +109,10 @@ export function flash(ctx, el) {
       ctx.here = `${c.front} / ${c.back}`.slice(0, 120);
       const q = mode === 'f' ? c.front : c.back;
       const a = mode === 'f' ? c.back : c.front;
+      const qi = mode === 'f' ? c.front_img : c.back_img;
+      const ai = mode === 'f' ? c.back_img : c.front_img;
+      // 다음 카드 사진 미리 받기
+      r.slice(deck.pos + 1, deck.pos + 4).forEach((id) => { const n = byId.get(id); if (n) preload([n.front_img, n.back_img]); });
       const hn = hint(c.hint);
       const meta = h('div', { class: 'card-meta' },
         h('span', { class: 'idx' }, `${deck.pos + 1}`, h('i', {}, ` / ${r.length}`)),
@@ -116,8 +121,8 @@ export function flash(ctx, el) {
           h('button', { class: 'tool-ic sm', title: '이전 카드', 'aria-label': '이전 카드', disabled: !deck.hist.length, onclick: (e) => { e.stopPropagation(); back(); } }, icon('undo', 'icon s')),
           h('button', { class: 'tool-ic sm', title: '건너뛰기', 'aria-label': '건너뛰기', onclick: (e) => { e.stopPropagation(); skip(); } }, icon('skip', 'icon s'))));
       const flip = h('div', { class: 'flip fc' },
-        h('div', { class: 'face front' }, meta, h('div', { class: `fc-text ${size(q)}` }, q), hn.panel),
-        h('div', { class: 'face back' }, h('div', { class: 'fc-q' }, q), h('div', { class: `fc-text ${size(a)}` }, a)));
+        h('div', { class: 'face front' + (qi ? ' has-img' : '') }, meta, ...body(q, qi), hn.panel),
+        h('div', { class: 'face back' + (ai ? ' has-img' : '') }, h('div', { class: 'fc-q' }, q || (qi ? '사진' : '')), ...body(a, ai)));
       const actions = h('div', { class: 'stage-act' });
       const turn = () => {
         if (phase !== 'ask') return;
@@ -149,7 +154,7 @@ export function flash(ctx, el) {
         h('div', { class: 'segc full' }, tab('all', '전체', ok.length + no.length), tab('no', '틀림', no.length), tab('ok', '맞음', ok.length)),
         list.length ? h('div', { class: 'fc-rec' }, list.map((id) => {
           const c = byId.get(id);
-          return h('div', { class: 'fr ' + st(id) }, h('b', {}, c.front), h('span', {}, c.back));
+          return h('div', { class: 'fr ' + st(id) }, h('b', {}, c.front || '사진'), h('span', {}, c.back || '사진'));
         })) : h('div', { class: 'rec-empty' }, '기록이 없습니다'),
         h('div', { class: 'rec-foot' },
           h('button', { class: 'btn', onclick: () => { rec.d.close(); retryWrong(); } }, '틀린 카드만 다시'),
@@ -176,7 +181,7 @@ export function flash(ctx, el) {
     if (ctx.retry) { ctx.retry = false; render(); retryWrong(); } else render();
 
     const onKey = (e) => {
-      if (document.querySelector('.modal-wrap, .drawer.on, .pop, .ds-wrap')) return;
+      if (document.querySelector('.modal-wrap, .drawer.on, .pop, .ds-wrap, .zimg')) return;
       const tag = (e.target.tagName || '').toUpperCase();
       if (tag === 'INPUT' || tag === 'TEXTAREA') return;
       if (phase === 'ask') { if (e.key === ' ' || e.key === 'Enter') { e.preventDefault(); stage.turn?.(); } return; }
@@ -188,6 +193,15 @@ export function flash(ctx, el) {
   })();
 
   return () => { alive = false; offs.forEach((f) => f()); };
+}
+
+// 카드 한 면 : 사진이 있으면 사진 + 글 (글은 한 단계 작게)
+function body(t, key) {
+  if (!key) return [h('div', { class: `fc-text ${size(t)}` }, t)];
+  const im = imgEl(key, 'fc-img');
+  im.append(h('button', { class: 'fc-zoom', title: '크게 보기', 'aria-label': '크게 보기', onclick: (e) => { e.stopPropagation(); zoomImg(key); } }, icon('expand', 'icon s')));
+  const down = { xl: 'l', l: 'm', m: 's', s: 's' };
+  return [im, t ? h('div', { class: `fc-text ${down[size(t)]}` }, t) : null].filter(Boolean);
 }
 
 // 글 길이에 맞춰 크기

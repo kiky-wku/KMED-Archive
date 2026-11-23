@@ -1,4 +1,5 @@
 import { sb } from '../sb.js';
+import { dropImgs } from './images.js';
 import { FORMATS } from './formats.js';
 import { fetchAll } from './hanja.js';
 
@@ -226,11 +227,31 @@ export async function apply(rangeId, mode, parsed, { pool } = {}) {
   // 플래시카드 (추가하기 : 붙여넣은 묶음만 새것으로)
   if (parsed.flash) {
     const decks = [...new Set(parsed.flash.map((r) => r.deck))];
+    // 지우기 전에 사진 기억 : 같은 묶음 + 같은 앞면(없으면 같은 앞면)인 새 카드에 그대로 붙임
+    let old = [];
+    try {
+      let q = sb.from('flash_cards').select('deck,front,front_img,back_img').eq('range_id', rangeId).or('front_img.not.is.null,back_img.not.is.null');
+      if (mode !== 'replace') q = q.in('deck', decks);
+      const r = await q; if (!r.error) old = r.data || [];
+    } catch { old = []; }
+    const nk = (t) => String(t || '').replace(/\s+/g, '');
+    const byDF = new Map(old.map((o) => [`${o.deck}\u0001${nk(o.front)}`, o]));
+    const byF = new Map(old.map((o) => [nk(o.front), o]));
     if (mode === 'replace') ok(await sb.from('flash_cards').delete().eq('range_id', rangeId));
     else ok(await sb.from('flash_cards').delete().eq('range_id', rangeId).in('deck', decks));
     let s = mode === 'replace' ? -1 : await maxSort('flash_cards');
-    const rows = parsed.flash.map((r) => ({ range_id: rangeId, deck: r.deck, front: r.front, back: r.back, hint: r.hint, sort: ++s }));
+    const used = new Set();
+    const rows = parsed.flash.map((r) => {
+      const row = { range_id: rangeId, deck: r.deck, front: r.front, back: r.back, hint: r.hint, sort: ++s };
+      const o = byDF.get(`${r.deck}\u0001${nk(r.front)}`) || byF.get(nk(r.front));
+      if (o && !used.has(o)) { used.add(o); row.front_img = o.front_img; row.back_img = o.back_img; }
+      return row;
+    });
+    if (old.length) rows.forEach((r) => { if (!('front_img' in r)) { r.front_img = null; r.back_img = null; } });
     for (const part of chunks(rows)) ok(await sb.from('flash_cards').insert(part));
+    // 새 카드에 안 붙은 사진은 저장소에서도 지움
+    const lost = old.filter((o) => !used.has(o)).flatMap((o) => [o.front_img, o.back_img]).filter(Boolean);
+    if (lost.length) dropImgs(lost);
   }
   if (parsed.past) {
     const exams = [...new Set(parsed.past.map((r) => r.exam))];
