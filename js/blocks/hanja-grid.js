@@ -23,11 +23,13 @@ export function hanjaGrid(ctx, el) {
     const result = h('div', { class: 'g-result' });
     const grid = h('div', { class: 'hg' });
     const wrap = h('div', { class: 'g-wrap' },
-      h('div', { class: 'q-bar' },
-        units.length ? unitPicker(units, sel, (v) => { sel = v; draw(); }) : null,
-        h('label', { class: 'srch' }, icon('search', 'icon s'), search),
-        h('div', { class: 'sp' }), legend,
-        seg([['r', '한자 → 훈음'], ['h', '훈음 → 한자']], mode, (v) => { mode = v; draw(); })),
+      h('div', { class: 'q-bar hg-bar' },
+        h('div', { class: 'hg-top' },
+          seg([['r', '한자 → 훈음'], ['h', '훈음 → 한자']], mode, (v) => { mode = v; draw(); }),
+          legend),
+        h('div', { class: 'hg-find' },
+          units.length ? unitPicker(units, sel, (v) => { sel = v; draw(); }) : null,
+          h('label', { class: 'srch' }, icon('search', 'icon s'), search))),
       result, grid,
     );
 
