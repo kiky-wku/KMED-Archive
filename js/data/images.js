@@ -151,7 +151,7 @@ export function imgEl(key, cls = '') {
   const img = h('img', { alt: '', draggable: 'false' });
   const box = h('div', { class: `cimg ${cls} ld` }, img);
   imgSrc(key).then((u) => { img.onload = () => box.classList.remove('ld'); img.src = u; },
-    () => { box.classList.remove('ld'); box.classList.add('err'); box.replaceChildren(icon('image', 'icon')); });
+    () => { box.classList.remove('ld'); box.classList.add('img-err'); box.replaceChildren(icon('image', 'icon')); });
   return box;
 }
 

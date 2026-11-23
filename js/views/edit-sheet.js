@@ -165,7 +165,8 @@ export function openEditSheet({ sub, range, pool, kind: k0, query = '', onDone }
   function openOcc(it) {
     // 그림이 아직 없는 다음 그림 카드들 (Enter 로 이어서 오리기)
     const at = items.indexOf(it);
-    const queue = it && !it.img ? [...items.slice(at + 1), ...items.slice(0, Math.max(0, at))].filter((x) => !x.img) : [];
+    const todo = (x) => !x.img || (x.kind === 'label' && (!(x.boxes || []).length || x.boxes.some((b) => !b.name)));
+    const queue = it && todo(it) ? [...items.slice(at + 1), ...items.slice(0, Math.max(0, at))].filter(todo) : [];
     openOccEditor({ sub, range, set: it, decks: deckNames, queue, startCrop: !!(it && !it.img && (it.src_file || it.src_page)), onSaved: (row, goneId) => {
       changed = true;
       const cur = row && items.find((x) => x.id === row.id);

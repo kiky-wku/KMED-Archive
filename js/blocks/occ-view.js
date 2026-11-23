@@ -34,7 +34,7 @@ export function occView(set, { target = null, reveal = false, ask = 'name', hide
   imgSrc(set.img).then((u) => {
     img.onload = () => { if (!ratio) ratio = img.naturalWidth / img.naturalHeight; fit(); box.classList.remove('ld'); };
     img.src = u;
-  }, () => { box.classList.remove('ld'); box.classList.add('err'); box.replaceChildren(icon('image')); });
+  }, () => { box.classList.remove('ld'); box.classList.add('img-err'); box.replaceChildren(icon('image')); });
   box.setScale = (s) => { scale = s; fit(); };
   box.stop = () => ro.disconnect();
   return box;

@@ -13,7 +13,8 @@ import { pdfjs } from './pdf-viewer.js';
 //  저장 : 테이프마다 고정 번호(id)가 있어서 나중에 고쳐도 공부 기록이 유지됨
 // ─────────────────────────────────────────────
 const MAXW = 2000;           // 그림 긴 쪽 (작은 글씨도 읽히게 조금 크게)
-const MIN = 0.012;           // 이보다 작게 그리면 그냥 누른 것으로 봄
+const MIN = 0.004;           // 테이프 최소 크기 (그림 크기 기준)
+const TAP = 6;               // 화면에서 이보다 덜 움직이면 그냥 누른 것
 
 export function openOccEditor({ sub, range, set: s0, decks = [], onSaved, queue = [], startCrop = false, lastFile = null }) {
   const set = s0 ? JSON.parse(JSON.stringify(s0)) : { id: null, deck: decks[decks.length - 1] || '', title: '', kind: 'label', labels: [], boxes: [], img: null, img_w: null, img_h: null, src_file: '', src_page: null, hint: '' };
@@ -22,11 +23,19 @@ export function openOccEditor({ sub, range, set: s0, decks = [], onSaved, queue 
   const origImg = s0?.img || null;
   const temp = new Set();            // 이번에 올렸지만 아직 저장 안 한 그림
   let dirty = false; let sel = null; let pick = null; // pick : 다음 테이프에 붙일 이름
+  const hist = [];                   // 되돌리기 (테이프 목록 스냅숏)
+  const snap = () => { hist.push(JSON.stringify(set.boxes)); if (hist.length > 60) hist.shift(); };
+  let lastSize = null;               // 마지막으로 그린 테이프 크기 (빈 곳을 톡 누르면 같은 크기로)
+  function undo() {
+    const prev = hist.pop(); if (prev == null) { toast('되돌릴 것이 없습니다'); return; }
+    set.boxes = JSON.parse(prev); if (!set.boxes.some((b) => b.id === sel)) sel = null; mark();
+    stage?.draw(); paintPanel();
+  }
   const mark = () => { dirty = true; };
 
   // ── 틀 ──
   const titleIn = h('input', { class: 'oe-title', placeholder: '그림 이름 (예: 팔 근육 앞면)', value: set.title, spellcheck: 'false', oninput: () => { set.title = titleIn.value; mark(); } });
-  const saveBtn = h('button', { class: 'btn ink sm oe-save', onclick: () => save() }, '저장');
+  const saveBtn = h('button', { class: 'btn ink sm oe-save', onclick: () => save({ next: queue.length > 0 }) }, queue.length ? '저장하고 다음' : '저장');
   const closeBtn = h('button', { class: 'ib', 'aria-label': '닫기', onclick: () => close() }, icon('x'));
   const stageWrap = h('div', { class: 'oe-main' });
   const panel = h('aside', { class: 'oe-panel' });
@@ -50,10 +59,17 @@ export function openOccEditor({ sub, range, set: s0, decks = [], onSaved, queue 
   }
   const onKey = (e) => {
     const tag = (e.target.tagName || '').toUpperCase();
-    if (e.key === 'Escape') { e.preventDefault(); e.stopPropagation(); if (cropper) { cropper.cancel(); return; } close(); return; }
+    if (e.key === 'Escape') { e.preventDefault(); e.stopPropagation(); if (cropper) { cropper.cancel(); return; } if (sel) { sel = null; stage?.draw(); paintPanel(); return; } close(); return; }
     if (e.key === 'Enter' && cropper && !e.isComposing && tag !== 'INPUT' && tag !== 'TEXTAREA' && tag !== 'SELECT') { e.preventDefault(); cropper.enter(); return; }
-    if (tag === 'INPUT' || tag === 'TEXTAREA') return;
-    if ((e.key === 'Backspace' || e.key === 'Delete') && sel) { e.preventDefault(); removeBox(sel); }
+    if (tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT') return;
+    if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 'z') { e.preventDefault(); undo(); return; }
+    if ((e.key === 'Backspace' || e.key === 'Delete') && sel) { e.preventDefault(); removeBox(sel); return; }
+    if (e.key === 'Enter' && stage && !e.isComposing) { e.preventDefault(); save({ next: queue.length > 0 }); return; }
+    if (sel && stage && e.key.startsWith('Arrow')) {
+      e.preventDefault();
+      const d = e.shiftKey ? 10 : 1;
+      stage.nudge(e.key === 'ArrowLeft' ? -d : e.key === 'ArrowRight' ? d : 0, e.key === 'ArrowUp' ? -d : e.key === 'ArrowDown' ? d : 0);
+    }
   };
   document.addEventListener('keydown', onKey, true);
   // 그림 붙여넣기
@@ -227,7 +243,7 @@ export function openOccEditor({ sub, range, set: s0, decks = [], onSaved, queue 
       zoomTxt,
       h('button', { class: 'tool-ic', 'aria-label': '확대', title: '확대', onclick: () => zoomTo(zoom * 1.3) }, icon('plus')),
       h('i', { class: 'oe-zdiv' }),
-      h('button', { class: 'tool-ic', 'aria-label': '그림 바꾸기', title: '그림 바꾸기', onclick: () => { stage.stop(); stageWrap.replaceChildren(sourcePicker()); } }, icon('image')));
+      h('button', { class: 'tool-ic', 'aria-label': '그림 바꾸기', title: '그림 바꾸기', onclick: () => { stage.stop(); stage = null; stageWrap.replaceChildren(sourcePicker()); } }, icon('image')));
     const box = h('div', { class: 'oe-stagewrap' }, scroll, tools);
     let ratio = set.img_w && set.img_h ? set.img_w / set.img_h : 1;
     let fitW = 0; let fitH = 0; let zoom = 1;
@@ -260,7 +276,7 @@ export function openOccEditor({ sub, range, set: s0, decks = [], onSaved, queue 
     function drawBoxes() {
       layer.replaceChildren(...set.boxes.map((b, i) => {
         const on = sel === b.id;
-        const el = h('div', { class: 'oe-box' + (on ? ' on' : '') + (b.name ? '' : ' empty'), 'data-id': b.id, style: { left: pc(b.x), top: pc(b.y), width: pc(b.w), height: pc(b.h) } },
+        const el = h('div', { class: 'oe-box' + (on ? ' on' : '') + (b.name ? '' : ' oe-nm'), 'data-id': b.id, style: { left: pc(b.x), top: pc(b.y), width: pc(b.w), height: pc(b.h) } },
           h('span', { class: 'oe-bn' }, i + 1),
           set.kind === 'label' ? h('span', { class: 'oe-bl' }, b.name || '이름 없음') : null,
           ...(on ? ['nw', 'ne', 'sw', 'se'].map((c) => h('i', { class: `oe-hd ${c}`, 'data-h': c })) : []),
@@ -290,18 +306,20 @@ export function openOccEditor({ sub, range, set: s0, decks = [], onSaved, queue 
       const [x, y] = rel(e);
       const hd = e.target.closest?.('.oe-hd');
       const be = e.target.closest?.('.oe-box');
+      const before = JSON.stringify(set.boxes);
+      const sx0 = e.clientX; const sy0 = e.clientY;
       if (hd && sel) {
         const b = set.boxes.find((q) => q.id === sel);
-        act = { kind: 'resize', box: b, h: hd.dataset.h, orig: { ...b } };
+        act = { kind: 'resize', box: b, h: hd.dataset.h, orig: { ...b }, before, sx0, sy0 };
+        canvasEl.classList.add('drag');
       } else if (be) {
         const b = set.boxes.find((q) => q.id === be.dataset.id);
         sel = b.id; if (b.name) pick = null;
-        act = { kind: 'move', box: b, sx: x, sy: y, orig: { ...b }, moved: false };
+        act = { kind: 'move', box: b, sx: x, sy: y, orig: { ...b }, moved: false, before, sx0, sy0 };
         drawBoxes(); paintPanel();
       } else if (set.kind === 'label') {
         const b = { id: uuid(), x, y, w: 0, h: 0, name: '' };
-        act = { kind: 'new', box: b, sx: x, sy: y };
-        set.boxes.push(b);
+        act = { kind: 'new', box: b, sx: x, sy: y, before, sx0, sy0, prevSel: sel, moved: false };
       } else { sel = null; drawBoxes(); }
     });
     canvasEl.addEventListener('pointermove', (e) => {
@@ -320,11 +338,15 @@ export function openOccEditor({ sub, range, set: s0, decks = [], onSaved, queue 
       const [x, y] = rel(e).map((v) => clamp(v));
       const b = act.box;
       if (act.kind === 'new') {
+        if (!act.moved && Math.hypot(e.clientX - act.sx0, e.clientY - act.sy0) < TAP) return;
+        if (!act.moved) { act.moved = true; set.boxes.push(b); canvasEl.classList.add('drag'); }
         b.x = Math.min(act.sx, x); b.y = Math.min(act.sy, y); b.w = Math.abs(x - act.sx); b.h = Math.abs(y - act.sy);
         sel = b.id;
       } else if (act.kind === 'move') {
         const dx = x - act.sx; const dy = y - act.sy;
-        if (Math.abs(dx) + Math.abs(dy) > 0.004) act.moved = true;
+        if (!act.moved && Math.hypot(e.clientX - act.sx0, e.clientY - act.sy0) < TAP) return;
+        if (!act.moved) canvasEl.classList.add('drag');
+        act.moved = true;
         b.x = clamp(act.orig.x + dx, 0, 1 - b.w); b.y = clamp(act.orig.y + dy, 0, 1 - b.h);
       } else if (act.kind === 'resize') {
         const o = act.orig; let x1 = o.x; let y1 = o.y; let x2 = o.x + o.w; let y2 = o.y + o.h;
@@ -351,15 +373,31 @@ export function openOccEditor({ sub, range, set: s0, decks = [], onSaved, queue 
       if (pinch) { if (pts.size < 2) pinch = null; return; }
       if (!act) return;
       const a = act; act = null;
+      canvasEl.classList.remove('drag');
       if (raf) { cancelAnimationFrame(raf); raf = 0; pend = null; }
+      const r = canvasEl.getBoundingClientRect();
       if (a.kind === 'new') {
-        if (a.box.w < MIN || a.box.h < MIN) { set.boxes = set.boxes.filter((b) => b !== a.box); sel = null; }
-        else {
-          // 다음 이름 자동으로
-          a.box.name = pick || nextName() || '';
-          pick = null; sel = a.box.id; mark();
+        const b = a.box;
+        const tiny = !a.moved || b.w * r.width < TAP || b.h * r.height < TAP;
+        if (tiny) {
+          set.boxes = set.boxes.filter((q) => q !== b);
+          if (a.prevSel) sel = null;                     // 고른 테이프가 있었으면 고르기만 풂
+          else if (lastSize) {                           // 빈 곳을 톡 : 마지막 크기 그대로 테이프 하나
+            b.w = lastSize.w; b.h = lastSize.h;
+            b.x = clamp(a.sx - b.w / 2, 0, 1 - b.w); b.y = clamp(a.sy - b.h / 2, 0, 1 - b.h);
+            set.boxes.push(b);
+            b.name = pick || nextName() || ''; pick = null; sel = b.id;
+            hist.push(a.before); mark();
+          } else sel = null;
+        } else {
+          b.name = pick || nextName() || '';           // 다음 이름 자동으로
+          pick = null; sel = b.id; lastSize = { w: b.w, h: b.h };
+          hist.push(a.before); mark();
         }
-      } else if (a.kind === 'move' || a.kind === 'resize') { if (a.kind === 'resize' || a.moved) mark(); }
+      } else if (a.kind === 'resize' || (a.kind === 'move' && a.moved)) {
+        if (a.kind === 'resize') lastSize = { w: a.box.w, h: a.box.h };
+        hist.push(a.before); mark();
+      }
       drawBoxes(); paintPanel();
     };
     canvasEl.addEventListener('pointerup', end); canvasEl.addEventListener('pointercancel', end);
@@ -368,6 +406,16 @@ export function openOccEditor({ sub, range, set: s0, decks = [], onSaved, queue 
 
     drawBoxes();
     box.draw = drawBoxes;
+    // 방향키 : 화면에서 1px (shift 10px) 씩
+    let nudgeT = 0;
+    box.nudge = (dx, dy) => {
+      const b = set.boxes.find((q) => q.id === sel); if (!b) return;
+      if (!nudgeT) snap();
+      clearTimeout(nudgeT); nudgeT = setTimeout(() => { nudgeT = 0; }, 600);
+      const r = canvasEl.getBoundingClientRect();
+      b.x = clamp(b.x + dx / r.width, 0, 1 - b.w); b.y = clamp(b.y + dy / r.height, 0, 1 - b.h);
+      mark(); queueBox(b);
+    };
     box.stop = () => ro.disconnect();
     return box;
   }
@@ -402,6 +450,7 @@ export function openOccEditor({ sub, range, set: s0, decks = [], onSaved, queue 
   function assign(name) {
     const b = set.boxes.find((q) => q.id === sel);
     if (!b) { pick = pick === name ? null : name; paintPanel(); return; }   // 테이프 안 고른 상태 : 다음 테이프 이름으로 예약
+    snap();
     b.name = name; mark();          // 같은 이름표가 그림에 두 번 있을 수 있어서 겹쳐도 됨
     // 이름이 비어 있는 다음 테이프로
     const nxt = set.boxes.find((q) => !q.name);
@@ -409,11 +458,13 @@ export function openOccEditor({ sub, range, set: s0, decks = [], onSaved, queue 
     stage?.draw(); paintPanel();
   }
   function removeName(name) {
+    snap();
     set.labels = set.labels.filter((n) => n !== name);
     set.boxes.forEach((b) => { if (b.name === name) b.name = ''; });
     mark(); stage?.draw(); paintPanel();
   }
   function removeBox(id) {
+    snap();
     set.boxes = set.boxes.filter((b) => b.id !== id);
     if (sel === id) sel = null; mark();
     stage?.draw(); paintPanel();
@@ -430,7 +481,7 @@ export function openOccEditor({ sub, range, set: s0, decks = [], onSaved, queue 
       const named = set.boxes.filter((b) => b.name).length;
       parts.push(h('div', { class: 'oe-sec' },
         h('div', { class: 'oe-lab' }, h('b', {}, '이름'), h('span', {}, `테이프 ${set.boxes.length}개${set.boxes.length ? `, 이름 ${named}개` : ''}`)),
-        h('p', { class: 'oe-help' }, cur ? `${set.boxes.indexOf(cur) + 1}번 테이프에 붙일 이름을 누르세요` : nx ? `다음에 그리는 테이프는 ${nx}` : '이름 자리에 네모를 그리세요'),
+        h('p', { class: 'oe-help' }, cur ? `${set.boxes.indexOf(cur) + 1}번 테이프에 붙일 이름을 누르세요` : nx ? `다음에 그리는 테이프는 ${nx}${lastSize ? '. 빈 곳을 누르면 같은 크기로 붙습니다' : ''}` : '이름 자리에 네모를 그리세요'),
         h('div', { class: 'oe-chips' }, names.map((n) => {
           const no = used.get(n);
           const on = cur ? cur.name === n : nx === n;
@@ -443,6 +494,11 @@ export function openOccEditor({ sub, range, set: s0, decks = [], onSaved, queue 
     }
     parts.push(h('div', { class: 'oe-sec' }, h('div', { class: 'oe-lab' }, h('b', {}, '묶음')), deckIn, deckList),
       h('div', { class: 'oe-sec' }, h('div', { class: 'oe-lab' }, h('b', {}, '암기법')), hintIn));
+    parts.push(h('div', { class: 'oe-keys' },
+      h('span', {}, h('kbd', {}, 'Enter'), queue.length ? '저장하고 다음' : '저장'),
+      h('span', {}, h('kbd', {}, '⌘Z'), '되돌리기'),
+      h('span', {}, h('kbd', {}, '←→'), '조금씩 옮기기'),
+      h('span', {}, h('kbd', {}, '⌫'), '테이프 지우기')));
     if (delBtn) parts.push(h('div', { class: 'oe-sec oe-foot' }, delBtn));
     panel.replaceChildren(...parts);
   }
@@ -481,7 +537,7 @@ export function openOccEditor({ sub, range, set: s0, decks = [], onSaved, queue 
       if (next && queue.length) {
         const [n, ...rest] = queue;
         toast(`다음 그림 : ${n.title || '그림'}`);
-        setTimeout(() => openOccEditor({ sub, range, set: n, decks, onSaved, queue: rest, startCrop: true, lastFile: usedFile }), 280);
+        setTimeout(() => openOccEditor({ sub, range, set: n, decks, onSaved, queue: rest, startCrop: !n.img, lastFile: usedFile }), 280);
       } else toast(set.kind === 'label' && !set.img ? '저장했습니다. 그림을 넣으면 카드가 생깁니다' : next ? '그림을 모두 넣었습니다' : '저장했습니다');
     } catch (e) { toast(e.message || '저장하지 못했습니다'); saveBtn.disabled = false; }
   }
