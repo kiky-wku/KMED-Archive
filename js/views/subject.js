@@ -67,9 +67,10 @@ export function subjectView(id, q) {
     titleEl.replaceChildren(sub.icon ? h('span', { class: 'emo' }, sub.icon) : null, sub.name);
 
     // 범위(중간, 기말) : 주소에 있으면 그것, 없으면 날짜로 자동
-    //  3월 1일 ~ 4월 : 중간 / 5월 ~ 8월 : 기말 / 9월 ~ 10월 : 중간 / 11월 ~ 2월 : 기말
+    //  2월 ~ 4월 : 1학기 중간 / 5월 ~ 7월 : 1학기 기말 / 8월 ~ 10월 : 2학기 중간 / 11월 ~ 1월 : 2학기 기말
+    //  (방학 중에 다음 시험 준비를 하니까 한 달 앞당김)
     const m = new Date().getMonth() + 1;
-    const nowExam = (m >= 3 && m <= 4) || (m >= 9 && m <= 10) ? '중간' : '기말';
+    const nowExam = (m >= 2 && m <= 4) || (m >= 8 && m <= 10) ? '중간' : '기말';
     let rangeId = ranges.find((r) => r.id === q.get('r'))?.id
       || ranges.find((r) => r.name.includes(nowExam))?.id
       || ranges[0]?.id;
