@@ -1737,3 +1737,10 @@ html.offline body::after{content:'인터넷 연결 없음. 이 기기에 저장�
 .lg-chip:active{transform:scale(.95)}
 .lg-chip b{font-weight:800;line-height:36px}
 .lg-chip span{font-size:13px;font-weight:700;color:var(--red)}
+
+/* 회원 : 학년별 표 */
+.mb-groups{display:flex;flex-direction:column;gap:28px;margin-top:22px}
+.mb-gh{display:flex;align-items:baseline;gap:8px;margin:0 0 10px 4px;font-size:17px;font-weight:800}
+.mb-gh span{font-size:14px;font-weight:700;color:var(--faint)}
+.mb-tbl{table-layout:fixed}
+.mb-tbl td{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}

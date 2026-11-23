@@ -81,7 +81,7 @@ export function adminView(q) {
 async function membersTab(area) {
   const search = h('input', { class: 'search-in', type: 'search', placeholder: '이름 · 아이디 검색' });
   const add = h('button', { class: 'btn sm', onclick: () => memberModal(null, reload) }, icon('plus'), '회원 등록');
-  const list = h('div', { class: 'card tbl-card' }, skelRows());
+  const list = h('div', { class: 'mb-groups' }, h('div', { class: 'card tbl-card' }, skelRows()));
   area.append(h('div', { class: 'toolbar' }, search, add), list);
 
   let rows = [];
@@ -93,25 +93,24 @@ async function membersTab(area) {
   function render() {
     const k = search.value.trim().toLowerCase();
     const items = rows.filter((p) => !k || (p.name || '').toLowerCase().includes(k) || (p.username || '').includes(k));
-    if (!items.length) { list.replaceChildren(h('div', { class: 'empty sm' }, rows.length ? '검색 결과가 없습니다' : '등록된 회원이 없습니다')); return; }
-    // 학년별로 묶기 (학년 없는 계정은 맨 아래)
+    if (!items.length) { list.replaceChildren(h('div', { class: 'card tbl-card' }, h('div', { class: 'empty sm' }, rows.length ? '검색 결과가 없습니다' : '등록된 회원이 없습니다'))); return; }
+    // 학년별로 표를 나눔 (학년 없는 계정은 맨 아래)
     const gk = (p) => gradeOf(p) || 99;
     items.sort((a, b) => gk(a) - gk(b) || (a.student_no ?? 1e9) - (b.student_no ?? 1e9) || (a.name || '').localeCompare(b.name || '', 'ko'));
-    const body = []; let lastG = null;
-    items.forEach((p, i) => {
-      const g = gk(p);
-      if (g !== lastG) { body.push(h('tr', { class: 'day' }, h('td', { colspan: '6' }, g === 99 ? '학년 없음' : gradeLabel(g), h('span', { class: 'day-n' }, ` ${items.filter((x) => gk(x) === g).length}명`)))); lastG = g; }
-      body.push(row(p, i));
-    });
-    list.replaceChildren(h('table', { class: 'tbl' },
-      h('thead', {}, h('tr', {}, ['이름', '아이디', '학년', '역할', '열람', '마지막 접속'].map((t) => h('th', {}, t)))),
-      h('tbody', {}, body)));
+    const groups = new Map();
+    items.forEach((p) => { const g = gk(p); if (!groups.has(g)) groups.set(g, []); groups.get(g).push(p); });
+    let i = 0;
+    list.replaceChildren(...[...groups].map(([g, ps]) => h('section', { class: 'mb-group' },
+      h('h3', { class: 'mb-gh' }, g === 99 ? '학년 없음' : gradeLabel(g), h('span', {}, `${ps.length}명`)),
+      h('div', { class: 'card tbl-card' }, h('table', { class: 'tbl mb-tbl' },
+        h('colgroup', {}, [30, 24, 14, 14, 18].map((w) => h('col', { style: { width: w + '%' } }))),
+        h('thead', {}, h('tr', {}, ['이름', '아이디', '역할', '열람', '마지막 접속'].map((t) => h('th', {}, t)))),
+        h('tbody', {}, ps.map((p) => row(p, i++))))))));
   }
   function row(p, i) {
     return (h('tr', { style: { animationDelay: `${Math.min(i, 12) * 0.025}s` }, onclick: () => memberModal(p, reload) },
         h('td', { class: 'strong' }, p.name || '—', p.must_change_pw ? h('span', { class: 'tag' }, '첫 로그인 전') : null),
         h('td', { class: 'mono' }, p.username || p.email),
-        h('td', {}, gradeLabel(gradeOf(p)) || '—'),
         h('td', {}, h('span', { class: `role r-${p.role}` }, ROLE[p.role])),
         h('td', {}, SCOPE[p.scope]),
         h('td', { class: 'sub' }, ago(p.last_seen_at) || '—'),
