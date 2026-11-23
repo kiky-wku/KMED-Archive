@@ -1,9 +1,12 @@
 import { viewUrl } from './files.js';
+import { sb } from '../sb.js';
+import { onLive } from './live.js';
 
 // ─────────────────────────────────────────────
 // 오프라인 : 한 번 연 PDF 는 기기에 저장 (Cache Storage)
 //  같은 파일(key)이면 다음부터 인터넷 없이 바로 열림
 //  모두 합쳐 600MB 넘으면 오래 안 연 것부터 지움
+//  앱에서 지운 파일은 기기에서도 지움 (앱 켤 때 확인 + 실시간으로 지워지면 바로)
 // ─────────────────────────────────────────────
 const CACHE = 'kmed-pdf-v1';
 const META = 'kmed:pdf-meta';
@@ -80,3 +83,34 @@ export async function clearSaved() {
   setMeta({});
   if (has()) await caches.delete(CACHE);
 }
+
+// 저장된 것 중 특정 파일(id) 지우기
+async function dropIds(ids) {
+  if (!ids.length) return;
+  const set = new Set(ids); const m = meta(); let c = null;
+  try { c = has() ? await caches.open(CACHE) : null; } catch { c = null; }
+  for (const [k, v] of Object.entries(m)) if (set.has(v.id)) { delete m[k]; c?.delete(reqOf(k)); }
+  setMeta(m);
+}
+
+// 서버에 더 이상 없는 파일 정리 : 저장된 파일 id 를 물어서 안 돌아온 것은 지움
+// (볼 권한이 없어진 파일도 같이 지워짐)
+let pruning = false;
+export async function pruneSaved() {
+  if (pruning || !navigator.onLine) return;
+  const ids = [...new Set(Object.values(meta()).map((v) => v.id).filter(Boolean))];
+  if (!ids.length) return;
+  pruning = true;
+  try {
+    const alive = new Set();
+    for (let i = 0; i < ids.length; i += 100) {
+      const { data, error } = await sb.from('files').select('id').in('id', ids.slice(i, i + 100));
+      if (error) return;           // 확인 못 하면 아무것도 안 지움
+      (data || []).forEach((r) => alive.add(r.id));
+    }
+    await dropIds(ids.filter((id) => !alive.has(id)));
+  } catch { /* 다음에 다시 */ } finally { pruning = false; }
+}
+
+// 다른 사람이 지금 지운 파일은 바로 정리
+onLive('files', (p) => { if (p?.eventType === 'DELETE' && p.old?.id) dropIds([p.old.id]); });

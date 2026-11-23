@@ -12,6 +12,7 @@ import { flushPending } from './data/files.js';
 import { watchUpdates } from './update.js';
 import { markRead } from './data/reports.js';
 import { startLive, stopLive } from './data/live.js';
+import { pruneSaved } from './data/offline.js';
 
 // 앱 전체 상태
 export const S = { user: null, profile: null, grade: null, sem: null, welcomed: false };
@@ -102,7 +103,7 @@ document.addEventListener('visibilitychange', () => {
     const { data: { session } } = await sb.auth.getSession();
     if (session) {
       await loadMe();
-      if (S.profile) { if (navigator.onLine) { touch(); syncPush(); flushPending(); } S.welcomed = true; }
+      if (S.profile) { if (navigator.onLine) { touch(); syncPush(); flushPending(); setTimeout(() => pruneSaved(), 4000); } S.welcomed = true; }
     }
   } catch (e) {
     console.error(e);
