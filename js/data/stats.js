@@ -1,7 +1,7 @@
 import { sb } from '../sb.js';
 import { S } from '../app.js';
 import { loadCards, uniqueCards, loadProgress, readingText } from './hanja.js';
-import { loadJung, loadSentences, loadFlash, loadItems } from './study.js';
+import { loadJung, loadSentences, loadFlashAll, loadItems } from './study.js';
 
 // ─────────────────────────────────────────────
 // 학습 통계 : 과목 · 범위별로 맞음 / 틀림 / 안 푼 것
@@ -45,7 +45,7 @@ export async function rangeStats(sub, range) {
     }));
   }
   if (kinds.includes('flash')) {
-    jobs.push(Promise.all([loadFlash(range.id), loadItems('flash_f'), loadItems('flash_b')]).then(([cards, f, b]) => {
+    jobs.push(Promise.all([loadFlashAll(range.id), loadItems('flash_f'), loadItems('flash_b')]).then(([cards, f, b]) => {
       const by = new Map(cards.map((c) => [c.id, c]));
       const ids = cards.map((c) => c.id);
       parts.push(part('flash_f', '플래시카드 앞 → 뒤', 'flash', ids, (id) => f.get(id)?.status, (id) => ({ q: by.get(id).front, a: by.get(id).back })));

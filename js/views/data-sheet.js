@@ -94,8 +94,8 @@ export function openDataSheet(sub, range, onDone, { keys: only } = {}) {
   const summary = h('div', { class: 'ds-sum' });
   const opt = (v, t, d) => h('button', { class: 'ds-opt', 'data-v': v, onclick: () => { mode = v; paintOpt(); } }, h('i', { class: 'rd' }), h('div', {}, h('b', {}, t), h('span', {}, d)));
   const opts = h('div', { class: 'ds-opts' },
-    opt('add', '추가하기', isPast ? '붙여넣은 시험만 새로 넣습니다. 같은 이름의 시험이 이미 있으면 그 시험만 새것으로 바뀝니다.' : keys.includes('um') ? '붙여넣은 단원만 새로 넣습니다. 같은 단원이 이미 있으면 그 단원만 새것으로 바뀝니다.' : keys.includes('flash') ? '붙여넣은 묶음만 새로 넣습니다. 같은 묶음이 이미 있으면 그 묶음만 새것으로 바뀝니다.' : '지금 있는 데이터 뒤에 이어 붙입니다. 이미 있는 한자는 훈음만 새로 고칩니다.'),
-    opt('replace', '전부 바꾸기', isPast ? `${range.name}의 기출문제를 모두 지우고 붙여넣은 것으로 바꿉니다.` : `${range.name}에 들어 있던 데이터를 모두 지우고 붙여넣은 것으로 바꿉니다. 해석 쓰기와 순서 맞추기 기록은 사라집니다.`));
+    opt('add', '추가하기', isPast ? '붙여넣은 시험만 새로 넣습니다. 같은 이름의 시험이 이미 있으면 그 시험만 새것으로 바뀝니다.' : keys.includes('um') ? '붙여넣은 단원만 새로 넣습니다. 같은 단원이 이미 있으면 그 단원만 새것으로 바뀝니다.' : keys.includes('flash') ? '붙여넣은 묶음만 새로 넣습니다. 같은 묶음이 이미 있으면 그 묶음만 새것으로 바뀝니다. 그림을 넣은 그림 카드는 그대로 둡니다.' : '지금 있는 데이터 뒤에 이어 붙입니다. 이미 있는 한자는 훈음만 새로 고칩니다.'),
+    opt('replace', '전부 바꾸기', isPast ? `${range.name}의 기출문제를 모두 지우고 붙여넣은 것으로 바꿉니다.` : keys.includes('flash') ? `${range.name}에 들어 있던 카드를 모두 지우고 붙여넣은 것으로 바꿉니다. 그림을 넣은 그림 카드, 앞면이 같은 카드의 사진은 그대로 둡니다.` : `${range.name}에 들어 있던 데이터를 모두 지우고 붙여넣은 것으로 바꿉니다. 해석 쓰기와 순서 맞추기 기록은 사라집니다.`));
   const paintOpt = () => opts.querySelectorAll('.ds-opt').forEach((b) => b.classList.toggle('on', b.dataset.v === mode));
   paintOpt();
   pages[2].append(summary, h('label', { class: 'imp-lab' }, '넣는 방식'), opts);
@@ -159,8 +159,10 @@ function previewTable(k, rows) {  // eslint-disable-line no-param-reassign
     jung: [['page', '묶음'], ['hanja', '원문'], ['translation', '해석'], ['notes', '주석']],
     um: [['unit', '단원'], ['sentence', '원문'], ['cards', '카드'], ['orders', '순서'], ['translation', '해석']],
     flash: [['deck', '묶음'], ['front', '앞면'], ['back', '뒷면'], ['hint', '암기법']],
+    occ: [['deck', '묶음'], ['klabel', '형식'], ['title', '그림'], ['where', '위치'], ['names', '이름']],
     past: [['exam', '시험'], ['no', '번호'], ['tlabel', '형식'], ['tag', '단원'], ['question', '문제'], ['answer', '정답'], ['src', '근거']],
   }[k];
+  if (k === 'occ') rows = rows.map((r) => ({ ...r, klabel: r.kind === 'whole' ? '그림 전체' : '가리기', where: [r.file, r.page ? `${r.page}장` : ''].filter(Boolean).join(' '), names: r.names.join(', ') }));
   if (k === 'past') rows = rows.map((r) => ({ ...r, tlabel: { mc: '객관식', ox: 'OX', blank: '빈칸', short: '단답', essay: '서술' }[r.type], src: r.ai ? 'AI' : '기출' }));
   const v = (x) => (Array.isArray(x) ? x.join(k === 'jung' ? ', ' : ' / ') : x);
   return h('div', { class: 'imp-tbl' }, h('table', {},

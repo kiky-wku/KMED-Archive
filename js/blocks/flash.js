@@ -1,6 +1,7 @@
 import { h, icon, toast, drawer, seg } from '../ui.js';
 import { deckState } from '../data/hanja.js';
-import { loadFlash, loadItems, saveItem, clearItems } from '../data/study.js';
+import { loadFlashAll, loadOcc, loadItems, saveItem, clearItems } from '../data/study.js';
+import { occView, occZoom } from './occ-view.js';
 import { unitPicker } from './units.js';
 import { hint } from './hint.js';
 import { imgEl, zoomImg, preload } from '../data/images.js';
@@ -16,9 +17,12 @@ export function flash(ctx, el) {
     h('i', { class: 'skel card' }), h('i', { class: 'skel act' })));
 
   (async () => {
-    const all = await loadFlash(ctx.range.id).catch(() => []);
+    const [all, sets] = await Promise.all([loadFlashAll(ctx.range.id).catch(() => []), loadOcc(ctx.range.id)]);
     if (!alive) return;
-    if (!all.length) { el.replaceChildren(h('div', { class: 'empty' }, '등록된 카드가 없습니다')); ctx.fit?.(false); return; }
+    // 담당자 : 그림을 아직 안 넣었거나 테이프 이름이 빈 그림 카드 알림
+    const todo = ctx.canWrite ? sets.filter((x) => !x.img || (x.kind === 'label' && (!(x.boxes || []).length || x.boxes.some((b) => !b.name)))).length : 0;
+    const todoBar = todo && ctx.edit ? h('button', { class: 'occ-todo', onclick: () => ctx.edit('occ') }, icon('image', 'icon s'), h('span', {}, `그림 넣기가 필요한 그림 카드 ${todo}개`), icon('right', 'icon s')) : null;
+    if (!all.length) { el.replaceChildren(...[todoBar, h('div', { class: 'empty' }, '등록된 카드가 없습니다')].filter(Boolean)); ctx.fit?.(false); return; }
 
     // 묶음
     const decks = [];
@@ -45,7 +49,9 @@ export function flash(ctx, el) {
     const bar = h('div', { class: 'q-prog' }, h('i', { class: 'ok' }), h('i', { class: 'no' }));
     const recBtn = h('button', { class: 'tool-ic rec-btn', title: '기록', 'aria-label': '기록', onclick: openRecords }, icon('list'));
     const stage = h('section', { class: 'stage' });
+    let hideAll = localStorage.getItem('kmed:occ-one') !== '1';
     el.append(
+      ...(todoBar ? [todoBar] : []),
       h('div', { class: 'q-bar' },
         decks.length > 1 ? unitPicker(decks, sel, (v) => { sel = v; try { localStorage.setItem(selKey, JSON.stringify(sel)); } catch { /* 무시 */ } build(); render(); }, '전체 묶음') : null,
         seg([['f', '앞 → 뒤'], ['b', '뒤 → 앞']], mode, async (v) => {
@@ -112,7 +118,7 @@ export function flash(ctx, el) {
       const qi = mode === 'f' ? c.front_img : c.back_img;
       const ai = mode === 'f' ? c.back_img : c.front_img;
       // 다음 카드 사진 미리 받기
-      r.slice(deck.pos + 1, deck.pos + 4).forEach((id) => { const n = byId.get(id); if (n) preload([n.front_img, n.back_img]); });
+      r.slice(deck.pos + 1, deck.pos + 4).forEach((id) => { const n = byId.get(id); if (n) preload([n.front_img, n.back_img, n.occ?.set.img]); });
       const hn = hint(c.hint);
       const meta = h('div', { class: 'card-meta' },
         h('span', { class: 'idx' }, `${deck.pos + 1}`, h('i', {}, ` / ${r.length}`)),
@@ -120,20 +126,44 @@ export function flash(ctx, el) {
         h('div', { class: 'meta-act' }, hn.btn,
           h('button', { class: 'tool-ic sm', title: '이전 카드', 'aria-label': '이전 카드', disabled: !deck.hist.length, onclick: (e) => { e.stopPropagation(); back(); } }, icon('undo', 'icon s')),
           h('button', { class: 'tool-ic sm', title: '건너뛰기', 'aria-label': '건너뛰기', onclick: (e) => { e.stopPropagation(); skip(); } }, icon('skip', 'icon s'))));
-      const flip = h('div', { class: 'flip fc' },
-        h('div', { class: 'face front' + (qi ? ' has-img' : '') }, meta, ...body(q, qi), hn.panel),
-        h('div', { class: 'face back' + (ai ? ' has-img' : '') }, h('div', { class: 'fc-q' }, q || (qi ? '사진' : '')), ...body(a, ai)));
+      let flip;
+      if (c.occ) {
+        // 그림 카드 : 앞 → 뒤 = 빨간 테이프 이름 맞히기, 뒤 → 앞 = 이름 보고 자리 찾기
+        const { set, box } = c.occ;
+        const whole = !box;
+        const fAsk = mode === 'f' ? 'name' : 'where';
+        const vf = whole ? (mode === 'f' ? occPic(set, {}) : null) : occPic(set, { target: box, ask: fAsk, hideAll });
+        const vb = whole ? occPic(set, {}) : occPic(set, { target: box, reveal: true, ask: fAsk, hideAll });
+        if (!whole) meta.querySelector('.meta-act').prepend(h('button', { class: 'tool-ic sm' + (hideAll ? '' : ' on'), title: hideAll ? '다른 이름 보이기' : '다른 이름 가리기', 'aria-label': hideAll ? '다른 이름 보이기' : '다른 이름 가리기', onclick: (e) => {
+          e.stopPropagation(); hideAll = !hideAll; try { localStorage.setItem('kmed:occ-one', hideAll ? '0' : '1'); } catch { /* 무시 */ }
+          const keep = phase; renderStage(); if (keep === 'shown') stage.turn?.(true);
+        } }, icon(hideAll ? 'eyeoff' : 'eye', 'icon s')));
+        const askText = whole ? '이 그림은 무엇입니까' : '빨간 칸의 이름은 무엇입니까';
+        const front = mode === 'f'
+          ? h('div', { class: 'face front has-img occ-face' }, meta, vf, h('div', { class: 'occ-ask' }, askText), hn.panel)
+          : whole
+            ? h('div', { class: 'face front occ-face' }, meta, h('div', { class: `fc-text ${size(c.back)}` }, c.back), hn.panel)
+            : h('div', { class: 'face front has-img occ-face' }, meta, vf, h('div', { class: 'occ-ask' }, h('b', {}, c.back), ' 자리는 어디입니까'), hn.panel);
+        const back = h('div', { class: 'face back has-img occ-face' }, h('div', { class: 'fc-q' }, set.title || '그림'), vb,
+          h('div', { class: 'fc-text l occ-ans' }, c.back));
+        flip = h('div', { class: 'flip fc' }, front, back);
+      } else {
+        flip = h('div', { class: 'flip fc' },
+          h('div', { class: 'face front' + (qi ? ' has-img' : '') }, meta, ...body(q, qi), hn.panel),
+          h('div', { class: 'face back' + (ai ? ' has-img' : '') }, h('div', { class: 'fc-q' }, q || (qi ? '사진' : '')), ...body(a, ai)));
+      }
       const actions = h('div', { class: 'stage-act' });
-      const turn = () => {
+      const turn = (instant) => {
         if (phase !== 'ask') return;
+        if (instant === true) { flip.style.transition = 'none'; requestAnimationFrame(() => { flip.style.transition = ''; }); }
         flip.classList.add('on'); phase = 'shown';
         actions.replaceChildren(
           h('button', { class: 'gbtn no', onclick: () => record(false) }, icon('x', 'icon s'), '틀림', h('kbd', {}, '←')),
           h('button', { class: 'gbtn ok', onclick: () => record(true) }, icon('check', 'icon s'), '맞음', h('kbd', {}, '→')));
       };
-      flip.addEventListener('click', turn);
+      flip.addEventListener('click', () => turn());
       stage.turn = turn;
-      actions.append(h('button', { class: 'btn ink', onclick: turn }, '뒤집기', h('kbd', { class: 'k' }, 'Space')));
+      actions.append(h('button', { class: 'btn ink', onclick: () => turn() }, '뒤집기', h('kbd', { class: 'k' }, 'Space')));
       stage.replaceChildren(h('div', { class: 'scene' }, flip), actions);
     }
 
@@ -193,6 +223,13 @@ export function flash(ctx, el) {
   })();
 
   return () => { alive = false; offs.forEach((f) => f()); };
+}
+
+// 그림 카드 그림 + 크게 보기 버튼
+function occPic(set, opts) {
+  const v = occView(set, { ...opts, cls: 'fc-img' });
+  v.append(h('button', { class: 'fc-zoom', title: '크게 보기', 'aria-label': '크게 보기', onclick: (e) => { e.stopPropagation(); occZoom(set, opts); } }, icon('expand', 'icon s')));
+  return v;
 }
 
 // 카드 한 면 : 사진이 있으면 사진 + 글 (글은 한 단계 작게)

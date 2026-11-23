@@ -105,11 +105,12 @@ Deno.serve(async (req) => {
     if (b.action === 'sign_imgs') {
       const keys = [...new Set((Array.isArray(b.keys) ? b.keys : []).map(String))].filter((k) => IMG_KEY.test(k)).slice(0, 60);
       if (!keys.length) return json({ urls: {} });
-      const [f, k2] = await Promise.all([
+      const [f, k2, o] = await Promise.all([
         me.from('flash_cards').select('front_img').in('front_img', keys),
         me.from('flash_cards').select('back_img').in('back_img', keys),
+        me.from('occ_sets').select('img').in('img', keys),
       ]);
-      const ok = new Set([...(f.data || []).map((r) => r.front_img), ...(k2.data || []).map((r) => r.back_img)]);
+      const ok = new Set([...(f.data || []).map((r) => r.front_img), ...(k2.data || []).map((r) => r.back_img), ...(o.data || []).map((r) => r.img)]);
       const urls: Record<string, string> = {};
       for (const k of keys) if (ok.has(k)) urls[k] = await presign(k, 'GET', 86400, '&response-content-type=image%2Fjpeg');
       return json({ urls });
@@ -124,11 +125,14 @@ Deno.serve(async (req) => {
         const sid = k.split('/')[0];
         if (!allowed.has(sid)) allowed.set(sid, await canWrite(sid));
         if (!allowed.get(sid)) continue;
-        const [a, c] = await Promise.all([
+        const [a, c, o] = await Promise.all([
           svc.from('flash_cards').select('id', { count: 'exact', head: true }).eq('front_img', k),
           svc.from('flash_cards').select('id', { count: 'exact', head: true }).eq('back_img', k),
+          svc.from('occ_sets').select('id', { count: 'exact', head: true }).eq('img', k),
         ]);
-        if ((a.count || 0) + (c.count || 0) === 0) { await remove(k); n++; }
+        // 세는 데 하나라도 실패하면 지우지 않음 (쓰고 있는 사진을 잘못 지우는 것보다 남는 게 나음)
+        if (a.error || c.error || o.error) continue;
+        if ((a.count || 0) + (c.count || 0) + (o.count || 0) === 0) { await remove(k); n++; }
       }
       return json({ ok: true, removed: n });
     }

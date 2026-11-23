@@ -3,6 +3,7 @@ import { h, icon, toast, shake, skelRows } from '../ui.js';
 import { fetchAll, resetCaches, resetHints } from '../data/hanja.js';
 import { resetStudyCaches } from '../data/study.js';
 import { uploadImg, dropImgs, imgEl, zoomImg } from '../data/images.js';
+import { openOccEditor } from './occ-edit.js';
 
 // ─────────────────────────────────────────────
 // 데이터 고치기 (담당 · 관리자)
@@ -10,6 +11,7 @@ import { uploadImg, dropImgs, imgEl, zoomImg } from '../data/images.js';
 // ─────────────────────────────────────────────
 const KINDS = [
   ['flash', '플래시카드', ['flash']],
+  ['occ', '그림 카드', ['flash']],
   ['hanja', '한자', ['hanja_r', 'hanja_h', 'hanja_grid']],
   ['jung', '정한문 해석', ['jung_translate']],
   ['um', '엄한문 문장', ['um_order', 'um_answers']],
@@ -27,10 +29,11 @@ export function openEditSheet({ sub, range, pool, kind: k0, query = '', onDone }
   let items = []; let units = new Map(); let hints = new Map();
   let shown = 60; let openId = null; let changed = false;
   const temp = new Set();   // 올렸지만 아직 저장 안 한 사진 (닫을 때 정리)
+  let deckNames = [];
 
   const search = h('input', { class: 'es-q', type: 'search', placeholder: '검색', value: query, spellcheck: 'false' });
   const count = h('span', { class: 'es-cnt' });
-  const addBtn = h('button', { class: 'btn sm ghost es-add', onclick: () => addFlash() }, icon('plus', 'icon s'), h('span', {}, '카드 추가'));
+  const addBtn = h('button', { class: 'btn sm ghost es-add', onclick: () => (kind === 'occ' ? openOcc(null) : addFlash()) }, icon('plus', 'icon s'), h('span', {}, '카드 추가'));
   const tabs = h('div', { class: 'es-kinds' });
   const list = h('div', { class: 'es-list' });
   const sheet = h('div', { class: 'ds es', role: 'dialog', 'aria-modal': 'true' },
@@ -57,7 +60,8 @@ export function openEditSheet({ sub, range, pool, kind: k0, query = '', onDone }
 
   function paintTabs() {
     tabs.replaceChildren(...(kinds.length > 1 ? kinds.map(([v, label]) => h('button', { class: 'es-k' + (v === kind ? ' on' : ''), onclick: () => { if (kind === v) return; kind = v; openId = null; shown = 60; load(); } }, label)) : []));
-    addBtn.style.display = kind === 'flash' ? '' : 'none';
+    addBtn.style.display = kind === 'flash' || kind === 'occ' ? '' : 'none';
+    addBtn.lastChild.textContent = kind === 'occ' ? '그림 추가' : '카드 추가';
   }
 
   async function load() {
@@ -68,6 +72,13 @@ export function openEditSheet({ sub, range, pool, kind: k0, query = '', onDone }
       const rid = range.id;
       if (kind === 'flash') {
         items = await fetchAll(() => sb.from('flash_cards').select('*').eq('range_id', rid).order('sort'));
+      } else if (kind === 'occ') {
+        const [sets, fl] = await Promise.all([
+          fetchAll(() => sb.from('occ_sets').select('*').eq('range_id', rid).order('sort')).catch(() => { throw new Error('그림 카드를 쓰려면 22 SQL을 먼저 실행해야 합니다'); }),
+          fetchAll(() => sb.from('flash_cards').select('deck').eq('range_id', rid).order('sort')).catch(() => []),
+        ]);
+        items = sets;
+        deckNames = [...new Set([...fl.map((x) => x.deck), ...sets.map((x) => x.deck)].filter(Boolean))];
       } else if (kind === 'hanja') {
         const [cards, us, hs] = await Promise.all([
           fetchAll(() => sb.from('hanja_cards').select('*').eq('range_id', rid).order('sort')),
@@ -102,6 +113,7 @@ export function openEditSheet({ sub, range, pool, kind: k0, query = '', onDone }
   // 검색 글자
   const hay = (it) => {
     if (kind === 'flash') return [it.deck, it.front, it.back, it.hint].join(' ');
+    if (kind === 'occ') return [it.deck, it.title, ...(it.labels || []), ...(it.boxes || []).map((b) => b.name)].join(' ');
     if (kind === 'hanja') return [it.ch, it.reading, hints.get(it.ch), units.get(it.unit_id)?.label].join(' ');
     if (kind === 'jung') return [it.page, ...it.lines.flatMap((l) => [l.hanja, l.eum, l.translation, l.hint, ...(l.notes || [])])].join(' ');
     return [it.sentence, it.translation, it.source, it.hint, units.get(it.unit_id)?.label].join(' ');
@@ -131,9 +143,34 @@ export function openEditSheet({ sub, range, pool, kind: k0, query = '', onDone }
       kind === 'flash' && (it.front_img || it.back_img) ? h('span', { class: 'es-hint es-picon', title: '사진 있음' }, icon('image', 'icon s')) : null,
       hasHint ? h('span', { class: 'es-hint', title: '암기법 있음' }, icon('bulb', 'icon s')) : null,
       h('span', { class: 'es-chev' }, icon('down', 'icon s')));
+    if (kind === 'occ') return occRow(it, i);
     const el = h('div', { class: 'es-i' + (open ? ' open' : ''), style: { animationDelay: `${Math.min(i, 12) * 0.02}s` } }, head);
     if (open) el.append(editor(it));
     return el;
+  }
+
+  // 그림 카드 한 줄 : 누르면 만들기 화면
+  function occRow(it, i) {
+    const nb = (it.boxes || []).length;
+    const miss = it.kind === 'label' && (it.boxes || []).some((b) => !b.name);
+    const st = !it.img ? ['bad', '그림 넣기 필요'] : it.kind === 'whole' ? ['', '그림 전체'] : !nb ? ['bad', '테이프 필요'] : miss ? ['bad', '이름 필요'] : ['', `${nb}장`];
+    const names = it.kind === 'whole' ? (it.labels || [])[0] || '' : (nb ? it.boxes.map((b) => b.name).filter(Boolean) : it.labels || []).join(', ');
+    return h('div', { class: 'es-i', style: { animationDelay: `${Math.min(i, 12) * 0.02}s` } },
+      h('button', { class: 'es-h', onclick: () => openOcc(it) },
+        it.deck ? h('span', { class: 'es-deck' }, it.deck) : null,
+        h('span', { class: 'es-tx' }, h('span', { class: 'es-m' }, it.title || '그림'), names ? h('span', { class: 'es-s' }, names) : null),
+        h('span', { class: `es-occst ${st[0]}` }, st[1]),
+        h('span', { class: 'es-chev r' }, icon('right', 'icon s'))));
+  }
+  function openOcc(it) {
+    openOccEditor({ sub, range, set: it, decks: deckNames, onSaved: (row) => {
+      changed = true;
+      if (!row) items = items.filter((x) => x !== it);
+      else if (it) Object.assign(it, row);
+      else items.push(row);
+      if (row?.deck && !deckNames.includes(row.deck)) deckNames.push(row.deck);
+      paint();
+    } });
   }
 
   // ── 입력 칸 ──

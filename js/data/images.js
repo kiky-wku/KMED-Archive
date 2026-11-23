@@ -46,12 +46,17 @@ export async function shrink(file, max = 1600, q = 0.8) {
   src.close?.();
   const blob = await new Promise((ok) => cv.toBlob(ok, 'image/jpeg', q));
   if (!blob) throw new Error('사진을 줄이지 못했습니다');
+  blob.w = w; blob.h = hh;
   return blob;
 }
 
 // ── 올리기 ── (반환 : R2 열쇠)
 export async function uploadImg(subjectId, file, onProgress) {
-  const blob = await shrink(file);
+  return (await uploadImgFull(subjectId, file, onProgress)).key;
+}
+// 크기까지 (그림 카드용) : { key, w, h }
+export async function uploadImgFull(subjectId, file, onProgress, max = 1600) {
+  const blob = await shrink(file, max);
   const { key, url } = await call('sign_img_upload', { subject_id: subjectId, size: blob.size });
   await new Promise((ok, no) => {
     const x = new XMLHttpRequest();
@@ -63,7 +68,7 @@ export async function uploadImg(subjectId, file, onProgress) {
     x.send(blob);
   });
   await keep(key, blob);           // 올린 기기는 바로 보이게
-  return key;
+  return { key, w: blob.w, h: blob.h };
 }
 
 // 어느 카드에도 안 쓰이는 사진 지우기 (서버가 한 번 더 확인)

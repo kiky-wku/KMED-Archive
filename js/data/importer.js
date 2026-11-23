@@ -25,7 +25,7 @@ export function parseTSV(text) {
   return rows.map((r) => r.map((x) => x.trim())).filter((r) => r.some(Boolean));
 }
 
-const HEAD = new Set(['id', 'unit', 'hanja', 'page', '한자', '단원', 'hun-eum', 'label', 'deck', '묶음', 'front', '앞면', 'exam', '시험 이름', '시험']);
+const HEAD = new Set(['id', 'unit', 'hanja', 'page', '한자', '단원', 'hun-eum', 'label', 'deck', '묶음', 'front', '앞면', 'exam', '시험 이름', '시험', '묶음 (단원)']);
 const splitSlash = (v) => String(v || '').split('/').map((x) => x.replace(/\s+/g, '')).filter(Boolean);
 
 // 형식별 확인 : { rows, errors[], warns[] }
@@ -101,6 +101,22 @@ export function check(key, text, ctx = {}) {
       rows.push({ deck: deck || '', front, back, hint: hint || '' });
     });
     if (rows.length && !rows.some((r) => r.deck)) warns.push('묶음이 비어 있어 모두 한 묶음으로 들어갑니다');
+  } else if (key === 'occ') {
+    const T = { 가리기: 'label', 이름가리기: 'label', label: 'label', 그림전체: 'whole', 전체: 'whole', 맞히기: 'whole', whole: 'whole' };
+    raw.forEach((r, i) => {
+      const [deck, type, title, file, page, names, hint] = r;
+      if (!title && !names) return;
+      const t = T[String(type || '').replace(/\s/g, '')] || null;
+      if (!t) warns.push(`${at(i)} : 형식 "${type || ''}" 을 몰라 가리기로 넣습니다`);
+      const ns = [...new Set(String(names || '').split('|').map((x) => x.trim()).filter(Boolean))];
+      const unsure = ns.filter((n) => /\?$/.test(n));
+      if (unsure.length) warns.push(`${at(i)} : 확실하지 않은 이름 ${unsure.join(', ')} (그림 카드 만들 때 확인하세요)`);
+      if (!ns.length) { errors.push(`${at(i)} : ${title || '그림'} 의 이름이 비어 있습니다`); return; }
+      const kind = t || 'label';
+      if (kind === 'whole' && ns.length > 1) warns.push(`${at(i)} : 그림 전체 형식은 이름 하나만 씁니다 (${ns[0]})`);
+      const pg = parseInt(String(page || '').replace(/[^0-9]/g, ''), 10);
+      rows.push({ deck: deck || '', kind, title: title || '', file: file || '', page: Number.isFinite(pg) && pg > 0 ? pg : null, names: kind === 'whole' ? ns.slice(0, 1) : ns.map((n) => n.replace(/\?$/, '').trim()).filter(Boolean), hint: hint || '' });
+    });
   } else if (key === 'past') {
     const TYPE = { 객관식: 'mc', ox: 'ox', OX: 'ox', 빈칸: 'blank', 단답: 'short', 단답형: 'short', 서술: 'essay', 서술형: 'essay', 논술: 'essay', mc: 'mc', blank: 'blank', short: 'short', essay: 'essay' };
     const CIRC = '①②③④⑤⑥⑦⑧⑨⑩';
@@ -136,8 +152,8 @@ export function check(key, text, ctx = {}) {
 // 지금 들어 있는 개수
 export async function counts(rangeId) {
   const c = async (t) => { const { count } = await sb.from(t).select('id', { count: 'exact', head: true }).eq('range_id', rangeId); return count ?? null; };
-  const [units, hanja, jung, um, flash, past] = await Promise.all([c('hanja_units'), c('hanja_cards'), c('jung_lines'), c('um_sentences'), c('flash_cards').catch(() => null), c('past_questions').catch(() => null)]);
-  return { units, hanja, hanja_unit: hanja, jung, um, flash, past };
+  const [units, hanja, jung, um, flash, past, occ] = await Promise.all([c('hanja_units'), c('hanja_cards'), c('jung_lines'), c('um_sentences'), c('flash_cards').catch(() => null), c('past_questions').catch(() => null), c('occ_sets').catch(() => null)]);
+  return { units, hanja, hanja_unit: hanja, jung, um, flash, past, occ };
 }
 
 export async function existingCodes(rangeId) {
@@ -252,6 +268,31 @@ export async function apply(rangeId, mode, parsed, { pool } = {}) {
     // 새 카드에 안 붙은 사진은 저장소에서도 지움
     const lost = old.filter((o) => !used.has(o)).flatMap((o) => [o.front_img, o.back_img]).filter(Boolean);
     if (lost.length) dropImgs(lost);
+  }
+  // 그림 카드 : 그림이나 테이프가 있는 것은 절대 지우지 않음 (이름만 더함)
+  if (parsed.occ) {
+    const nk = (t) => String(t || '').toLowerCase().replace(/\s+/g, '');
+    const have = await fetchAll(() => sb.from('occ_sets').select('id,deck,title,kind,labels,boxes,img,hint,sort').eq('range_id', rangeId).order('sort'));
+    const key = (o) => `${nk(o.deck)}\u0001${nk(o.title)}`;
+    const byKey = new Map(have.map((o) => [key(o), o]));
+    const decks = new Set(parsed.occ.map((r) => r.deck));
+    let s = have.reduce((m, o) => Math.max(m, o.sort || 0), -1);
+    const used = new Set(); const ins = [];
+    for (const r of parsed.occ) {
+      const o = byKey.get(key(r));
+      if (o && !used.has(o)) {
+        used.add(o);
+        const busy = !!o.img || (o.boxes || []).length;
+        const patch = busy
+          ? { labels: [...new Set([...(o.labels || []), ...r.names])], hint: o.hint || r.hint, src_file: r.file, src_page: r.page }
+          : { kind: r.kind, labels: r.names, hint: r.hint, src_file: r.file, src_page: r.page };
+        ok(await sb.from('occ_sets').update({ ...patch, updated_at: new Date().toISOString() }).eq('id', o.id));
+      } else ins.push({ range_id: rangeId, deck: r.deck, title: r.title, kind: r.kind, labels: r.names, src_file: r.file, src_page: r.page, hint: r.hint, sort: ++s });
+    }
+    // 이번에 안 온 빈 그림 카드(그림, 테이프 없음)만 정리 : 전부 바꾸기는 범위 전체, 추가하기는 같은 묶음만
+    const gone = have.filter((o) => !used.has(o) && !o.img && !(o.boxes || []).length && (mode === 'replace' || decks.has(o.deck))).map((o) => o.id);
+    for (const part of chunks(gone, 200)) ok(await sb.from('occ_sets').delete().in('id', part));
+    for (const part of chunks(ins)) ok(await sb.from('occ_sets').insert(part));
   }
   if (parsed.past) {
     const exams = [...new Set(parsed.past.map((r) => r.exam))];

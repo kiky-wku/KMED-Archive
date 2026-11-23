@@ -27,6 +27,34 @@ export function loadFlash(rangeId) {
   return once(`flash:${rangeId}`, () => fetchAll(() => sb.from('flash_cards').select('*').eq('range_id', rangeId).order('sort')));
 }
 
+// 그림 카드 (가리기) : 22 SQL 전이면 빈 목록
+export function loadOcc(rangeId) {
+  return once(`flash:occ:${rangeId}`, () => fetchAll(() => sb.from('occ_sets').select('*').eq('range_id', rangeId).order('sort')).catch(() => []));
+}
+// 그림 한 장 → 카드 여러 장 (테이프 하나가 한 장). 그림이 아직 없으면 카드 없음
+export function occCards(sets) {
+  const out = [];
+  for (const s of sets || []) {
+    if (!s.img) continue;
+    const title = s.title || '그림';
+    if (s.kind === 'whole') {
+      const name = (s.labels || [])[0] || '';
+      if (name) out.push({ id: s.id, deck: s.deck, front: title, back: name, hint: s.hint || '', occ: { set: s, box: null } });
+      continue;
+    }
+    (s.boxes || []).forEach((b, i) => {
+      if (!b.name) return;
+      out.push({ id: b.id, deck: s.deck, front: `${title} ${i + 1}번`, back: b.name, hint: s.hint || '', occ: { set: s, box: b, n: i + 1 } });
+    });
+  }
+  return out;
+}
+// 글 카드 + 그림 카드
+export async function loadFlashAll(rangeId) {
+  const [cards, sets] = await Promise.all([loadFlash(rangeId), loadOcc(rangeId)]);
+  return [...cards, ...occCards(sets)];
+}
+
 // 엄한문 문장
 export function loadSentences(rangeId) {
   return once(`um:${rangeId}`, () => fetchAll(() => sb.from('um_sentences').select('*').eq('range_id', rangeId).order('sort')));
