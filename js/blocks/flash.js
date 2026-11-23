@@ -52,6 +52,22 @@ export function flash(ctx, el) {
     const counts = h('div', { class: 'q-counts' });
     const bar = h('div', { class: 'q-prog' }, h('i', { class: 'ok' }), h('i', { class: 'no' }));
     const recBtn = h('button', { class: 'tool-ic rec-btn', title: '기록', 'aria-label': '기록', onclick: openRecords }, icon('list'));
+    // 전체 화면 : 위쪽 머리글, 탭을 숨기고 카드만 크게 (가능하면 브라우저 전체 화면까지)
+    const fullBtn = h('button', { class: 'tool-ic', title: '전체 화면', 'aria-label': '전체 화면', onclick: () => setFull(!document.documentElement.classList.contains('fc-focus')) }, icon('full'));
+    function setFull(on) {
+      const de = document.documentElement;
+      de.classList.toggle('fc-focus', on);
+      fullBtn.replaceChildren(icon(on ? 'unfull' : 'full'));
+      fullBtn.title = on ? '전체 화면 끝내기' : '전체 화면'; fullBtn.setAttribute('aria-label', fullBtn.title);
+      try {
+        if (on && !document.fullscreenElement && de.requestFullscreen) de.requestFullscreen({ navigationUI: 'hide' }).catch(() => {});
+        else if (!on && document.fullscreenElement) document.exitFullscreen().catch(() => {});
+      } catch { /* 안 되는 브라우저는 화면 안에서만 */ }
+    }
+    const onFs = () => { if (!document.fullscreenElement && document.documentElement.classList.contains('fc-focus') && fsWas) setFull(false); fsWas = !!document.fullscreenElement; };
+    let fsWas = false;
+    document.addEventListener('fullscreenchange', onFs);
+    offs.push(() => { document.removeEventListener('fullscreenchange', onFs); if (document.documentElement.classList.contains('fc-focus')) setFull(false); });
     const stage = h('section', { class: 'stage' });
     let hideAll = localStorage.getItem('kmed:occ-one') !== '1';
     el.append(
@@ -71,7 +87,7 @@ export function flash(ctx, el) {
         counts, h('div', { class: 'sp' }),
         h('button', { class: 'tool-ic', title: '섞기', 'aria-label': '섞기', onclick: () => { shuffle(deck.order); deck.pos = 0; deck.save(); render(); toast('카드를 섞었습니다'); } }, icon('shuffle')),
         h('button', { class: 'tool-ic', title: '원래 순서', 'aria-label': '원래 순서', onclick: () => { deck.order = scope.slice(); deck.pos = 0; deck.save(); render(); toast('원래 순서로 되돌렸습니다'); } }, icon('restore')),
-        recBtn),
+        recBtn, fullBtn),
       bar, stage);
 
     let phase = 'ask';

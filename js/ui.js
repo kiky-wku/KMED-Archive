@@ -78,6 +78,8 @@ const P = {
   plus: '<path d="M12 5v14M5 12h14"/>',
   image: '<rect x="3.5" y="4.5" width="17" height="15" rx="3"/><circle cx="9" cy="10" r="1.6"/><path d="M20.5 15.5l-4.8-4.8-9.7 8.8"/>',
   expand: '<path d="M14 4h6v6M10 20H4v-6M20 4l-7 7M4 20l7-7"/>',
+  full: '<path d="M4 9V4h5M15 4h5v5M20 15v5h-5M9 20H4v-5"/>',
+  unfull: '<path d="M9 4v5H4M15 4v5h5M15 20v-5h5M9 20v-5H4"/>',
   trash: '<path d="M4 7h16M10 11v6M14 11v6M6 7l1 13h10l1-13M9 7V4h6v3"/>',
   up: '<path d="M6 15l6-6 6 6"/>',
   shuffle: '<path d="M3 7h2.4c1.7 0 2.9.8 3.9 2.3"/><path d="M3 17h2.4c2.1 0 3.4-1.2 4.6-3.4l2.2-4.1C13.4 8 14.7 7 16.8 7H21"/><path d="M18 4l3 3-3 3"/><path d="M14.2 14.5c.9 1.6 2.1 2.5 3.9 2.5H21"/><path d="M18 14l3 3-3 3"/>',

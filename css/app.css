@@ -1938,3 +1938,14 @@ html.offline body::after{content:'인터넷 연결 없음. 이 기기에 저장�
 .oe-keys kbd{font:inherit;font-size:11.5px;font-weight:700;color:var(--sub);padding:1px 6px;border-radius:5px;background:var(--surface);box-shadow:inset 0 -1px 0 var(--line)}
 @media (hover:hover) and (pointer:fine){.oe-keys{display:flex}}
 .oe-stage.drag .oe-bx,.oe-stage.drag .oe-bl{display:none}.oe-stage.drag .oe-box:not(.on) {opacity:.6}.oe-stage.drag{cursor:crosshair}
+
+/* ---------- 플래시카드 전체 화면 ---------- */
+.fc-focus .top,.fc-focus .subj-body>.tabs,.fc-focus .occ-todo{display:none!important}
+.fc-focus .fit>.page{padding-top:calc(10px + var(--safe-t, env(safe-area-inset-top)));padding-bottom:calc(12px + var(--safe-b))}
+.fc-focus .page{max-width:none!important}
+.fc-focus .subj-body{max-width:none}
+.fc-focus .stage{max-width:none}
+.fc-focus .q-bar{margin-bottom:8px}
+.fc-focus .fc .face.occ-face{padding:48px 16px 16px}
+.fc-focus .fc .face.has-img{padding:48px 16px 16px}
+@media (max-width:560px){.fc-focus .fc .face.occ-face,.fc-focus .fc .face.has-img{padding:44px 6px 12px}.fc .face.occ-face{padding-left:10px;padding-right:10px}}
