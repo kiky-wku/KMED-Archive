@@ -263,6 +263,8 @@ export function openOccEditor({ sub, range, set: s0, decks = [], onSaved, nav = 
       zoomTxt,
       h('button', { class: 'tool-ic', 'aria-label': '확대', title: '확대', onclick: () => zoomTo(zoom * 1.3) }, icon('plus')),
       h('i', { class: 'oe-zdiv' }),
+      h('button', { class: 'tool-ic oe-ok', 'aria-label': '테이프 확정', title: '테이프 확정', onclick: () => { grab = false; sel = null; drawBoxes(); paintPanel(); } }, icon('check')),
+      h('button', { class: 'tool-ic', 'aria-label': '되돌리기', title: '되돌리기', onclick: () => undo() }, icon('undo')),
       h('button', { class: 'tool-ic', 'aria-label': '그림 바꾸기', title: '그림 바꾸기', onclick: () => { stage.stop(); stage = null; stageWrap.replaceChildren(sourcePicker()); } }, icon('image')));
     const box = h('div', { class: 'oe-stagewrap' }, scroll, tools);
     let ratio = set.img_w && set.img_h ? set.img_w / set.img_h : 1;
@@ -294,6 +296,7 @@ export function openOccEditor({ sub, range, set: s0, decks = [], onSaved, nav = 
 
     // 테이프 그리기
     function drawBoxes() {
+      box.classList.toggle('grabbing', !!(sel && grab));
       layer.replaceChildren(...set.boxes.map((b, i) => {
         const on = sel === b.id; const hd = on && grab;
         const el = h('div', { class: 'oe-box' + (on ? ' on' : '') + (hd ? ' grab' : '') + (b.name ? '' : ' oe-nm'), 'data-id': b.id, style: { left: pc(b.x), top: pc(b.y), width: pc(b.w), height: pc(b.h) } },
@@ -502,7 +505,7 @@ export function openOccEditor({ sub, range, set: s0, decks = [], onSaved, nav = 
         h('div', { class: 'oe-lab' }, h('b', {}, '이름'), h('span', {}, `테이프 ${set.boxes.length}개${set.boxes.length ? `, 이름 ${named}개` : ''}`)),
         cur ? h('div', { class: 'oe-cur' }, h('span', { class: 'oe-cur-n' }, set.boxes.indexOf(cur) + 1), h('b', {}, cur.name || '이름 없음'),
           h('button', { class: 'tool-ic sm', title: '이 테이프 지우기', 'aria-label': '이 테이프 지우기', onclick: () => removeBox(cur.id) }, icon('trash', 'icon s'))) : null,
-        h('p', { class: 'oe-help' }, cur ? (grab ? '모서리로 크기를 고치고 Enter로 확정하세요. 이름이 틀리면 아래에서 누르세요' : `${set.boxes.indexOf(cur) + 1}번 테이프에 붙일 이름을 누르세요`) : nx ? `다음에 그리는 테이프는 ${nx}${lastSize ? '. 빈 곳을 누르면 같은 크기로 붙습니다' : ''}` : '이름 자리에 네모를 그리세요'),
+        h('p', { class: 'oe-help' }, cur ? (grab ? (touchy() ? '모서리로 크기를 고치고, 다음 이름 자리에 바로 그으면 됩니다. 이름이 틀리면 아래에서 누르세요' : '모서리로 크기를 고치고 Enter로 확정하세요. 이름이 틀리면 아래에서 누르세요') : `${set.boxes.indexOf(cur) + 1}번 테이프에 붙일 이름을 누르세요`) : nx ? `다음에 그리는 테이프는 ${nx}${lastSize ? '. 빈 곳을 누르면 같은 크기로 붙습니다' : ''}` : '이름 자리에 네모를 그리세요'),
         h('div', { class: 'oe-chips' }, names.map((n) => {
           const no = used.get(n);
           const on = cur ? cur.name === n : nx === n;
@@ -590,6 +593,7 @@ export function openOccEditor({ sub, range, set: s0, decks = [], onSaved, nav = 
 }
 
 const pc = (v) => `${v * 100}%`;
+const touchy = () => matchMedia('(pointer:coarse)').matches;   // 손가락 · 펜슬 기기 (키보드 안내 대신 터치 안내)
 const r4 = (v) => Math.round(v * 10000) / 10000;
 function clamp(v, a = 0, b = 1) { return Math.max(a, Math.min(b, v)); }
 const norm = (s) => {
