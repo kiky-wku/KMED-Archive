@@ -31,14 +31,18 @@ export function flash(ctx, el) {
     let sel = [];
     try { sel = JSON.parse(localStorage.getItem(selKey) || '[]').filter((d) => decks.some((x) => x.id === d)); } catch { sel = []; }
     let mode = localStorage.getItem('kmed:fmode') === 'b' ? 'b' : 'f';
+    // 카드 종류 : 전체 / 글 카드만 / 그림 카드만 (둘 다 있을 때만 고름)
+    const hasPic = all.some((c) => c.occ); const hasText = all.some((c) => !c.occ);
+    const kindKey = `kmed:fkind:${ctx.range.id}`;
+    let ckind = hasPic && hasText ? (localStorage.getItem(kindKey) || 'all') : 'all';
     const byId = new Map(all.map((c) => [c.id, c]));
 
     let items = await loadItems(`flash_${mode}`);
     if (!alive) return;
     let scope; let deck;
     function build() {
-      scope = all.filter((c) => !sel.length || sel.includes(c.deck || '기본')).map((c) => c.id);
-      deck = deckState(`flash:${ctx.range.id}:${mode}:${sel.slice().sort().join(',') || 'all'}`, scope);
+      scope = all.filter((c) => (!sel.length || sel.includes(c.deck || '기본')) && (ckind === 'all' || (ckind === 'pic') === !!c.occ)).map((c) => c.id);
+      deck = deckState(`flash:${ctx.range.id}:${mode}:${sel.slice().sort().join(',') || 'all'}${ckind === 'all' ? '' : `:${ckind}`}`, scope);
     }
     build();
     const st = (id) => items.get(id)?.status || null;
@@ -53,7 +57,13 @@ export function flash(ctx, el) {
     el.append(
       ...(todoBar ? [todoBar] : []),
       h('div', { class: 'q-bar' },
-        decks.length > 1 ? unitPicker(decks, sel, (v) => { sel = v; try { localStorage.setItem(selKey, JSON.stringify(sel)); } catch { /* 무시 */ } build(); render(); }, '전체 묶음') : null,
+        decks.length > 1 || (hasPic && hasText) ? unitPicker(() => (ckind === 'all' ? decks : decks.filter((d) => all.some((c) => (c.deck || '기본') === d.id && (ckind === 'pic') === !!c.occ))), sel, (v) => { sel = v; try { localStorage.setItem(selKey, JSON.stringify(sel)); } catch { /* 무시 */ } build(); render(); }, '전체 묶음', {
+          tag: () => (ckind === 'pic' ? '그림' : ckind === 'text' ? '글' : null),
+          top: hasPic && hasText ? (repaint) => h('div', { class: 'unit-kind' }, seg([['all', '전체'], ['text', '글 카드'], ['pic', '그림 카드']], ckind, (v) => {
+            ckind = v; try { localStorage.setItem(kindKey, v); } catch { /* 무시 */ }
+            repaint(); build(); render();
+          })) : null,
+        }) : null,
         seg([['f', '앞 → 뒤'], ['b', '뒤 → 앞']], mode, async (v) => {
           mode = v; try { localStorage.setItem('kmed:fmode', v); } catch { /* 무시 */ }
           items = await loadItems(`flash_${mode}`); build(); render();
