@@ -1949,3 +1949,8 @@ html.offline body::after{content:'인터넷 연결 없음. 이 기기에 저장�
 .fc-focus .fc .face.occ-face{padding:48px 16px 16px}
 .fc-focus .fc .face.has-img{padding:48px 16px 16px}
 @media (max-width:560px){.fc-focus .fc .face.occ-face,.fc-focus .fc .face.has-img{padding:44px 6px 12px}.fc .face.occ-face{padding-left:10px;padding-right:10px}}
+.oe-flow{display:flex;align-items:center;gap:10px;flex:none}
+.oe-flow .segc button{font-size:14.5px;height:30px}
+.oe-pos{font-size:13.5px;font-weight:700;color:var(--faint);font-variant-numeric:tabular-nums;white-space:nowrap}
+.oe-pos b{color:var(--text);font-weight:800}
+@media (max-width:820px){.oe-head{flex-wrap:wrap;row-gap:4px}.oe-flow{order:3;width:100%;justify-content:space-between}}

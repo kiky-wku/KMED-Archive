@@ -164,10 +164,18 @@ export function openEditSheet({ sub, range, pool, kind: k0, query = '', onDone }
   }
   function openOcc(it) {
     // 그림이 아직 없는 다음 그림 카드들 (Enter 로 이어서 오리기)
-    const at = items.indexOf(it);
+    // 아직 할 일이 남은 그림 카드 (그림 없음, 테이프 없음, 이름 없는 테이프)
     const todo = (x) => !x.img || (x.kind === 'label' && (!(x.boxes || []).length || x.boxes.some((b) => !b.name)));
-    const queue = it && todo(it) ? [...items.slice(at + 1), ...items.slice(0, Math.max(0, at))].filter(todo) : [];
-    openOccEditor({ sub, range, set: it, decks: deckNames, queue, startCrop: !!(it && !it.img && (it.src_file || it.src_page)), onSaved: (row, goneId) => {
+    const nav = it && todo(it) ? {
+      pos(id) { const L = items.filter(todo); const i = L.findIndex((x) => x.id === id); return { i: i < 0 ? null : i + 1, n: L.length }; },
+      next(id, batch) {
+        const at = items.findIndex((x) => x.id === id);
+        const order = at < 0 ? items.slice() : [...items.slice(at + 1), ...items.slice(0, at)];
+        if (batch) { const c = order.find((x) => !x.img); if (c) return c; }
+        return order.find(todo) || null;
+      },
+    } : null;
+    openOccEditor({ sub, range, set: it, decks: deckNames, nav, startCrop: !!(it && !it.img && (it.src_file || it.src_page)), onSaved: (row, goneId) => {
       changed = true;
       const cur = row && items.find((x) => x.id === row.id);
       if (!row) items = items.filter((x) => x.id !== goneId);

@@ -16,7 +16,10 @@ const MAXW = 2000;           // 그림 긴 쪽 (작은 글씨도 읽히게 조�
 const MIN = 0.004;           // 테이프 최소 크기 (그림 크기 기준)
 const TAP = 6;               // 화면에서 이보다 덜 움직이면 그냥 누른 것
 
-export function openOccEditor({ sub, range, set: s0, decks = [], onSaved, queue = [], startCrop = false, lastFile = null }) {
+export function openOccEditor({ sub, range, set: s0, decks = [], onSaved, nav = null, startCrop = false, lastFile = null }) {
+  // 이어서 하기 : 한 장씩(오리기 → 테이프 → 다음) / 오리기 먼저(그림만 쭉 오리고 나서 테이프)
+  let batch = !!nav && localStorage.getItem('kmed:occ-batch') === '1';
+  const hasNext = () => !!nav?.next(s0?.id, batch);
   const set = s0 ? JSON.parse(JSON.stringify(s0)) : { id: null, deck: decks[decks.length - 1] || '', title: '', kind: 'label', labels: [], boxes: [], img: null, img_w: null, img_h: null, src_file: '', src_page: null, hint: '' };
   set.labels = Array.isArray(set.labels) ? set.labels.filter(Boolean) : [];
   set.boxes = Array.isArray(set.boxes) ? set.boxes : [];
@@ -35,12 +38,23 @@ export function openOccEditor({ sub, range, set: s0, decks = [], onSaved, queue 
 
   // ── 틀 ──
   const titleIn = h('input', { class: 'oe-title', placeholder: '그림 이름 (예: 팔 근육 앞면)', value: set.title, spellcheck: 'false', oninput: () => { set.title = titleIn.value; mark(); } });
-  const saveBtn = h('button', { class: 'btn ink sm oe-save', onclick: () => save({ next: queue.length > 0 }) }, queue.length ? '저장하고 다음' : '저장');
+  const saveBtn = h('button', { class: 'btn ink sm oe-save', onclick: () => save({ next: hasNext() }) });
+  const paintSave = () => { saveBtn.textContent = hasNext() ? '저장하고 다음' : '저장'; };
+  paintSave();
   const closeBtn = h('button', { class: 'ib', 'aria-label': '닫기', onclick: () => close() }, icon('x'));
+  // 몇 번째인지, 진행 방식, 건너뛰기
+  const pos = nav?.pos(s0?.id);
+  const flow = nav ? h('div', { class: 'oe-flow' },
+    pos?.i ? h('span', { class: 'oe-pos' }, h('b', {}, pos.i), ` / ${pos.n}`) : null,
+    seg([['one', '한 장씩'], ['batch', '오리기 먼저']], batch ? 'batch' : 'one', (v) => {
+      batch = v === 'batch'; try { localStorage.setItem('kmed:occ-batch', batch ? '1' : '0'); } catch { /* 무시 */ }
+      paintSave(); cropper?.paintTip?.();
+    }),
+    h('button', { class: 'tool-ic', title: '건너뛰기', 'aria-label': '건너뛰기', onclick: () => skip() }, icon('skip'))) : null;
   const stageWrap = h('div', { class: 'oe-main' });
   const panel = h('aside', { class: 'oe-panel' });
   const root = h('div', { class: 'oe', role: 'dialog', 'aria-modal': 'true' },
-    h('header', { class: 'oe-head' }, closeBtn, titleIn, saveBtn),
+    h('header', { class: 'oe-head' }, closeBtn, titleIn, flow, saveBtn),
     h('div', { class: 'oe-body' }, stageWrap, panel));
   root.addEventListener('dragstart', (e) => e.preventDefault());
   document.body.append(root);
@@ -64,7 +78,7 @@ export function openOccEditor({ sub, range, set: s0, decks = [], onSaved, queue 
     if (tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT') return;
     if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 'z') { e.preventDefault(); undo(); return; }
     if ((e.key === 'Backspace' || e.key === 'Delete') && sel) { e.preventDefault(); removeBox(sel); return; }
-    if (e.key === 'Enter' && stage && !e.isComposing) { e.preventDefault(); save({ next: queue.length > 0 }); return; }
+    if (e.key === 'Enter' && stage && !e.isComposing) { e.preventDefault(); save({ next: hasNext() }); return; }
     if (sel && stage && e.key.startsWith('Arrow')) {
       e.preventDefault();
       const d = e.shiftKey ? 10 : 1;
@@ -145,9 +159,11 @@ export function openOccEditor({ sub, range, set: s0, decks = [], onSaved, queue 
       h('button', { class: 'btn ghost sm', onclick: () => { rect = { x: 0, y: 0, w: 1, h: 1 }; drawBand(); } }, '장 전체'),
       cutBtn);
     const tip = h('div', { class: 'oe-ctip' }, '그림 부분을 쭉 그어서 네모로 고르세요');
-    const nextTip = h('div', { class: 'oe-ntip', hidden: true }, h('kbd', {}, 'Enter'), queue.length ? `오리고 다음 그림으로 (남은 ${queue.length}개)` : '오리기');
+    const nextTip = h('div', { class: 'oe-ntip', hidden: true });
+    const paintTip = () => nextTip.replaceChildren(h('kbd', {}, 'Enter'), batch && hasNext() ? '오리고 다음 그림으로' : '오리고 테이프 붙이기');
+    paintTip();
     stageWrap.replaceChildren(h('div', { class: 'oe-cropper' }, bar, scroller, tip, nextTip));
-    cropper = { cancel, enter: () => { if (rect) cut(queue.length > 0); } };
+    cropper = { cancel, paintTip, enter: () => { if (rect) cut(batch && hasNext()); } };
 
     async function load() {
       holder.classList.add('ld');
@@ -495,7 +511,7 @@ export function openOccEditor({ sub, range, set: s0, decks = [], onSaved, queue 
     parts.push(h('div', { class: 'oe-sec' }, h('div', { class: 'oe-lab' }, h('b', {}, '묶음')), deckIn, deckList),
       h('div', { class: 'oe-sec' }, h('div', { class: 'oe-lab' }, h('b', {}, '암기법')), hintIn));
     parts.push(h('div', { class: 'oe-keys' },
-      h('span', {}, h('kbd', {}, 'Enter'), queue.length ? '저장하고 다음' : '저장'),
+      h('span', {}, h('kbd', {}, 'Enter'), hasNext() ? '저장하고 다음' : '저장'),
       h('span', {}, h('kbd', {}, '⌘Z'), '되돌리기'),
       h('span', {}, h('kbd', {}, '←→'), '조금씩 옮기기'),
       h('span', {}, h('kbd', {}, '⌫'), '테이프 지우기')));
@@ -534,12 +550,23 @@ export function openOccEditor({ sub, range, set: s0, decks = [], onSaved, queue 
       dirty = false;
       onSaved?.(r.data);
       close('saved');
-      if (next && queue.length) {
-        const [n, ...rest] = queue;
-        toast(`다음 그림 : ${n.title || '그림'}`);
-        setTimeout(() => openOccEditor({ sub, range, set: n, decks, onSaved, queue: rest, startCrop: !n.img, lastFile: usedFile }), 280);
-      } else toast(set.kind === 'label' && !set.img ? '저장했습니다. 그림을 넣으면 카드가 생깁니다' : next ? '그림을 모두 넣었습니다' : '저장했습니다');
+      if (next && openNext()) return;
+      toast(set.kind === 'label' && !set.img ? '저장했습니다. 그림을 넣으면 카드가 생깁니다' : '저장했습니다');
     } catch (e) { toast(e.message || '저장하지 못했습니다'); saveBtn.disabled = false; }
+  }
+  // 다음 그림 열기 (없으면 false)
+  function openNext(msg) {
+    const n = nav?.next(set.id || s0?.id, batch);
+    if (!n) { if (nav) toast(msg ? `${msg}. 남은 그림 카드가 없습니다` : '그림 카드를 모두 마쳤습니다'); return !!nav; }
+    toast(batch && n.img ? '그림을 다 오렸습니다. 이제 테이프를 붙입니다' : `${msg ? `${msg}. ` : ''}다음 : ${n.title || '그림'}`);
+    setTimeout(() => openOccEditor({ sub, range, set: n, decks, onSaved, nav, startCrop: !n.img, lastFile: usedFile }), 260);
+    return true;
+  }
+  let skipArmed = 0;
+  function skip() {
+    if (dirty && Date.now() - skipArmed > 2500) { skipArmed = Date.now(); toast('저장하지 않은 내용이 있습니다. 한 번 더 누르면 건너뜁니다'); return; }
+    close(true);
+    openNext();
   }
   let delArmed = 0;
   async function del() {
@@ -548,9 +575,10 @@ export function openOccEditor({ sub, range, set: s0, decks = [], onSaved, queue 
       const r = await sb.from('occ_sets').delete().eq('id', set.id);
       if (r.error) throw r.error;
       dropImgs([origImg, set.img]);
-      dirty = false; toast('지웠습니다');
+      dirty = false;
       onSaved?.(null, set.id);
       close(true);
+      if (!openNext('지웠습니다')) toast('지웠습니다');
     } catch (e) { toast(e.message || '지우지 못했습니다'); }
   }
 }
