@@ -442,25 +442,107 @@ export function openPdf(file, { key = null, label = '', onComments = null } = {}
   //  읽기 모드      : 손 · 펜슬 모두 넘기기, 두 손가락 확대
   //  편집 + 기본    : 펜슬 = 그리기, 손가락 하나 = 넘기기, 두 손가락 = 확대
   //  편집 + 손 그리기 : 손가락 하나 = 그리기, 두 손가락 = 확대 + 넘기기
-  const drawsWith = (e) => editing && (e.pointerType === 'pen' || e.pointerType === 'mouse' || (e.pointerType === 'touch' && handDraw));
+  // ── 손바닥(손날) 무시 ──
+  //  펜슬로 쓰는 사람은 손날이 화면에 닿음. 그 손날로 화면이 밀리거나 흔들리지 않게
+  //  · 펜슬이 닿아 있는 동안, 뗀 뒤 0.5초 동안은 손가락 터치를 전부 무시
+  //  · 넓게 닿는 터치(손바닥, 손날)는 넘기기 · 확대에 안 씀
+  //  · 펜슬을 쓰는 기기에서 편집할 때는 브라우저 기본 스크롤을 끄고 직접 넘김
+  //    (그래야 손날이 먼저 닿아 움직이기 시작해도 펜슬이 오면 바로 멈추고 되돌릴 수 있음)
+  let penUser = localStorage.getItem('kmed:penuser') === '1';
+  let penDown = false; let penUp = 0;
+  const PALM = 26;                                   // 이보다 넓게 닿으면 손바닥으로 봄 (px)
+  const palmTouch = (t) => Math.max(t.radiusX || t.webkitRadiusX || 0, t.radiusY || t.webkitRadiusY || 0) > PALM;
+  const palmPointer = (e) => e.pointerType === 'touch' && Math.max(e.width || 0, e.height || 0) > PALM * 2;
+  const penBusy = () => penDown || Date.now() - penUp < 500;
+  const guard = () => editing && penUser && !handDraw;   // 직접 넘기기를 쓰는 상태
+  const markPenUser = () => {
+    if (penUser) return;
+    penUser = true; try { localStorage.setItem('kmed:penuser', '1'); } catch { /* 무시 */ }
+    root.classList.toggle('pen-user', true);
+  };
+  root.classList.toggle('pen-user', penUser);
+  scroller.addEventListener('pointerdown', (e) => {
+    if (e.pointerType !== 'pen') return;
+    markPenUser(); penDown = true; dropFinger(true);
+  }, true);
+  const penOff = (e) => { if (e.pointerType === 'pen') { penDown = false; penUp = Date.now(); } };
+  scroller.addEventListener('pointerup', penOff, true);
+  scroller.addEventListener('pointercancel', penOff, true);
+
+  // 직접 넘기기 (손가락 하나) : 관성까지
+  let fing = null; let fly = 0;
+  function dropFinger(undo) {
+    cancelAnimationFrame(fly);
+    if (!fing) return;
+    // 펜슬이 오기 직전 0.4초 안에 움직인 건 손날이 민 것으로 보고 되돌림
+    if (undo && fing.moved && Date.now() - fing.t0 < 400) scroller.scrollTo({ left: fing.sl, top: fing.st });
+    fing = null;
+  }
+  const fingers = (list) => [...list].filter((t) => t.touchType !== 'stylus');
+
+  const drawsWith = (e) => editing && !palmPointer(e) && (e.pointerType === 'pen' || e.pointerType === 'mouse' || (e.pointerType === 'touch' && handDraw));
   let pinch = null;
   scroller.addEventListener('touchstart', (e) => {
-    const t = e.touches;
-    if (t.length >= 2) {
-      e.preventDefault();
+    const all = e.touches;
+    const stylusOn = [...all].some((t) => t.touchType === 'stylus');
+    if (stylusOn) markPenUser();
+    const f = fingers(all).filter((t) => !palmTouch(t));
+    if (editing && (stylusOn || penBusy())) { if (tool !== 'text') e.preventDefault(); dropFinger(true); return; }   // 펜슬 쓰는 중 : 손은 전부 무시
+    if (f.length >= 2) {
+      e.preventDefault(); dropFinger(false);
       cancelStroke?.();
-      if (!pinch) startPinch(t);
+      if (!pinch) startPinch(f);
       return;
     }
-    const stylus = t[0]?.touchType === 'stylus';
-    if (editing && tool !== 'text' && (stylus || handDraw) && e.target.classList?.contains('pv-ink')) e.preventDefault();
+    if (guard()) {
+      // 기본 스크롤은 CSS(touch-action:none)로 꺼 둠. 여기서 막으면 텍스트 상자 탭이 안 됨
+      if (f.length === 1 && fingers(all).length === 1) {
+        const t = f[0];
+        fing = { id: t.identifier, x0: t.clientX, y0: t.clientY, sl: scroller.scrollLeft, st: scroller.scrollTop, t0: Date.now(), moved: false, v: [] };
+        cancelAnimationFrame(fly);
+      } else dropFinger(false);     // 손바닥만 닿음 : 아무것도 안 함
+      return;
+    }
+    if (editing && tool !== 'text' && handDraw && e.target.classList?.contains('pv-ink')) e.preventDefault();
   }, { passive: false });
   scroller.addEventListener('touchmove', (e) => {
-    if (pinch?.src === 'touch' && e.touches.length >= 2) { e.preventDefault(); movePinch(e.touches); return; }
-    const t = e.touches[0];
-    if (editing && tool !== 'text' && t && (t.touchType === 'stylus' || handDraw) && e.target.classList?.contains('pv-ink')) e.preventDefault();
+    const f = fingers(e.touches).filter((t) => !palmTouch(t));
+    if (pinch?.src === 'touch' && f.length >= 2) { e.preventDefault(); movePinch(f); return; }
+    if (editing && ([...e.touches].some((t) => t.touchType === 'stylus') || penBusy())) { e.preventDefault(); return; }
+    if (guard()) {
+      e.preventDefault();
+      const t = fing && [...e.touches].find((x) => x.identifier === fing.id);
+      if (!t) return;
+      if (palmTouch(t)) { dropFinger(true); return; }         // 닿는 면이 넓어짐 = 손날
+      const dx = t.clientX - fing.x0; const dy = t.clientY - fing.y0;
+      if (!fing.moved && Math.hypot(dx, dy) < 8) return;
+      fing.moved = true;
+      scroller.scrollLeft = fing.sl - dx; scroller.scrollTop = fing.st - dy;
+      const now = performance.now();
+      fing.v.push([now, t.clientX, t.clientY]); if (fing.v.length > 5) fing.v.shift();
+      return;
+    }
+    if (editing && tool !== 'text' && handDraw && e.target.classList?.contains('pv-ink')) e.preventDefault();
   }, { passive: false });
-  const touchEnd = (e) => { if (pinch?.src === 'touch' && e.touches.length < 2) endPinch(); };
+  const touchEnd = (e) => {
+    if (pinch?.src === 'touch' && fingers(e.touches).filter((t) => !palmTouch(t)).length < 2) endPinch();
+    if (fing && ![...e.touches].some((x) => x.identifier === fing.id)) {
+      // 손을 뗀 속도로 조금 더 미끄러지기
+      const v = fing.v; fing = null;
+      if (v.length >= 2 && !penBusy()) {
+        const [t1, x1, y1] = v[0]; const [t2, x2, y2] = v[v.length - 1]; const dt = Math.max(16, t2 - t1);
+        let vx = ((x2 - x1) / dt) * 16; let vy = ((y2 - y1) / dt) * 16;
+        if (performance.now() - t2 < 80 && Math.hypot(vx, vy) > 2) {
+          const step = () => {
+            scroller.scrollLeft -= vx; scroller.scrollTop -= vy;
+            vx *= 0.94; vy *= 0.94;
+            if (Math.hypot(vx, vy) > 0.4 && !penBusy()) fly = requestAnimationFrame(step);
+          };
+          fly = requestAnimationFrame(step);
+        }
+      }
+    }
+  };
   scroller.addEventListener('touchend', touchEnd);
   scroller.addEventListener('touchcancel', touchEnd);
 
