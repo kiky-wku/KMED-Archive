@@ -81,12 +81,12 @@ export function openPdf(file, { key = null, label = '', onComments = null } = {}
     h('div', { class: 'pv-tools' },
       tbtn('pen', 'pen', '펜'), tbtn('hl', 'marker', '형광펜'), tbtn('text', 'type', '텍스트 상자'), tbtn('eraser', 'eraser', '지우개'),
       h('i', { class: 'pv-div' }), swatches, h('i', { class: 'pv-div' }), sizes, boldBtn, pinBtn, h('i', { class: 'pv-div' }), handBtn, undoBtn),
-    h('div', { class: 'pv-right' }, editBtn, zoomOut, zoomIn, pageInfo,
+    h('div', { class: 'pv-right' }, zoomOut, zoomIn, pageInfo,
       h('button', { class: 'pv-t', title: '찾기', 'aria-label': '찾기', onclick: () => openFind() }, icon('search')),
       markBtn,
       onComments ? h('button', { class: 'pv-t', title: '댓글', 'aria-label': '댓글', onclick: () => onComments() }, icon('chat')) : null,
       h('button', { class: 'pv-t', title: '굿노트로 보내기', 'aria-label': '굿노트로 보내기', onclick: share }, icon('share')),
-      h('button', { class: 'pv-t', title: '다운로드', 'aria-label': '다운로드', onclick: download }, icon('download'))));
+      h('button', { class: 'pv-t', title: '다운로드', 'aria-label': '다운로드', onclick: download }, icon('download')), editBtn));
   const loading = h('div', { class: 'pv-load' }, h('i', { class: 'skel' }), h('i', { class: 'skel' }));
   const root = h('div', { class: 'pv', role: 'dialog', 'aria-modal': 'true' }, top, body, loading);
   document.body.append(root);
@@ -107,8 +107,8 @@ export function openPdf(file, { key = null, label = '', onComments = null } = {}
     root.classList.toggle('editing', editing);
     root.classList.toggle('hand', editing && handDraw);
     handBtn.classList.toggle('on', handDraw);
-    editBtn.replaceChildren(...(editing ? [icon('check', 'icon')] : [icon('pen', 'icon s'), h('span', {}, '편집')]));
-    editBtn.title = editing ? '완료' : '편집';
+    editBtn.replaceChildren(...(editing ? [icon('check', 'icon')] : [icon('pen', 'icon s'), h('span', {}, '필기')]));
+    editBtn.title = editing ? '완료' : '필기';
     editBtn.classList.toggle('on', editing);
     if (!editing) commitText();
     root.classList.toggle('texting', editing && tool === 'text');
