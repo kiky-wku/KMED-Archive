@@ -163,10 +163,14 @@ export function openEditSheet({ sub, range, pool, kind: k0, query = '', onDone }
         h('span', { class: 'es-chev r' }, icon('right', 'icon s'))));
   }
   function openOcc(it) {
-    openOccEditor({ sub, range, set: it, decks: deckNames, onSaved: (row) => {
+    // 그림이 아직 없는 다음 그림 카드들 (Enter 로 이어서 오리기)
+    const at = items.indexOf(it);
+    const queue = it && !it.img ? [...items.slice(at + 1), ...items.slice(0, Math.max(0, at))].filter((x) => !x.img) : [];
+    openOccEditor({ sub, range, set: it, decks: deckNames, queue, startCrop: !!(it && !it.img && (it.src_file || it.src_page)), onSaved: (row, goneId) => {
       changed = true;
-      if (!row) items = items.filter((x) => x !== it);
-      else if (it) Object.assign(it, row);
+      const cur = row && items.find((x) => x.id === row.id);
+      if (!row) items = items.filter((x) => x.id !== goneId);
+      else if (cur) Object.assign(cur, row);
       else items.push(row);
       if (row?.deck && !deckNames.includes(row.deck)) deckNames.push(row.deck);
       paint();
