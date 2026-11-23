@@ -80,8 +80,10 @@ export function openOccEditor({ sub, range, set: s0, decks = [], onSaved, nav = 
     if ((e.key === 'Backspace' || e.key === 'Delete') && sel) { e.preventDefault(); removeBox(sel); return; }
     if (e.key === 'Enter' && stage && !e.isComposing) {
       e.preventDefault();
-      if (grab) { grab = false; sel = null; stage.draw(); paintPanel(); return; }   // 잡은 테이프 놓기
-      save({ next: hasNext() }); return;
+      // ⌘(Ctrl) + Enter = 저장하고 다음 그림 / Enter = 잡은 테이프 확정
+      if (e.metaKey || e.ctrlKey) { save({ next: hasNext() }); return; }
+      if (grab) { grab = false; sel = null; stage.draw(); paintPanel(); }
+      return;
     }
     if (sel && stage && e.key.startsWith('Arrow')) {
       e.preventDefault();
@@ -403,12 +405,12 @@ export function openOccEditor({ sub, range, set: s0, decks = [], onSaved, nav = 
             b.w = lastSize.w; b.h = lastSize.h;
             b.x = clamp(a.sx - b.w / 2, 0, 1 - b.w); b.y = clamp(a.sy - b.h / 2, 0, 1 - b.h);
             set.boxes.push(b);
-            b.name = pick || nextName() || ''; pick = null; sel = b.id; grab = false;
+            b.name = pick || nextName() || ''; pick = null; sel = b.id; grab = true;
             hist.push(a.before); mark();
           } else sel = null;
         } else {
           b.name = pick || nextName() || '';           // 다음 이름 자동으로
-          pick = null; sel = b.id; grab = false; lastSize = { w: b.w, h: b.h };
+          pick = null; sel = b.id; grab = true; lastSize = { w: b.w, h: b.h };   // 그린 테이프는 잡힌 채로 : 고치고 Enter
           hist.push(a.before); mark();
         }
       } else if (a.kind === 'resize' || (a.kind === 'move' && a.moved)) {
@@ -500,7 +502,7 @@ export function openOccEditor({ sub, range, set: s0, decks = [], onSaved, nav = 
         h('div', { class: 'oe-lab' }, h('b', {}, '이름'), h('span', {}, `테이프 ${set.boxes.length}개${set.boxes.length ? `, 이름 ${named}개` : ''}`)),
         cur ? h('div', { class: 'oe-cur' }, h('span', { class: 'oe-cur-n' }, set.boxes.indexOf(cur) + 1), h('b', {}, cur.name || '이름 없음'),
           h('button', { class: 'tool-ic sm', title: '이 테이프 지우기', 'aria-label': '이 테이프 지우기', onclick: () => removeBox(cur.id) }, icon('trash', 'icon s'))) : null,
-        h('p', { class: 'oe-help' }, cur ? `${set.boxes.indexOf(cur) + 1}번 테이프에 붙일 이름을 누르세요` : nx ? `다음에 그리는 테이프는 ${nx}${lastSize ? '. 빈 곳을 누르면 같은 크기로 붙습니다' : ''}` : '이름 자리에 네모를 그리세요'),
+        h('p', { class: 'oe-help' }, cur ? (grab ? '모서리로 크기를 고치고 Enter로 확정하세요. 이름이 틀리면 아래에서 누르세요' : `${set.boxes.indexOf(cur) + 1}번 테이프에 붙일 이름을 누르세요`) : nx ? `다음에 그리는 테이프는 ${nx}${lastSize ? '. 빈 곳을 누르면 같은 크기로 붙습니다' : ''}` : '이름 자리에 네모를 그리세요'),
         h('div', { class: 'oe-chips' }, names.map((n) => {
           const no = used.get(n);
           const on = cur ? cur.name === n : nx === n;
@@ -514,7 +516,8 @@ export function openOccEditor({ sub, range, set: s0, decks = [], onSaved, nav = 
     parts.push(h('div', { class: 'oe-sec' }, h('div', { class: 'oe-lab' }, h('b', {}, '묶음')), deckIn, deckList),
       h('div', { class: 'oe-sec' }, h('div', { class: 'oe-lab' }, h('b', {}, '암기법')), hintIn));
     parts.push(h('div', { class: 'oe-keys' },
-      h('span', {}, h('kbd', {}, 'Enter'), hasNext() ? '저장하고 다음' : '저장'),
+      h('span', {}, h('kbd', {}, 'Enter'), '테이프 확정'),
+      h('span', {}, h('kbd', {}, '⌘Enter'), hasNext() ? '저장하고 다음' : '저장'),
       h('span', {}, h('kbd', {}, '⌘Z'), '되돌리기'),
       h('span', {}, h('kbd', {}, '←→'), '조금씩 옮기기'),
       h('span', {}, h('kbd', {}, '⌫'), '테이프 지우기')));
