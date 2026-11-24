@@ -929,7 +929,7 @@ html:has(.fit){overflow:hidden;height:100%}
 .fl-tx b{display:flex;align-items:center;gap:8px;font-size:17px;font-weight:800;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .fl-card em,.fl-wk em{font-style:normal;font-size:11px;font-weight:900;padding:2px 7px;border-radius:99px;background:var(--red);color:#fff;letter-spacing:.02em}
 .fl-meta{display:flex;flex-wrap:wrap;gap:4px 12px;font-size:13px;font-weight:600;color:var(--sub)}
-.fl-more{position:absolute;top:50%;right:14px;transform:translateY(-50%)}
+.fl-more{position:absolute;top:50%;right:14px;translate:0 -50%}
 .fl-chev{color:var(--faint);width:20px;height:20px;transition:transform .3s var(--ease)}
 .fl-card.open .fl-chev{transform:rotate(180deg)}
 .fl-weeks{display:none;padding:0 12px 12px 74px}
@@ -1046,7 +1046,7 @@ html.pv-open,html.pv-open body{overflow:hidden}
 .pv-tools{grid-column:2}
 .pv-right{grid-column:3}
 .fl-card.wk .fl-main{padding-right:96px}
-.fl-more-g{top:34px;right:56px;transform:translateY(-50%)}
+.fl-more-g{top:34px;right:56px;translate:0 -50%}
 .fl-card.wk .fl-chev{position:absolute;right:22px;top:34px;transform:translateY(-50%)}
 .fl-card.wk.open .fl-chev{transform:translateY(-50%) rotate(180deg)}
 /* 묶음 안 여러 파일 */
@@ -1248,7 +1248,7 @@ html.pv-open,html.pv-open body{overflow:hidden}
 .es-foot .btn.sm{height:38px}
 .es-foot .btn.danger.armed{background:var(--red);color:#fff}
 .es-more{padding:12px;font-size:14px;font-weight:700;color:var(--sub)}
-.rp-btn.go{background:var(--blue-soft);color:var(--blue);margin-right:auto}
+.rp-btn.rp-go{background:var(--blue-soft);color:var(--blue);margin-right:auto}
 @media (max-width:640px){.es-grid{grid-template-columns:1fr}.es-add span{display:none}.es-add{width:44px;padding:0}}
 /* ---------- 설정 ---------- */
 .stg{width:min(640px,100%);margin:0 auto;display:flex;flex-direction:column;gap:22px}

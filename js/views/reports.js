@@ -113,7 +113,7 @@ function card(r, i, canResolve, repaint, removed, onEdit) {
   const acts = h('div', { class: 'rp-acts' });
 
   if (onEdit && r.kind !== 'suggest' && r.block) {
-    acts.append(h('button', { class: 'rp-btn go', onclick: () => onEdit(r) }, icon('pen', 'icon s'), '편집하기'));
+    acts.append(h('button', { class: 'rp-btn rp-go', onclick: () => onEdit(r) }, icon('pen', 'icon s'), '편집하기'));
   }
   if (canResolve) {
     if (r.status === 'open') {
