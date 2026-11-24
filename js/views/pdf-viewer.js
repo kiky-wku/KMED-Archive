@@ -460,10 +460,11 @@ export function openPdf(file, { key = null, label = '', onComments = null } = {}
   };
   root.classList.toggle('pen-user', penUser);
   let lastFinger = null; let unlockT = 0;
+  let pan = null; let fly = 0;       // 확대 뒤 남은 한 손가락 넘기기
   const lock = (on) => { scroller.classList.toggle('pv-lock', on); };
   scroller.addEventListener('pointerdown', (e) => {
     if (e.pointerType !== 'pen') return;
-    markPenUser(); penDown = true; clearTimeout(unlockT);
+    markPenUser(); penDown = true; clearTimeout(unlockT); pan = null; cancelAnimationFrame(fly);
     if (!editing) return;
     // 펜슬 직전에 손날이 민 만큼 되돌리고, 쓰는 동안은 잠금
     if (lastFinger && Date.now() - lastFinger.t < 400) scroller.scrollTo({ left: lastFinger.sl, top: lastFinger.st });
@@ -490,7 +491,7 @@ export function openPdf(file, { key = null, label = '', onComments = null } = {}
     if (editing && (stylusOn || penBusy())) { if (tool !== 'text') e.preventDefault(); return; }   // 펜슬 쓰는 중 : 손은 전부 무시
     if (f.length >= 2) {
       e.preventDefault();
-      cancelStroke?.();
+      cancelStroke?.(); pan = null; cancelAnimationFrame(fly);
       if (!pinch) startPinch(f);
       return;
     }
@@ -498,15 +499,50 @@ export function openPdf(file, { key = null, label = '', onComments = null } = {}
     if (f.length === 1) lastFinger = { t: Date.now(), sl: scroller.scrollLeft, st: scroller.scrollTop };
     if (editing && tool !== 'text' && handDraw && e.target.classList?.contains('pv-ink')) e.preventDefault();
   }, { passive: false });
+  // 두 손가락에서 한 손가락을 떼도 남은 손가락으로 계속 넘기기 (브라우저 스크롤은 이 터치에선 다시 안 켜지므로 직접)
   scroller.addEventListener('touchmove', (e) => {
     const f = fingers(e.touches).filter((t) => !palmTouch(t));
     if (pinch?.src === 'touch' && f.length >= 2) { e.preventDefault(); movePinch(f); return; }
+    if (pan) {
+      e.preventDefault();
+      const t = [...e.touches].find((x) => x.identifier === pan.id);
+      if (!t) return;
+      scroller.scrollLeft = pan.sl - (t.clientX - pan.x0); scroller.scrollTop = pan.st - (t.clientY - pan.y0);
+      pan.v.push([performance.now(), t.clientX, t.clientY]); if (pan.v.length > 5) pan.v.shift();
+      return;
+    }
     if (pinch?.src === 'touch') { e.preventDefault(); return; }
     if (editing && ([...e.touches].some((t) => t.touchType === 'stylus') || penBusy())) { e.preventDefault(); return; }
     if (editing && tool !== 'text' && handDraw && e.target.classList?.contains('pv-ink')) e.preventDefault();
   }, { passive: false });
   const touchEnd = (e) => {
-    if (pinch?.src === 'touch' && fingers(e.touches).filter((t) => !palmTouch(t)).length < 2) endPinch();
+    const left = fingers(e.touches).filter((t) => !palmTouch(t));
+    if (pinch?.src === 'touch' && left.length < 2) {
+      endPinch();
+      if (left.length === 1) {
+        const t = left[0];
+        pan = { id: t.identifier, x0: t.clientX, y0: t.clientY, sl: scroller.scrollLeft, st: scroller.scrollTop, v: [] };
+        lock(true);
+      }
+      return;
+    }
+    if (pan && ![...e.touches].some((x) => x.identifier === pan.id)) {
+      // 뗀 속도로 조금 더 미끄러지기
+      const v = pan.v; pan = null;
+      if (!penBusy()) lock(false);
+      cancelAnimationFrame(fly);
+      if (v.length >= 2) {
+        const [t1, x1, y1] = v[0]; const [t2, x2, y2] = v[v.length - 1]; const dt = Math.max(16, t2 - t1);
+        let vx = ((x2 - x1) / dt) * 16; let vy = ((y2 - y1) / dt) * 16;
+        if (performance.now() - t2 < 80 && Math.hypot(vx, vy) > 2) {
+          const step = () => {
+            scroller.scrollLeft -= vx; scroller.scrollTop -= vy; vx *= 0.94; vy *= 0.94;
+            if (Math.hypot(vx, vy) > 0.4 && !penBusy()) fly = requestAnimationFrame(step);
+          };
+          fly = requestAnimationFrame(step);
+        }
+      }
+    }
   };
   scroller.addEventListener('touchend', touchEnd);
   scroller.addEventListener('touchcancel', touchEnd);
