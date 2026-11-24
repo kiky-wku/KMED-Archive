@@ -552,13 +552,14 @@ export function openPdf(file, { key = null, label = '', onComments = null } = {}
   const dist = (t) => Math.hypot(t[0].clientX - t[1].clientX, t[0].clientY - t[1].clientY);
   function startPinch(t) {
     const m = mid(t);
+    list.style.transition = 'none';
     lock(true);   // 한 손가락으로 넘기던 중이어도 확대하는 동안은 화면이 따로 안 밀리게
     pinch = { src: 'touch', d0: dist(t), m0: m, s0: { x: scroller.scrollLeft, y: scroller.scrollTop }, s: 1, dx: 0, dy: 0 };
     list.style.transformOrigin = '0 0'; 
   }
   function movePinch(t) {
     const m = mid(t);
-    const s = Math.max(ZMIN / zoom, Math.min(ZMAX / zoom, dist(t) / pinch.d0));
+    const s = rubber(dist(t) / pinch.d0);
     Object.assign(pinch, { s, dx: m.x - pinch.m0.x, dy: m.y - pinch.m0.y });
     cancelAnimationFrame(pinch.raf); pinch.raf = requestAnimationFrame(paintPinch);
   }
@@ -568,18 +569,48 @@ export function openPdf(file, { key = null, label = '', onComments = null } = {}
     const tx = (s0.x + m0.x) * (1 - s) + dx; const ty = (s0.y + m0.y) * (1 - s) + dy;
     list.style.transform = `translate(${tx}px, ${ty}px) scale(${s})`;
   }
+  // 한계를 넘으면 고무줄처럼 덜 늘어나고, 손을 떼면 한계로 돌아감 (사진 앱처럼)
+  function rubber(v) {
+    const lo = ZMIN / zoom; const hi = ZMAX / zoom;
+    if (v > hi) return hi * Math.pow(v / hi, 0.35);
+    if (v < lo) return lo * Math.pow(v / lo, 0.35);
+    return v;
+  }
   function endPinch() {
     const { s, dx, dy, m0, s0, raf, src } = pinch;
     cancelAnimationFrame(raf); cancelAnimationFrame(wheelT.raf);
     pinch = null;
     if (src === 'touch' && !penBusy()) lock(false);
     if (Math.abs(s - 1) < 0.01 && !dx && !dy) { list.style.transform = ''; return; }
-    list.style.transform = '';
+    // 손을 뗀 순간 화면에 보이던 모습 기억 (기준 : 화면 가운데에 가까운 쪽)
+    const ref = refPage();
+    const a = ref?.wrap.getBoundingClientRect();
+    list.style.transition = 'none'; list.style.transform = '';
     zoom = Math.max(ZMIN, Math.min(ZMAX, zoom * s));
     layout();
+    // 손가락 아래 있던 자리를 그대로 (화면 끝을 넘는 만큼은 브라우저가 알아서 잘라 줌)
     scroller.scrollLeft = (s0.x + m0.x) * s - (m0.x + dx);
     scroller.scrollTop = (s0.y + m0.y) * s - (m0.y + dy);
     paintZoom();
+    // 보이던 모습에서 새 자리로 부드럽게 (튀지 않게)
+    if (!a) return;
+    const b = ref.wrap.getBoundingClientRect(); const L = list.getBoundingClientRect();
+    const k = a.width / b.width;
+    if (Math.abs(k - 1) < 0.002 && Math.abs(a.left - b.left) < 1 && Math.abs(a.top - b.top) < 1) return;
+    const tx = a.left - L.left - k * (b.left - L.left); const ty = a.top - L.top - k * (b.top - L.top);
+    list.style.transformOrigin = '0 0';
+    list.style.transform = `translate(${tx}px, ${ty}px) scale(${k})`;
+    void list.offsetWidth;
+    list.style.transition = 'transform .32s cubic-bezier(.2,.8,.2,1)';
+    list.style.transform = '';
+    clearTimeout(endPinch.t); endPinch.t = setTimeout(() => { list.style.transition = ''; }, 360);
+  }
+  // 화면 가운데에 걸친 쪽
+  function refPage() {
+    const r = scroller.getBoundingClientRect(); const cy = r.top + r.height / 2;
+    let best = null; let bd = Infinity;
+    for (const pg of pages) { const q = pg.wrap.getBoundingClientRect(); const d = q.top > cy ? q.top - cy : q.bottom < cy ? cy - q.bottom : 0; if (d < bd) { bd = d; best = pg; } if (q.top > cy + r.height) break; }
+    return best;
   }
   // 노트북 트랙패드 오므리기
   //  크롬 : ctrl + 휠 신호로 옴 → 손을 다 뗄 때까지 화면만 늘리다가 멈추면 확정
@@ -597,7 +628,7 @@ export function openPdf(file, { key = null, label = '', onComments = null } = {}
     if (pinch && pinch.src !== 'wheel') return;
     if (!pinch) beginAt(e.clientX, e.clientY, 'wheel');
     const dy = e.deltaMode === 1 ? e.deltaY * 16 : e.deltaY;
-    pinch.s = clampS(pinch.s * Math.exp(-dy * 0.01));
+    pinch.s = clampS(pinch.s * Math.exp(-dy * 0.01));   // 트랙패드는 고무줄 없이
     cancelAnimationFrame(wheelT.raf); wheelT.raf = requestAnimationFrame(paintPinch);
     clearTimeout(wheelT.t); wheelT.t = setTimeout(() => { if (pinch?.src === 'wheel') endPinch(); }, 320);
   }, { passive: false });
