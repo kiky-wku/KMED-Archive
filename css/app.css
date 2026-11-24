@@ -1717,7 +1717,7 @@ html.offline body::after{content:'인터넷 연결 없음. 이 기기에 저장�
 .pq-top,.pq-cnt,.pq-prog{max-width:820px;margin-left:auto;margin-right:auto}
 
 /* 펜슬 쓰는 기기에서 편집 중 : 기본 스크롤을 끄고 앱이 직접 넘김 (손날 무시) */
-.pv.editing.pen-user:not(.hand) .pv-scroll,.pv.editing.pen-user:not(.hand) .pv-ink{touch-action:none}
+.pv-scroll.pv-lock{overflow:hidden!important}
 
 /* 한자 목록 위 막대 : 1줄 방향 + 개수, 2줄 단원 + 검색 */
 .hg-bar{flex-direction:column;align-items:stretch;gap:12px;margin-bottom:16px}
