@@ -177,7 +177,15 @@ export function flash(ctx, el) {
             : h('div', { class: 'face front has-img occ-face' }, meta, vf, h('div', { class: 'occ-ask' }, h('b', {}, c.back), ' 자리는 어디입니까'), hn.panel);
         const back = h('div', { class: 'face back has-img occ-face' }, h('div', { class: 'fc-q' }, set.title || '그림'), vb,
           h('div', { class: 'fc-text l occ-ans' }, c.back));
-        flip = h('div', { class: 'flip fc' }, front, back);
+        // 뒤집지 않고 그 자리에서 정답만 : 앞면 그림을 정답 그림으로 바꾸고 아래에 정답
+        flip = h('div', { class: 'flip fc occ-flat' }, front);
+        flip.reveal = () => {
+          const pic = front.querySelector('.occ.fc-img'); pic?.stop?.();
+          pic?.replaceWith(vb);
+          front.querySelector('.occ-ask')?.replaceWith(h('div', { class: 'fc-text l occ-ans occ-in-ans' }, c.back));
+          front.classList.add('shown');
+          void back;
+        };
       } else {
         flip = h('div', { class: 'flip fc' },
           h('div', { class: 'face front' + (qi ? ' has-img' : '') }, meta, ...body(q, qi), hn.panel),
@@ -187,14 +195,15 @@ export function flash(ctx, el) {
       const turn = (instant) => {
         if (phase !== 'ask') return;
         if (instant === true) { flip.style.transition = 'none'; requestAnimationFrame(() => { flip.style.transition = ''; }); }
-        flip.classList.add('on'); phase = 'shown';
+        if (flip.reveal) flip.reveal(); else flip.classList.add('on');
+        phase = 'shown';
         actions.replaceChildren(
           h('button', { class: 'gbtn no', onclick: () => record(false) }, icon('x', 'icon s'), '틀림', h('kbd', {}, '←')),
           h('button', { class: 'gbtn ok', onclick: () => record(true) }, icon('check', 'icon s'), '맞음', h('kbd', {}, '→')));
       };
       flip.addEventListener('click', () => turn());
       stage.turn = turn;
-      actions.append(h('button', { class: 'btn ink', onclick: () => turn() }, '뒤집기', h('kbd', { class: 'k' }, 'Space')));
+      actions.append(h('button', { class: 'btn ink', onclick: () => turn() }, c.occ ? '정답 보기' : '뒤집기', h('kbd', { class: 'k' }, 'Space')));
       stage.replaceChildren(h('div', { class: 'scene' }, flip), actions);
     }
 

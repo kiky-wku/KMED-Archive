@@ -1975,3 +1975,7 @@ html.offline body::after{content:'인터넷 연결 없음. 이 기기에 저장�
 .unit-list .u-grp .u-n{flex:none;font-size:12.5px;font-weight:700;color:var(--faint);margin-left:auto}
 .unit-list .u-grp.part .ck{background:var(--text);border-color:var(--text);color:#fff}
 .unit-list .u-sub{padding-left:30px}
+/* 그림 카드 : 뒤집지 않고 그 자리에서 정답 */
+.flip.occ-flat,.flip.occ-flat.on{transform:none;transform-style:flat}
+.occ-flat .face.front{backface-visibility:visible;-webkit-backface-visibility:visible}
+.occ-in-ans{animation:rise .25s var(--ease) both;color:var(--text)}

@@ -117,7 +117,7 @@ export function check(key, text, ctx = {}) {
       const pg = parseInt(String(page || '').replace(/[^0-9]/g, ''), 10);
       rows.push({ deck: deck || '', kind, title: title || '', file: file || '', page: Number.isFinite(pg) && pg > 0 ? pg : null, names: kind === 'whole' ? ns.slice(0, 1) : ns.map((n) => n.replace(/\?$/, '').trim()).filter(Boolean), hint: hint || '' });
     });
-  } else if (key === 'past') {
+  } else if (key === 'past' || key === 'pred') {
     const TYPE = { 객관식: 'mc', ox: 'ox', OX: 'ox', 빈칸: 'blank', 단답: 'short', 단답형: 'short', 서술: 'essay', 서술형: 'essay', 논술: 'essay', mc: 'mc', blank: 'blank', short: 'short', essay: 'essay' };
     const CIRC = '①②③④⑤⑥⑦⑧⑨⑩';
     let lastExam = ctx.exam || '';
@@ -125,7 +125,7 @@ export function check(key, text, ctx = {}) {
       const [exam, no, type, passage, question, choices, answer, explain, source, tag, accept] = r;
       if (!question && !answer) return;
       const ex = exam || lastExam;
-      if (!ex) { errors.push(`${at(i)} : 시험 이름이 비어 있습니다`); return; }
+      if (!ex) { errors.push(`${at(i)} : ${key === 'pred' ? '자료' : '시험'} 이름이 비어 있습니다`); return; }
       lastExam = ex;
       if (!question) { errors.push(`${at(i)} : 문제가 비어 있습니다`); return; }
       let t = TYPE[(type || '').replace(/\s|형$/g, '')] || TYPE[type] || null;
@@ -141,7 +141,9 @@ export function check(key, text, ctx = {}) {
         if (!['O', 'X'].includes(a)) warns.push(`${at(i)} : OX 정답이 O 나 X 가 아닙니다`);
       }
       if (!a) warns.push(`${at(i)} : 정답이 비어 있습니다`);
-      rows.push({ exam: ex, no: no || '', type: t, passage: passage || '', question, choices: t === 'mc' ? cs : [], answer: a, explain: explain || '', ai: !/^기출/.test(source || ''),
+      if (key === 'pred' && t === 'essay') { warns.push(`${at(i)} : 예상문제는 서술형을 넣지 않아 단답으로 넣습니다`); t = 'short'; }
+      const ex2 = key === 'pred' && source ? `${explain || ''}${explain ? '\n' : ''}근거 : ${source}` : (explain || '');
+      rows.push({ exam: ex, no: no || '', type: t, passage: passage || '', question, choices: t === 'mc' ? cs : [], answer: a, explain: ex2, ai: key === 'pred' ? false : !/^기출/.test(source || ''),
         tag: tag || '', accept: ['blank', 'short'].includes(t) ? String(accept || '').split('|').map((x) => x.trim()).filter(Boolean) : [] });
     });
   }
@@ -294,12 +296,17 @@ export async function apply(rangeId, mode, parsed, { pool } = {}) {
     for (const part of chunks(gone, 200)) ok(await sb.from('occ_sets').delete().in('id', part));
     for (const part of chunks(ins)) ok(await sb.from('occ_sets').insert(part));
   }
-  if (parsed.past) {
-    const exams = [...new Set(parsed.past.map((r) => r.exam))];
-    if (mode === 'replace') ok(await sb.from('past_questions').delete().eq('range_id', rangeId));
-    else ok(await sb.from('past_questions').delete().eq('range_id', rangeId).in('exam', exams));
+  // 기출과 예상문제는 같은 표 (kind 로 구분, 23 SQL 전이면 kind 칸이 없음)
+  for (const qk of ['past', 'pred']) {
+    if (!parsed[qk]) continue;
+    const exams = [...new Set(parsed[qk].map((r) => r.exam))];
+    const del = (q) => (mode === 'replace' ? q : q.in('exam', exams));
+    let r = await del(sb.from('past_questions').delete().eq('range_id', rangeId).eq('kind', qk));
+    if (r.error && qk === 'past') r = await del(sb.from('past_questions').delete().eq('range_id', rangeId));
+    else if (r.error) throw new Error('예상문제를 넣으려면 23 SQL을 먼저 실행해야 합니다');
+    ok(r);
     let s = mode === 'replace' ? -1 : await maxSort('past_questions');
-    const rows = parsed.past.map((r) => ({ range_id: rangeId, exam: r.exam, no: r.no, type: r.type, passage: r.passage, question: r.question, choices: r.choices, answer: r.answer, explain: r.explain, ai: r.ai, tag: r.tag, accept: r.accept, sort: ++s }));
+    const rows = parsed[qk].map((r) => ({ range_id: rangeId, ...(qk === 'pred' ? { kind: 'pred' } : {}), exam: r.exam, no: r.no, type: r.type, passage: r.passage, question: r.question, choices: r.choices, answer: r.answer, explain: r.explain, ai: r.ai, tag: r.tag, accept: r.accept, sort: ++s }));
     for (const part of chunks(rows)) ok(await sb.from('past_questions').insert(part));
   }
 }

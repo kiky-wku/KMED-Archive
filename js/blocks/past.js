@@ -11,7 +11,6 @@ import { openDataSheet } from '../views/data-sheet.js';
 //    객관식, OX 는 자동 채점 / 빈칸, 단답, 서술은 정답 보고 스스로 맞음, 틀림
 //  · 원본 PDF : 기출 원본 파일 (자료 탭과 같은 화면, 기출만)
 // ─────────────────────────────────────────────
-const KIND = 'past';
 const TYPE = { mc: '객관식', ox: 'OX', blank: '빈칸', short: '단답', essay: '서술' };
 const AUTO = new Set(['mc', 'ox']);
 const CIRC = '①②③④⑤⑥⑦⑧⑨⑩';
@@ -20,14 +19,18 @@ const ansSet = (q) => new Set(String(q.answer || '').split(/[,\s]+/).map(Number)
 // 학번 높은 순, 같으면 기말 먼저
 const rank = (e) => { const m = String(e).match(/(\d{2})학번\s*(중간|기말)?/); return m ? Number(m[1]) * 10 + (m[2] === '기말' ? 1 : 0) : -1; };
 
-export function pastBlock(ctx, el) {
+// mode 'past' 기출문제 / 'pred' 예상문제 (같은 화면, 예상문제는 원본 PDF 탭 없음)
+export function pastBlock(ctx, el, mode = 'past') {
+  const KIND = mode;
+  const PRED = mode === 'pred';
+  const NAME = PRED ? '예상문제' : '기출문제';
   let alive = true;
   let sub = null;                      // 지금 열린 아래 화면의 정리 함수
-  let tab = localStorage.getItem('kmed:pasttab') === 'pdf' ? 'pdf' : 'quiz';
+  let tab = !PRED && localStorage.getItem('kmed:pasttab') === 'pdf' ? 'pdf' : 'quiz';
   const area = h('div', { class: 'pq-area' });
-  const addBtn = ctx.canWrite ? h('button', { class: 'tool-ic', title: '기출문제 넣기', 'aria-label': '기출문제 넣기', onclick: () => openDataSheet(ctx.subject, ctx.range, () => { qs = null; show(); }, { keys: ['past'] }) }, icon('import')) : null;
-  const head = h('div', { class: 'pq-head' },
-    seg([['quiz', '문제 풀기'], ['pdf', '원본 PDF']], tab, (v) => { tab = v; try { localStorage.setItem('kmed:pasttab', v); } catch { /* 무시 */ } show(); }),
+  const addBtn = ctx.canWrite ? h('button', { class: 'tool-ic', title: `${NAME} 넣기`, 'aria-label': `${NAME} 넣기`, onclick: () => openDataSheet(ctx.subject, ctx.range, () => { qs = null; show(); }, { keys: [mode] }) }, icon('import')) : null;
+  const head = h('div', { class: 'pq-head' + (PRED ? ' pq-head-pred' : '') },
+    PRED ? null : seg([['quiz', '문제 풀기'], ['pdf', '원본 PDF']], tab, (v) => { tab = v; try { localStorage.setItem('kmed:pasttab', v); } catch { /* 무시 */ } show(); }),
     h('div', { class: 'sp' }), addBtn);
   el.append(head, area);
 
@@ -35,7 +38,8 @@ export function pastBlock(ctx, el) {
   async function data() {
     if (!qs) {
       [qs, items] = await Promise.all([
-        fetchAll(() => sb.from('past_questions').select('*').eq('range_id', ctx.range.id).order('sort')),
+        fetchAll(() => sb.from('past_questions').select('*').eq('range_id', ctx.range.id).eq('kind', mode).order('sort'))
+          .catch((e) => (PRED ? [] : fetchAll(() => sb.from('past_questions').select('*').eq('range_id', ctx.range.id).order('sort')).catch(() => { throw e; }))),
         loadItems(KIND),
       ]);
     }
@@ -55,14 +59,14 @@ export function pastBlock(ctx, el) {
   async function list() {
     area.replaceChildren(...[0, 1].map(() => h('i', { class: 'skel pq-sk' })));
     let all;
-    try { all = await data(); } catch { area.replaceChildren(h('div', { class: 'box-empty' }, '기출문제를 불러올 수 없습니다')); return; }
+    try { all = await data(); } catch { area.replaceChildren(h('div', { class: 'box-empty' }, `${NAME}를 불러올 수 없습니다`)); return; }
     if (!alive || tab !== 'quiz') return;
     if (!all.length) {
-      area.replaceChildren(h('div', { class: 'fl-empty' }, h('div', { class: 'emo' }, '📝'), h('b', {}, '아직 넣은 기출문제가 없습니다'),
-        ctx.canWrite ? h('p', {}, '오른쪽 위 문제 넣기에서 기출 원본과 써머리로 문제를 만들 수 있습니다') : null));
+      area.replaceChildren(h('div', { class: 'fl-empty' }, h('div', { class: 'emo' }, PRED ? '🎯' : '📝'), h('b', {}, `아직 넣은 ${NAME}가 없습니다`),
+        ctx.canWrite ? h('p', {}, PRED ? '오른쪽 위 문제 넣기에서 수업 자료로 예상문제를 만들 수 있습니다' : '오른쪽 위 문제 넣기에서 기출 원본과 써머리로 문제를 만들 수 있습니다') : null));
       return;
     }
-    const exams = [...new Set(all.map((q) => q.exam))].sort((a, b) => rank(b) - rank(a));
+    const exams = PRED ? [...new Set(all.map((q) => q.exam))] : [...new Set(all.map((q) => q.exam))].sort((a, b) => rank(b) - rank(a));
     const st = (id) => items.get(id)?.status;
     area.replaceChildren(h('div', { class: 'pq-list' }, exams.map((ex, i) => {
       const list = all.filter((q) => q.exam === ex);
@@ -86,7 +90,7 @@ export function pastBlock(ctx, el) {
     const byId = new Map(all.map((q) => [q.id, q]));
     const base = all.map((q) => q.id);
     // 순서와 위치 : 시험마다 기기에 기억 (섞기, 원래 순서)
-    const key = `kmed:pastord:${ctx.range.id}:${exam}`;
+    const key = `kmed:${PRED ? 'predord' : 'pastord'}:${ctx.range.id}:${exam}`;
     let saved = null; try { saved = JSON.parse(localStorage.getItem(key) || 'null'); } catch { saved = null; }
     let order = Array.isArray(saved?.order) ? saved.order.filter((id) => byId.has(id)) : base.slice();
     base.forEach((id) => { if (!order.includes(id)) order.push(id); });
