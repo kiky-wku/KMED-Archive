@@ -44,16 +44,15 @@ export function wordList(ctx, el) {
       sInp,
       h('button', { class: 'fl-srch-x', 'aria-label': '찾기 닫기', onclick: () => { srch.classList.remove('on'); if (sInp.value) { sInp.value = ''; q = ''; paint(); } sInp.blur(); } }, icon('x', 'icon s')));
     sInp.addEventListener('blur', () => { setTimeout(() => { if (!sInp.value && document.activeElement !== sInp) srch.classList.remove('on'); }, 150); });
-    const head = h('div', { class: 'wl-head' },
-      both ? seg([['word', '단어'], ['pic', '그림']], view, (v) => { view = v; try { localStorage.setItem('kmed:wlview', v); } catch { /* 무시 */ } coverSeg.style.display = v === 'word' ? '' : 'none'; paint(); }) : h('div'),
-      h('div', { class: 'sp' }), srch);
     const coverSeg = seg([['all', '다 보기'], ['cover', '뜻 가리기']], cover ? 'cover' : 'all', (v) => { cover = v === 'cover'; try { localStorage.setItem('kmed:wlcover', cover ? '1' : '0'); } catch { /* 무시 */ } paint(); });
     coverSeg.style.display = view === 'word' ? '' : 'none';
+    // 한 줄 : [단어 | 그림] [묶음] [다 보기 | 뜻 가리기]  ……  (찾기)
     const bar = h('div', { class: 'q-bar wl-bar' },
+      both ? seg([['word', '단어'], ['pic', '그림']], view, (v) => { view = v; try { localStorage.setItem('kmed:wlview', v); } catch { /* 무시 */ } coverSeg.style.display = v === 'word' ? '' : 'none'; paint(); }) : null,
       decks.length > 1 ? unitPicker(() => decks.filter((d) => (view === 'pic' ? pics : text).some((x) => (x.deck || '기본') === d.id)), sel, (v) => { sel = v; try { localStorage.setItem(selKey, JSON.stringify(v)); } catch { /* 무시 */ } paint(); }, '전체 묶음') : null,
-      h('div', { class: 'sp' }), coverSeg);
+      coverSeg, h('div', { class: 'sp' }), srch);
     const list = h('div', { class: 'wl-list' });
-    el.replaceChildren(head, bar, list);
+    el.replaceChildren(bar, list);
 
     const hit = (...t) => !q || t.some((x) => String(x || '').toLowerCase().includes(q));
     function paint() {

@@ -2040,3 +2040,9 @@ html.offline body::after{content:'인터넷 연결 없음. 이 기기에 저장�
 .wl-head .sp,.wl-bar .sp{flex:1}
 .wl-srch2.on{width:min(300px,60vw)}
 .wl-pic{padding-bottom:12px}
+.wl-bar{flex-wrap:nowrap;align-items:center;gap:10px;margin-bottom:18px}
+.wl-bar .segc{flex:none}
+.wl-list{gap:18px}
+.wl-sec:first-child .wl-h,.wl-wk:first-child{margin-top:0}
+@media (max-width:560px){.wl-bar{flex-wrap:wrap}.wl-bar .sp{display:none}}
+.wl-bar .segc+.segc,.wl-bar .unit-pill+.segc{margin-left:6px}
