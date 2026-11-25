@@ -34,22 +34,34 @@ export function wordList(ctx, el) {
     let cover = localStorage.getItem('kmed:wlcover') === '1';
     let q = '';
 
-    const search = h('input', { class: 'wl-q', type: 'search', placeholder: '찾기', spellcheck: 'false', oninput: () => { q = search.value.trim().toLowerCase(); paint(); } });
+    // 단어 / 그림 (둘 다 있을 때만 고름)
+    const both = text.length && pics.length;
+    let view = both ? (localStorage.getItem('kmed:wlview') === 'pic' ? 'pic' : 'word') : pics.length && !text.length ? 'pic' : 'word';
+    // 찾기 : 동그란 버튼 → 누르면 펼쳐짐 (자료 탭과 같은 모양)
+    const sInp = h('input', { type: 'search', placeholder: '찾기', spellcheck: 'false', oninput: () => { q = sInp.value.trim().toLowerCase(); paint(); } });
+    const srch = h('div', { class: 'fl-srch wl-srch2' },
+      h('button', { class: 'fl-srch-btn', 'aria-label': '찾기', title: '찾기', onclick: () => { srch.classList.add('on'); setTimeout(() => sInp.focus(), 60); } }, icon('search', 'icon s')),
+      sInp,
+      h('button', { class: 'fl-srch-x', 'aria-label': '찾기 닫기', onclick: () => { srch.classList.remove('on'); if (sInp.value) { sInp.value = ''; q = ''; paint(); } sInp.blur(); } }, icon('x', 'icon s')));
+    sInp.addEventListener('blur', () => { setTimeout(() => { if (!sInp.value && document.activeElement !== sInp) srch.classList.remove('on'); }, 150); });
+    const head = h('div', { class: 'wl-head' },
+      both ? seg([['word', '단어'], ['pic', '그림']], view, (v) => { view = v; try { localStorage.setItem('kmed:wlview', v); } catch { /* 무시 */ } coverSeg.style.display = v === 'word' ? '' : 'none'; paint(); }) : h('div'),
+      h('div', { class: 'sp' }), srch);
+    const coverSeg = seg([['all', '다 보기'], ['cover', '뜻 가리기']], cover ? 'cover' : 'all', (v) => { cover = v === 'cover'; try { localStorage.setItem('kmed:wlcover', cover ? '1' : '0'); } catch { /* 무시 */ } paint(); });
+    coverSeg.style.display = view === 'word' ? '' : 'none';
     const bar = h('div', { class: 'q-bar wl-bar' },
-      decks.length > 1 ? unitPicker(decks, sel, (v) => { sel = v; try { localStorage.setItem(selKey, JSON.stringify(v)); } catch { /* 무시 */ } paint(); }, '전체 묶음') : null,
-      h('label', { class: 'srch wl-srch' }, icon('search', 'icon s'), search),
-      h('div', { class: 'sp' }),
-      seg([['all', '다 보기'], ['cover', '뜻 가리기']], cover ? 'cover' : 'all', (v) => { cover = v === 'cover'; try { localStorage.setItem('kmed:wlcover', cover ? '1' : '0'); } catch { /* 무시 */ } paint(); }));
+      decks.length > 1 ? unitPicker(() => decks.filter((d) => (view === 'pic' ? pics : text).some((x) => (x.deck || '기본') === d.id)), sel, (v) => { sel = v; try { localStorage.setItem(selKey, JSON.stringify(v)); } catch { /* 무시 */ } paint(); }, '전체 묶음') : null,
+      h('div', { class: 'sp' }), coverSeg);
     const list = h('div', { class: 'wl-list' });
-    el.replaceChildren(bar, list);
+    el.replaceChildren(head, bar, list);
 
     const hit = (...t) => !q || t.some((x) => String(x || '').toLowerCase().includes(q));
     function paint() {
       const show = decks.filter((d) => !sel.length || sel.includes(d.id));
       const out = []; let lastG = null; let n = 0;
       for (const d of show) {
-        const rows = text.filter((c) => (c.deck || '기본') === d.id && hit(c.front, c.back, c.hint, myHintOf(c.id)));
-        const ps = pics.filter((x) => (x.deck || '기본') === d.id && hit(x.title, ...(x.labels || []), ...(x.boxes || []).map((b) => b.name)));
+        const rows = view === 'word' ? text.filter((c) => (c.deck || '기본') === d.id && hit(c.front, c.back, c.hint, myHintOf(c.id))) : [];
+        const ps = view === 'pic' ? pics.filter((x) => (x.deck || '기본') === d.id && hit(x.title, ...(x.labels || []), ...(x.boxes || []).map((b) => b.name))) : [];
         if (!rows.length && !ps.length) continue;
         if (d.group && d.group !== lastG) { out.push(h('h2', { class: 'wl-wk' }, d.group)); lastG = d.group; }
         if (!d.group) lastG = null;
@@ -58,7 +70,7 @@ export function wordList(ctx, el) {
           rows.length ? h('div', { class: 'wl-rows card' }, rows.map(row)) : null,
           ...ps.map(pic)));
       }
-      list.replaceChildren(...(out.length ? out : [h('div', { class: 'empty sm-e' }, '찾는 단어가 없습니다')]));
+      list.replaceChildren(...(out.length ? out : [h('div', { class: 'empty sm-e' }, q ? '찾는 단어가 없습니다' : view === 'pic' ? '이 묶음에는 그림이 없습니다' : '이 묶음에는 단어가 없습니다')]));
     }
 
     // 뜻 (가리기 모드면 눌러서 보기)

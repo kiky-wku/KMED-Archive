@@ -2036,3 +2036,7 @@ html.offline body::after{content:'인터넷 연결 없음. 이 기기에 저장�
 .es-wipe:hover{color:var(--red)}
 .es-wipe.armed{background:var(--red);color:#fff;animation:popIn .2s var(--spring)}
 .pq-head .es-wipe{margin-right:8px}
+.wl-head{display:flex;align-items:center;gap:10px;margin-bottom:12px}
+.wl-head .sp,.wl-bar .sp{flex:1}
+.wl-srch2.on{width:min(300px,60vw)}
+.wl-pic{padding-bottom:12px}
