@@ -1969,3 +1969,9 @@ html.offline body::after{content:'인터넷 연결 없음. 이 기기에 저장�
 .oe-ok{display:none;color:#fff;background:var(--red)!important}
 .oe-stagewrap.grabbing .oe-ok{display:grid;animation:popIn .2s var(--spring)}
 @media (pointer:coarse){.oe-hd{width:16px;height:16px}.oe-hd.nw{left:-8px;top:-8px}.oe-hd.ne{right:-8px;top:-8px}.oe-hd.sw{left:-8px;bottom:-8px}.oe-hd.se{right:-8px;bottom:-8px}.oe-hd::before{inset:-14px}}
+/* 묶음 고르기 : 주차 줄 + 소단원 */
+.unit-list .u-grp{font-weight:800;font-size:15px;margin-top:6px}
+.unit-list .u-grp:first-child,.unit-list .all+.u-grp{margin-top:2px}
+.unit-list .u-grp .u-n{flex:none;font-size:12.5px;font-weight:700;color:var(--faint);margin-left:auto}
+.unit-list .u-grp.part .ck{background:var(--text);border-color:var(--text);color:#fff}
+.unit-list .u-sub{padding-left:30px}

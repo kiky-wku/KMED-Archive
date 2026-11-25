@@ -26,7 +26,12 @@ export function flash(ctx, el) {
 
     // 묶음
     const decks = [];
-    all.forEach((c) => { const d = c.deck || '기본'; if (!decks.some((x) => x.id === d)) decks.push({ id: d, label: d }); });
+    // "5주차 > Combining Forms" 처럼 두 단계면 주차로 묶어서 보여 줌
+    all.forEach((c) => {
+      const d = c.deck || '기본'; if (decks.some((x) => x.id === d)) return;
+      const k = d.indexOf(' > ');
+      decks.push(k > 0 ? { id: d, group: d.slice(0, k).trim(), label: d.slice(k + 3).trim(), pill: `${d.slice(0, k).trim()} ${d.slice(k + 3).trim()}` } : { id: d, label: d });
+    });
     const selKey = `kmed:fdeck:${ctx.range.id}`;
     let sel = [];
     try { sel = JSON.parse(localStorage.getItem(selKey) || '[]').filter((d) => decks.some((x) => x.id === d)); } catch { sel = []; }
@@ -148,7 +153,7 @@ export function flash(ctx, el) {
       const hn = hint(c.hint);
       const meta = h('div', { class: 'card-meta' },
         h('span', { class: 'idx' }, `${deck.pos + 1}`, h('i', {}, ` / ${r.length}`)),
-        c.deck ? h('span', { class: 'fc-deck' }, c.deck) : null,
+        c.deck ? h('span', { class: 'fc-deck' }, c.deck.replace(' > ', ' › ')) : null,
         h('div', { class: 'meta-act' }, hn.btn,
           h('button', { class: 'tool-ic sm', title: '이전 카드', 'aria-label': '이전 카드', disabled: !deck.hist.length, onclick: (e) => { e.stopPropagation(); back(); } }, icon('undo', 'icon s')),
           h('button', { class: 'tool-ic sm', title: '건너뛰기', 'aria-label': '건너뛰기', onclick: (e) => { e.stopPropagation(); skip(); } }, icon('skip', 'icon s'))));
