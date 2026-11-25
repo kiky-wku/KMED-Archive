@@ -9,9 +9,10 @@ import { imgSrc } from '../data/images.js';
 //  hideAll : 다른 테이프도 가리기 (기본) / false 면 다른 이름은 보임
 //  그림이 놓일 자리 크기에 맞춰 비율 그대로 꽉 차게 (테이프 위치가 어긋나지 않게 그림과 같은 상자 안에)
 // ─────────────────────────────────────────────
-export function occView(set, { target = null, reveal = false, ask = 'name', hideAll = true, cls = '' } = {}) {
+export function occView(set, { target = null, reveal = false, ask = 'name', hideAll = true, cls = '', numbers = false } = {}) {
   const img = h('img', { alt: '', draggable: 'false' });
-  const masks = (set.boxes || []).map((b) => {
+  // numbers : 가리지 않고 자리마다 번호만 (정리해서 보는 화면)
+  const masks = numbers ? (set.boxes || []).map((b, i) => h('i', { class: 'occ-nb', style: { left: pc(b.x), top: pc(b.y), width: pc(b.w), height: pc(b.h) } }, h('b', {}, i + 1))) : (set.boxes || []).map((b) => {
     const isT = target && b.id === target.id;
     let c = 'occ-m';
     if (isT) c += reveal ? ' open' : ask === 'name' ? ' tg' : '';

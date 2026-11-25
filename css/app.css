@@ -1979,3 +1979,56 @@ html.offline body::after{content:'인터넷 연결 없음. 이 기기에 저장�
 .flip.occ-flat,.flip.occ-flat.on{transform:none;transform-style:flat}
 .occ-flat .face.front{backface-visibility:visible;-webkit-backface-visibility:visible}
 .occ-in-ans{animation:rise .25s var(--ease) both;color:var(--text)}
+
+/* ---------- 단어 목록 ---------- */
+.wl-sk{display:flex;flex-direction:column;gap:10px}.wl-sk .skel{height:52px;border-radius:14px}
+.wl-bar{flex-wrap:wrap;gap:8px;margin-bottom:6px}
+.wl-srch{flex:1;min-width:140px;max-width:320px}
+.wl-q{width:100%;border:0;outline:0;background:none;font-size:15px}
+.wl-list{display:flex;flex-direction:column;gap:22px;padding-bottom:40px}
+.wl-wk{margin:14px 4px -8px;font-size:20px;font-weight:800;letter-spacing:-.01em}
+.wl-sec{display:flex;flex-direction:column;gap:10px;animation:rise .35s var(--ease) both}
+.wl-h{display:flex;align-items:baseline;gap:8px;margin:0 4px;font-size:16px;font-weight:800;color:var(--sub)}
+.wl-h span{font-size:13px;font-weight:700;color:var(--faint)}
+.wl-rows{padding:4px 0;border-radius:18px;overflow:hidden}
+.wl-r{display:grid;grid-template-columns:minmax(0,2fr) minmax(0,3fr) auto;align-items:start;column-gap:16px;padding:12px 12px 12px 18px;border-top:1px solid #F2F3F5}
+.wl-rows .wl-r:first-child{border-top:0}
+.wl-f{font-size:16px;font-weight:700;line-height:1.45;word-break:keep-all;overflow-wrap:anywhere;padding-top:3px}
+.wl-b{font-size:15px;line-height:1.55;color:var(--sub);white-space:pre-line;word-break:keep-all;overflow-wrap:anywhere;padding-top:4px;border-radius:8px;transition:background-color .2s,color .2s}
+.wl-b.hid{color:transparent;background:#EEF0F3;cursor:pointer;user-select:none;min-height:26px}
+.wl-b.hid *{visibility:hidden}
+.wl-hb{width:34px;height:34px;box-shadow:none;background:transparent;color:#C5CBD3}
+.wl-hb.on{color:#E8A300}
+.wl-r:hover .wl-hb{color:var(--sub)}.wl-r:hover .wl-hb.on{color:#E8A300}
+.wl-imgs{grid-column:1/-1;display:flex;gap:8px;margin-top:8px}
+.wl-th{width:120px;height:84px;border-radius:10px;cursor:zoom-in}
+.wl-th img{width:100%;height:100%;object-fit:cover}
+.wl-ha{display:none;grid-column:1/-1;margin-top:8px}
+.wl-r.hopen .wl-ha,.wl-r.hasmine .wl-ha{display:block}
+.wl-ta{display:block;width:100%;min-height:36px;resize:none;border:0;outline:0;padding:8px 12px;border-radius:10px;background:#FFF8E6;color:#7A5200;font-size:14.5px;font-weight:600;line-height:1.5}
+.wl-ta::placeholder{color:#C9A55A;font-weight:600}
+.wl-ta:focus{box-shadow:inset 0 0 0 1.5px #F2C65A}
+.wl-shared{display:flex;gap:6px;align-items:flex-start;margin-bottom:6px;font-size:13.5px;color:var(--sub);line-height:1.5}
+.wl-shared .icon{flex:none;margin-top:3px;color:#E8A300}
+.wl-pic{padding:14px 14px 8px;border-radius:18px}
+.wl-pic-t{display:flex;align-items:center;gap:6px;margin:0 4px 10px;font-size:15px;font-weight:800}
+.wl-pic-t .icon{color:var(--faint)}
+.wl-pic-body{display:grid;grid-template-columns:minmax(0,3fr) minmax(0,2fr);gap:16px;align-items:start}
+.wl-occ{height:min(56vh,440px);cursor:zoom-in;background:var(--surface2);border-radius:14px}
+.wl-pic-l{display:flex;flex-direction:column}
+.wl-pr{grid-template-columns:auto minmax(0,1fr) auto;padding:8px 4px 8px 6px}
+.wl-pr:first-child{border-top:0}
+.wl-n{display:grid;place-items:center;min-width:24px;height:24px;padding:0 6px;border-radius:8px;background:var(--text);color:#fff;font-size:12.5px;font-weight:800;margin-top:2px}
+.wl-pn{color:var(--text);font-weight:700;font-size:15px}
+.occ-nb{position:absolute;border-radius:4px;box-shadow:inset 0 0 0 2px rgba(25,31,40,.55);background:rgba(255,255,255,.08)}
+.occ-nb b{position:absolute;left:-2px;top:-2px;transform:translate(-45%,-45%);min-width:18px;height:18px;padding:0 4px;border-radius:99px;background:var(--text);color:#fff;font-size:11px;font-weight:800;display:grid;place-items:center;box-shadow:0 0 0 2px #fff}
+@media (max-width:720px){
+  .wl-r{grid-template-columns:minmax(0,1fr) auto;padding-left:14px}
+  .wl-r .wl-b{grid-column:1/2;grid-row:2}
+  .wl-r .wl-hb{grid-row:1/3;grid-column:2}
+  .wl-pr{grid-template-columns:auto minmax(0,1fr) auto}
+  .wl-pr .wl-b{grid-column:2;grid-row:1}
+  .wl-pr .wl-hb{grid-column:3;grid-row:1}
+  .wl-pic-body{grid-template-columns:1fr}
+  .wl-occ{height:auto;aspect-ratio:4/3}
+}

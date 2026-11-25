@@ -1,6 +1,6 @@
 import { h, icon, toast, drawer, seg } from '../ui.js';
 import { deckState } from '../data/hanja.js';
-import { loadFlashAll, loadOcc, loadItems, saveItem, clearItems } from '../data/study.js';
+import { loadFlashAll, loadOcc, loadItems, saveItem, clearItems, loadMyHints, myHintOf } from '../data/study.js';
 import { occView, occZoom } from './occ-view.js';
 import { unitPicker } from './units.js';
 import { hint } from './hint.js';
@@ -17,7 +17,7 @@ export function flash(ctx, el) {
     h('i', { class: 'skel card' }), h('i', { class: 'skel act' })));
 
   (async () => {
-    const [all, sets] = await Promise.all([loadFlashAll(ctx.range.id).catch(() => []), loadOcc(ctx.range.id)]);
+    const [all, sets] = await Promise.all([loadFlashAll(ctx.range.id).catch(() => []), loadOcc(ctx.range.id), loadMyHints()]);
     if (!alive) return;
     // 담당자 : 그림을 아직 안 넣었거나 테이프 이름이 빈 그림 카드 알림
     const todo = ctx.canWrite ? sets.filter((x) => !x.img || (x.kind === 'label' && (!(x.boxes || []).length || x.boxes.some((b) => !b.name)))).length : 0;
@@ -150,7 +150,7 @@ export function flash(ctx, el) {
       const ai = mode === 'f' ? c.back_img : c.front_img;
       // 다음 카드 사진 미리 받기
       r.slice(deck.pos + 1, deck.pos + 4).forEach((id) => { const n = byId.get(id); if (n) preload([n.front_img, n.back_img, n.occ?.set.img]); });
-      const hn = hint(c.hint);
+      const hn = hint(c.hint, myHintOf(c.id));
       const meta = h('div', { class: 'card-meta' },
         h('span', { class: 'idx' }, `${deck.pos + 1}`, h('i', {}, ` / ${r.length}`)),
         c.deck ? h('span', { class: 'fc-deck' }, c.deck.replace(' > ', ' › ')) : null,

@@ -115,6 +115,26 @@ export function wbResult(subjectId, map, ch, result) {
 
 // 저장 줄 (실패하면 한 번 더)
 const q = []; let busy = false;
+// 나만의 암기법 (24 SQL 전이면 빈 목록)
+let myHints = null;
+export async function loadMyHints() {
+  if (myHints) return myHints;
+  try {
+    const rows = await fetchAll(() => sb.from('my_hints').select('item_id,text').eq('user_id', S.user.id));
+    myHints = new Map(rows.map((r) => [r.item_id, r.text]));
+  } catch { myHints = new Map(); }
+  return myHints;
+}
+export function myHintOf(id) { return myHints?.get(id) || ''; }
+export function saveMyHint(id, text) {
+  const t = String(text || '').trim();
+  if (!myHints) myHints = new Map();
+  if (t) myHints.set(id, t); else myHints.delete(id);
+  run(() => (t
+    ? sb.from('my_hints').upsert({ user_id: S.user.id, item_id: id, text: t, updated_at: new Date().toISOString() }, { onConflict: 'user_id,item_id' })
+    : sb.from('my_hints').delete().eq('user_id', S.user.id).eq('item_id', id)));
+}
+
 function run(job) { q.push(job); pump(); }
 async function pump() {
   if (busy) return; busy = true;

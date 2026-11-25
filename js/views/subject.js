@@ -16,6 +16,7 @@ import { wordbook } from '../blocks/wordbook.js';
 import { flash } from '../blocks/flash.js';
 import { filesBlock } from '../blocks/files.js';
 import { pastBlock } from '../blocks/past.js';
+import { wordList } from '../blocks/wordlist.js';
 import { statsBlock } from '../blocks/stats.js';
 import { hasStats } from '../data/stats.js';
 
@@ -32,6 +33,7 @@ const RENDER = {
   summary: (ctx, el) => filesBlock(ctx, el),
   past: (ctx, el) => pastBlock(ctx, el),
   pred: (ctx, el) => pastBlock(ctx, el, 'pred'),
+  wlist: (ctx, el) => wordList(ctx, el),
   stats: (ctx, el) => statsBlock(ctx, el),
 };
 
@@ -59,10 +61,13 @@ export function subjectView(id, q) {
     const { data: sub } = await sb.from('subjects').select('*, ranges(id,name,sort), blocks(kind,title,sort)').eq('id', id).single();
     if (!sub) { area.replaceChildren(h('div', { class: 'empty' }, '과목을 찾을 수 없습니다')); return; }
     const ranges = (sub.ranges || []).sort((a, b) => a.sort - b.sort);
-    const blocks = [...(sub.blocks || [])].filter((b) => b.kind !== 'stats' && b.kind !== 'past' && b.kind !== 'pred').sort((a, b) => a.sort - b.sort);
+    const blocks = [...(sub.blocks || [])].filter((b) => b.kind !== 'stats' && b.kind !== 'past' && b.kind !== 'pred' && b.kind !== 'wlist').sort((a, b) => a.sort - b.sort);
     // 자료 탭이 있으면 바로 뒤에 기출문제 탭 (기출은 자료 탭에서 분리)
     const si = blocks.findIndex((b) => b.kind === 'summary');
     if (si >= 0) blocks.splice(si + 1, 0, { kind: 'past', title: '기출문제', sort: blocks[si].sort + 0.5 }, { kind: 'pred', title: '예상문제', sort: blocks[si].sort + 0.6 });
+    // 플래시카드가 있으면 바로 뒤에 단어 목록 탭
+    const fi = blocks.findIndex((b) => b.kind === 'flash');
+    if (fi >= 0) blocks.splice(fi + 1, 0, { kind: 'wlist', title: '단어 목록', sort: blocks[fi].sort + 0.3 });
     // 문제가 있는 과목은 맨 끝에 통계 탭
     if (hasStats(blocks.map((b) => b.kind))) blocks.push({ kind: 'stats', title: '통계', sort: 999 });
     titleEl.replaceChildren(sub.icon ? h('span', { class: 'emo' }, sub.icon) : null, sub.name);
