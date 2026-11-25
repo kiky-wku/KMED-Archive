@@ -43,12 +43,26 @@ export function openDataSheet(sub, range, onDone, { keys: only } = {}) {
   }
 
   // ── ① 준비하기 ──
+  // 예상문제 : 기출 예시를 미리 받아 둠 (복사는 누른 순간 바로 해야 아이패드 사파리에서 막히지 않음)
+  let pastEx = null;
+  const pastP = isPred ? pastOf(sub.id).then((r) => { pastEx = r; return r; }) : null;
+  const textOf = (past) => (isPast ? buildPastRequest({ subject: sub.name, range: range.name })
+    : isPred ? buildPredRequest({ subject: sub.name, range: range.name, past: past || [] })
+      : buildRequest(keys, { subject: sub.name, range: range.name }));
   const copyBtn = h('button', { class: 'ds-copy', onclick: async () => {
-    const text = isPast ? buildPastRequest({ subject: sub.name, range: range.name })
-      : isPred ? buildPredRequest({ subject: sub.name, range: range.name, past: await pastOf(sub.id) })
-        : buildRequest(keys, { subject: sub.name, range: range.name });
-    try { await navigator.clipboard.writeText(text); } catch {
-      const t = h('textarea', { style: { position: 'fixed', opacity: '0' } }, text); document.body.append(t); t.select(); document.execCommand('copy'); t.remove();
+    let done = false;
+    if (isPred && !pastEx && window.ClipboardItem && navigator.clipboard?.write) {
+      // 아직 못 받았으면 받는 대로 넣기 (누른 순간에 복사를 예약)
+      try {
+        await navigator.clipboard.write([new ClipboardItem({ 'text/plain': pastP.then((r) => new Blob([textOf(r)], { type: 'text/plain' })) })]);
+        done = true;
+      } catch { /* 아래로 */ }
+    }
+    if (!done) {
+      const text = textOf(pastEx);
+      try { await navigator.clipboard.writeText(text); } catch {
+        const t = h('textarea', { style: { position: 'fixed', opacity: '0' } }, text); document.body.append(t); t.select(); document.execCommand('copy'); t.remove();
+      }
     }
     copyBtn.classList.add('ok'); copyBtn.lastChild.textContent = '복사됨'; paintFoot();
     setTimeout(() => { if (copyBtn.isConnected) { copyBtn.classList.remove('ok'); copyBtn.lastChild.textContent = '복사하기'; } }, 2200);
