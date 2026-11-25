@@ -34,6 +34,41 @@ export function openEditSheet({ sub, range, pool, kind: k0, query = '', onDone }
   const search = h('input', { class: 'es-q', type: 'search', placeholder: '검색', value: query, spellcheck: 'false' });
   const count = h('span', { class: 'es-cnt' });
   const addBtn = h('button', { class: 'btn sm ghost es-add', onclick: () => (kind === 'occ' ? openOcc(null) : addFlash()) }, icon('plus', 'icon s'), h('span', {}, '카드 추가'));
+  // 이 범위의 지금 종류 데이터 전부 지우기 (두 번 눌러야 지워짐)
+  let wipeArmed = 0; let wipeT = 0;
+  const wipeBtn = h('button', { class: 'tool-ic es-wipe', title: '전부 지우기', 'aria-label': '전부 지우기', onclick: () => wipe() }, icon('trash', 'icon s'));
+  async function wipe() {
+    const n = kind === 'jung' ? items.reduce((a, x) => a + x.lines.length, 0) : items.length;
+    if (!n) { toast('지울 데이터가 없습니다'); return; }
+    const name = KINDS.find((k) => k[0] === kind)[1];
+    if (Date.now() - wipeArmed > 3000) {
+      wipeArmed = Date.now(); wipeBtn.classList.add('armed');
+      toast(`한 번 더 누르면 ${range.name} ${name} ${n}개를 모두 지웁니다`);
+      clearTimeout(wipeT); wipeT = setTimeout(() => wipeBtn.classList.remove('armed'), 3000);
+      return;
+    }
+    wipeArmed = 0; wipeBtn.classList.remove('armed'); wipeBtn.disabled = true;
+    try {
+      const rid = range.id;
+      if (kind === 'flash') {
+        const keys = items.flatMap((x) => [x.front_img, x.back_img]).filter(Boolean);
+        ok(await sb.from('flash_cards').delete().eq('range_id', rid));
+        if (keys.length) dropImgs(keys);
+      } else if (kind === 'occ') {
+        const keys = items.map((x) => x.img).filter(Boolean);
+        ok(await sb.from('occ_sets').delete().eq('range_id', rid));
+        if (keys.length) dropImgs(keys);
+      } else if (kind === 'hanja') {
+        ok(await sb.from('hanja_cards').delete().eq('range_id', rid));
+        ok(await sb.from('hanja_units').delete().eq('range_id', rid));
+      } else if (kind === 'jung') ok(await sb.from('jung_lines').delete().eq('range_id', rid));
+      else if (kind === 'um') ok(await sb.from('um_sentences').delete().eq('range_id', rid));
+      changed = true; resetStudyCaches(); resetCaches?.();
+      toast(`${name} ${n}개를 지웠습니다`);
+      load();
+    } catch (e) { toast(e.message || '지우지 못했습니다'); }
+    wipeBtn.disabled = false;
+  }
   const tabs = h('div', { class: 'es-kinds' });
   const list = h('div', { class: 'es-list' });
   const sheet = h('div', { class: 'ds es', role: 'dialog', 'aria-modal': 'true' },
@@ -41,7 +76,7 @@ export function openEditSheet({ sub, range, pool, kind: k0, query = '', onDone }
       h('div', { class: 'ds-ttl' }, h('span', { class: 'emo' }, sub.icon || ''), h('div', {}, h('h2', {}, '데이터 편집'), h('span', {}, `${sub.name} ${range.name}`))),
       h('button', { class: 'ib', 'aria-label': '닫기', onclick: close }, icon('x'))),
     h('div', { class: 'es-bar' }, tabs,
-      h('div', { class: 'es-row' }, h('label', { class: 'es-search' }, icon('search', 'icon s'), search), count, addBtn)),
+      h('div', { class: 'es-row' }, h('label', { class: 'es-search' }, icon('search', 'icon s'), search), count, addBtn, wipeBtn)),
     h('div', { class: 'ds-body' }, list));
   const wrap = h('div', { class: 'ds-wrap', onclick: (e) => { if (e.target === wrap) close(); } }, sheet);
   document.body.append(wrap);

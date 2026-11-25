@@ -30,9 +30,25 @@ export function pastBlock(ctx, el, mode = 'past') {
   let tab = !PRED && localStorage.getItem('kmed:pasttab') === 'pdf' ? 'pdf' : 'quiz';
   const area = h('div', { class: 'pq-area' });
   const addBtn = ctx.canWrite ? h('button', { class: 'tool-ic', title: `${NAME} 넣기`, 'aria-label': `${NAME} 넣기`, onclick: () => openDataSheet(ctx.subject, ctx.range, () => { qs = null; show(); }, { keys: [mode] }) }, icon('import')) : null;
+  // 이 범위 문제 전부 지우기 (두 번 눌러야)
+  let wipeArmed = 0;
+  const wipeBtn = ctx.canWrite ? h('button', { class: 'tool-ic es-wipe', title: `${NAME} 전부 지우기`, 'aria-label': `${NAME} 전부 지우기`, onclick: async () => {
+    const all = await data().catch(() => []);
+    if (!all.length) { toast('지울 문제가 없습니다'); return; }
+    if (Date.now() - wipeArmed > 3000) {
+      wipeArmed = Date.now(); wipeBtn.classList.add('armed');
+      toast(`한 번 더 누르면 ${ctx.range.name} ${NAME} ${all.length}개를 모두 지웁니다`);
+      setTimeout(() => wipeBtn.classList.remove('armed'), 3000); return;
+    }
+    wipeArmed = 0; wipeBtn.classList.remove('armed');
+    let r = await sb.from('past_questions').delete().eq('range_id', ctx.range.id).eq('kind', mode);
+    if (r.error && !PRED) r = await sb.from('past_questions').delete().eq('range_id', ctx.range.id);
+    if (r.error) { toast(r.error.message || '지우지 못했습니다'); return; }
+    toast(`${NAME} ${all.length}개를 지웠습니다`); qs = null; show();
+  } }, icon('trash', 'icon s')) : null;
   const head = h('div', { class: 'pq-head' + (PRED ? ' pq-head-pred' : '') },
     PRED ? null : seg([['quiz', '문제 풀기'], ['pdf', '원본 PDF']], tab, (v) => { tab = v; try { localStorage.setItem('kmed:pasttab', v); } catch { /* 무시 */ } show(); }),
-    h('div', { class: 'sp' }), addBtn);
+    h('div', { class: 'sp' }), wipeBtn, addBtn);
   el.append(head, area);
 
   let qs = null; let items = null;
@@ -51,6 +67,7 @@ export function pastBlock(ctx, el, mode = 'past') {
     sub?.(); sub = null;
     area.replaceChildren();
     head.style.display = '';
+    if (wipeBtn) wipeBtn.style.display = tab === 'pdf' ? 'none' : '';
     if (tab === 'pdf') { addBtn && (addBtn.style.display = 'none'); sub = filesBlock({ ...ctx, filesScope: 'past' }, area); return; }
     addBtn && (addBtn.style.display = '');
     list();
