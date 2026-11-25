@@ -4,6 +4,7 @@ import { fetchAll } from '../data/hanja.js';
 import { loadItems, saveItem, clearItems } from '../data/study.js';
 import { filesBlock } from './files.js';
 import { openDataSheet } from '../views/data-sheet.js';
+import { unitPicker } from './units.js';
 
 // ─────────────────────────────────────────────
 // 기출문제 탭
@@ -94,7 +95,19 @@ export function pastBlock(ctx, el, mode = 'past') {
     let saved = null; try { saved = JSON.parse(localStorage.getItem(key) || 'null'); } catch { saved = null; }
     let order = Array.isArray(saved?.order) ? saved.order.filter((id) => byId.has(id)) : base.slice();
     base.forEach((id) => { if (!order.includes(id)) order.push(id); });
-    let ids = wrongOnly ? order.filter((id) => items.get(id)?.status === 'no') : order;
+    // 단원 고르기 : 문제의 단원(tag)으로 걸러서 풀기 (시험마다 기억)
+    const tagKey = `${key}:tags`;
+    const tagOf = (id) => byId.get(id)?.tag || '기타';
+    const units = [];
+    all.forEach((q) => {
+      const t = q.tag || '기타'; if (units.some((u) => u.id === t)) return;
+      const k = t.indexOf(' > ');
+      units.push(k > 0 ? { id: t, group: t.slice(0, k).trim(), label: t.slice(k + 3).trim(), pill: `${t.slice(0, k).trim()} ${t.slice(k + 3).trim()}` } : { id: t, label: t });
+    });
+    let tagSel = []; try { tagSel = JSON.parse(localStorage.getItem(tagKey) || '[]').filter((t) => units.some((u) => u.id === t)); } catch { tagSel = []; }
+    const inTag = (id) => !tagSel.length || tagSel.includes(tagOf(id));
+    const pick = () => (wrongOnly ? order.filter((id) => items.get(id)?.status === 'no') : order).filter(inTag);
+    let ids = pick();
     let pos = wrongOnly ? 0 : Math.min(Number(saved?.pos) || 0, Math.max(0, ids.length - 1));
     const save = () => { if (!wrongOnly) { try { localStorage.setItem(key, JSON.stringify({ order, pos })); } catch { /* 무시 */ } } };
     // 틀린 것만 다시 : 이번에 다시 푼 문제만 결과로 셈 (저장된 기록은 새로 채점할 때 바뀜)
@@ -103,19 +116,19 @@ export function pastBlock(ctx, el, mode = 'past') {
     head.style.display = 'none';
     const stage = h('div', { class: 'pq-stage' });
     const shuffle = (a) => { for (let i = a.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [a[i], a[j]] = [a[j], a[i]]; } return a; };
-    const setOrder = (o, p, msg) => { order = o; ids = order; pos = p; save(); render(); toast(msg); };
+    const setOrder = (o, p, msg) => { order = o; ids = pick(); pos = Math.min(p, Math.max(0, ids.length - 1)); save(); render(); toast(msg); };
     const tool = (ic, label, fn, cls = '') => h('button', { class: `tool-ic ${cls}`, title: label, 'aria-label': label, onclick: fn }, icon(ic));
     const recBtn = tool('list', '기록', () => openRecords(), 'rec-btn');
     const tools = wrongOnly ? h('div', { class: 'pq-tools' }, recBtn) : h('div', { class: 'pq-tools' },
       tool('shuffle', '전체 섞기', () => setOrder(shuffle(base.slice()), 0, '전체 문제를 섞었습니다')),
       tool('shuffleun', '안 푼 문제 섞기', () => {
         const done = order.filter((id) => items.get(id)?.status); const rest = shuffle(order.filter((id) => !items.get(id)?.status));
-        if (!rest.length) { toast('안 푼 문제가 없습니다'); return; }
-        setOrder([...done, ...rest], done.length, '안 푼 문제를 섞었습니다');
+        if (!rest.filter(inTag).length) { toast('안 푼 문제가 없습니다'); return; }
+        setOrder([...done, ...rest], done.filter(inTag).length, '안 푼 문제를 섞었습니다');
       }),
       tool('restore', '원래 순서', () => setOrder(base.slice(), 0, '원래 순서로 되돌렸습니다')),
       tool('xcircle', '틀린 문제만', () => {
-        if (!order.some((id) => items.get(id)?.status === 'no')) { toast('틀린 문제가 없습니다'); return; }
+        if (!order.some((id) => inTag(id) && items.get(id)?.status === 'no')) { toast('틀린 문제가 없습니다'); return; }
         off(); quiz(exam, true);
       }),
       recBtn);
@@ -125,7 +138,11 @@ export function pastBlock(ctx, el, mode = 'past') {
     // 남음, 맞음, 틀림 + 진행 막대
     const counts = h('div', { class: 'q-counts' });
     const prog = h('div', { class: 'q-prog pq-prog' }, h('i', { class: 'ok' }), h('i', { class: 'no' }));
-    area.replaceChildren(bar, h('div', { class: 'q-bar pq-cnt' }, counts), prog, stage);
+    const picker = units.length > 1 ? unitPicker(units, tagSel, (v) => {
+      tagSel = v; try { localStorage.setItem(tagKey, JSON.stringify(v)); } catch { /* 무시 */ }
+      ids = pick(); pos = 0; render();
+    }, '전체 단원') : null;
+    area.replaceChildren(bar, h('div', { class: 'q-bar pq-cnt' }, picker, counts), prog, stage);
     const paintRec = () => {
       const ok = ids.filter((id) => stOf(id) === 'ok').length;
       const no = ids.filter((id) => stOf(id) === 'no').length;
