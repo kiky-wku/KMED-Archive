@@ -104,7 +104,7 @@ export function pastBlock(ctx, el, mode = 'past') {
       const k = t.indexOf(' > ');
       units.push(k > 0 ? { id: t, group: t.slice(0, k).trim(), label: t.slice(k + 3).trim(), pill: `${t.slice(0, k).trim()} ${t.slice(k + 3).trim()}` } : { id: t, label: t });
     });
-    let tagSel = []; try { tagSel = JSON.parse(localStorage.getItem(tagKey) || '[]').filter((t) => units.some((u) => u.id === t)); } catch { tagSel = []; }
+    let tagSel = []; if (PRED) try { tagSel = JSON.parse(localStorage.getItem(tagKey) || '[]').filter((t) => units.some((u) => u.id === t)); } catch { tagSel = []; }
     const inTag = (id) => !tagSel.length || tagSel.includes(tagOf(id));
     const pick = () => (wrongOnly ? order.filter((id) => items.get(id)?.status === 'no') : order).filter(inTag);
     let ids = pick();
@@ -138,7 +138,8 @@ export function pastBlock(ctx, el, mode = 'past') {
     // 남음, 맞음, 틀림 + 진행 막대
     const counts = h('div', { class: 'q-counts' });
     const prog = h('div', { class: 'q-prog pq-prog' }, h('i', { class: 'ok' }), h('i', { class: 'no' }));
-    const picker = units.length > 1 ? unitPicker(units, tagSel, (v) => {
+    // 단원 고르기는 예상문제만 (기출은 시험 통째로 풂)
+    const picker = PRED && units.length > 1 ? unitPicker(units, tagSel, (v) => {
       tagSel = v; try { localStorage.setItem(tagKey, JSON.stringify(v)); } catch { /* 무시 */ }
       ids = pick(); pos = 0; render();
     }, '전체 단원') : null;
