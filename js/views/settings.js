@@ -152,8 +152,8 @@ function claudeBox() {
           h('li', {}, 'PDF를 올리고 "공부하니에 의학용어 기말 플래시카드 만들어 줘" 처럼 부탁합니다.'),
           h('li', {}, '다 만들면 과목 화면 위 검토 대기에서 확인하고 넣습니다.')));
     })() : null;
-    box.replaceChildren(...rows, list.length < 3 ? make : null, shown,
-      !list.length && !fresh ? h('p', { class: 'st-note' }, 'Claude 채팅에서 만든 카드와 문제를 엑셀 없이 앱으로 바로 보냅니다. 보낸 데이터는 검토 대기에 들어가고, 확인한 뒤에 넣어야 반영됩니다.') : null);
+    box.replaceChildren(...[...rows, list.length < 3 ? make : null, shown,
+      !list.length && !fresh ? h('p', { class: 'st-note' }, 'Claude 채팅에서 만든 카드와 문제를 엑셀 없이 앱으로 바로 보냅니다. 보낸 데이터는 검토 대기에 들어가고, 확인한 뒤에 넣어야 반영됩니다.') : null].filter(Boolean));
   }
   paint();
   return box;
