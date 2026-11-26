@@ -1,4 +1,4 @@
-import { h, icon, toast, drawer } from '../ui.js';
+import { h, icon, seal, toast, drawer } from '../ui.js';
 import { loadCards, loadProgress, uniqueCards, readingText, matchReading, setStatus, deckState, loadHints } from '../data/hanja.js';
 import { hint } from './hint.js';
 import { pencilPad } from './pencil.js';
@@ -95,7 +95,7 @@ export function hanjaQuiz(ctx, el, mode) {
       if (!r.length) {
         const wrong = scope.filter((c) => status.get(c) === 'no').length;
         stage.replaceChildren(h('div', { class: 'q-done' },
-          h('div', { class: 'emo' }, '🎉'), h('h2', {}, '한 바퀴를 다 풀었습니다'),
+          seal(!wrong), h('h2', {}, '한 바퀴를 다 풀었습니다'),
           h('div', { class: 'sub' }, `맞음 ${scope.length - wrong} · 틀림 ${wrong}`),
           h('div', { class: 'row' },
             wrong ? h('button', { class: 'btn', onclick: retryWrong }, `틀린 ${wrong}개 다시`) : null,

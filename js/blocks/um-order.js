@@ -62,8 +62,8 @@ export function umOrder(ctx, el) {
       const no = sc.filter((s) => st(s.id) === 'no').length;
       counts.replaceChildren(
         h('span', {}, h('b', {}, sc.length - ok - no), ' 남음'),
-        h('span', { class: 'ok' }, h('b', {}, ok), ' 정답'),
-        h('span', { class: 'no' }, h('b', {}, no), ' 오답'));
+        h('span', { class: 'ok' }, h('b', {}, ok), ' 맞음'),
+        h('span', { class: 'no' }, h('b', {}, no), ' 틀림'));
     }
 
     const views = new Map(); // id → { el, row, ans, btn }

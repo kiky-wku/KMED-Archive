@@ -1,4 +1,4 @@
-import { h, icon, toast, drawer, seg } from '../ui.js';
+import { h, icon, seal, toast, drawer, seg } from '../ui.js';
 import { deckState } from '../data/hanja.js';
 import { loadFlashAll, loadOcc, loadItems, saveItem, clearItems, loadMyHints, myHintOf } from '../data/study.js';
 import { occView, occZoom } from './occ-view.js';
@@ -135,7 +135,7 @@ export function flash(ctx, el) {
       if (!r.length) {
         const wrong = scope.filter((id) => st(id) === 'no').length;
         stage.replaceChildren(h('div', { class: 'q-done' },
-          h('div', { class: 'emo' }, '🎉'), h('h2', {}, '카드를 다 넘겼습니다'),
+          seal(!wrong), h('h2', {}, '카드를 다 넘겼습니다'),
           h('div', { class: 'sub' }, `맞음 ${scope.length - wrong}, 틀림 ${wrong}`),
           h('div', { class: 'row' },
             wrong ? h('button', { class: 'btn', onclick: retryWrong }, `틀린 ${wrong}장 다시`) : null,
