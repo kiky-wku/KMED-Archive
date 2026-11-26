@@ -137,7 +137,9 @@ export function subjectView(id, q) {
       area.classList.remove('swap', 'q-in'); void area.offsetWidth; area.classList.add('swap');
       root.classList.toggle('fit', FIT.has(kind));
       const range = ranges.find((r) => r.id === rangeId);
-      const ctx = { retry: first && q.get('retry') === '1', openComments: first && q.get('open') === 'comments' ? q.get('id') : null, subject: sub, range, canWrite, pool: sub.progress_pool || sub.id, fit: (on) => root.classList.toggle('fit', !!on), here: null, edit: canWrite ? (k) => edit(k) : null };
+      const ctx = { retry: first && q.get('retry') === '1', openComments: first && q.get('open') === 'comments' ? q.get('id') : null, subject: sub, range, canWrite, pool: sub.progress_pool || sub.id, fit: (on) => root.classList.toggle('fit', !!on), here: null, edit: canWrite ? (k) => edit(k) : null,
+        // Claude 연결이 준 올리기 링크 : 자료 탭에서 올리기 창을 채워서 엶
+        upload: first && q.get('up') === '1' ? { category: q.get('cat') || '', mode: q.get('mode') || '', series: q.get('ser') || '', week: q.get('wk') || '', no: q.get('no') || '', term: q.get('term') || '' } : null };
       ctxNow = ctx;
       first = false;
       const fn = RENDER[kind];

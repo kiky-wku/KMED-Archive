@@ -7,7 +7,7 @@
 //  - 배포할 때 "Verify JWT" 는 꺼야 함 (Claude 는 Supabase 로그인 토큰이 없음)
 import { createClient } from 'jsr:@supabase/supabase-js@2';
 
-const VERSION = '1.0.0';
+const VERSION = '1.1.0';
 const APP_URL = (Deno.env.get('APP_URL') || 'https://kiky-wku.github.io/KMED-Archive').replace(/\/$/, '');
 const LIMIT = { rows: 3000, bytes: 2_000_000, pending: 20 };
 
@@ -63,6 +63,22 @@ const TOOLS = [
     inputSchema: { type: 'object', additionalProperties: false, required: ['subject_id'], properties: { subject_id: { type: 'string' }, range_id: { type: 'string' } } },
   },
   {
+    name: 'prepare_upload',
+    description: 'PDF 자료(써머리, 기출 원본, 기타 자료)를 앱 자료 탭에 올리는 링크를 만듭니다. 파일은 Claude 가 올릴 수 없고, 사용자가 링크를 눌러 앱에서 파일만 고르면 됩니다. 부르기 전에 사용자에게 과목, 범위, 종류, 이름(기출이면 학번과 중간/기말), 올리는 방식(한 파일 계속 바꾸기 / 주차별로 쌓기), 주차를 확인하세요. list_files 로 이미 있는 이름을 보고 같은 묶음이면 이름을 글자까지 똑같이 쓰세요.',
+    inputSchema: {
+      type: 'object', additionalProperties: false, required: ['subject_id', 'range_id', 'category'],
+      properties: {
+        subject_id: { type: 'string' }, range_id: { type: 'string' },
+        category: { type: 'string', enum: ['summary', 'past', 'etc'], description: 'summary = 써머리, past = 기출 원본, etc = 기타 자료' },
+        series: { type: 'string', description: '자료 이름 (예: 본초학 써머리). 기출이면 비움' },
+        mode: { type: 'string', enum: ['single', 'weekly'], description: 'single = 한 파일 계속 바꾸기, weekly = 주차별로 쌓기. 기출은 single' },
+        week: { type: 'string', description: 'weekly 일 때 주차 (예: 3주차)' },
+        exam_no: { type: 'string', description: '기출일 때 학번 두 자리 (예: 25)' },
+        exam_term: { type: 'string', enum: ['중간', '기말'], description: '기출일 때 시험' },
+      },
+    },
+  },
+  {
     name: 'submit_draft',
     description: '만든 데이터를 앱의 "검토 대기"로 보냅니다. 바로 반영되지 않고, 사용자가 앱에서 확인한 뒤 넣습니다. sheets 는 { 탭 키: 행 배열 }, 각 행은 get_instructions 의 칸 순서 그대로인 문자열 배열 (머리줄 없음). 탭 키는 list_subjects 의 kinds 에 있는 것만. past, pred 는 다른 탭과 섞지 말고 따로 보내세요. 행이 많으면 묶음별로 나눠 여러 번 보내도 됩니다.',
     inputSchema: {
@@ -81,6 +97,7 @@ const INSTRUCTIONS = [
   '공부하니(원광한의대 학습 앱)에 넣을 데이터를 만드는 연결입니다.',
   '순서 : list_subjects 로 과목과 범위 확인 → get_instructions 로 규칙 받기 → 규칙의 진행 순서대로 사용자와 정하기 → submit_draft 로 검토 대기에 보내기.',
   '엑셀 파일은 만들 필요 없습니다. 보낸 뒤에는 앱의 과목 화면에서 "검토 대기"를 눌러 확인하고 넣으면 된다고 안내하세요.',
+  'PDF 파일을 자료 탭에 올려 달라고 하면 : 과목, 범위, 종류, 이름, 방식, 주차를 물어 정한 뒤 prepare_upload 로 링크를 만들어 주세요. 파일 자체는 Claude 가 올릴 수 없습니다.',
 ].join('\n');
 
 Deno.serve(async (req) => {
@@ -173,10 +190,47 @@ Deno.serve(async (req) => {
 
     if (name === 'list_files') {
       await subjectOf(String(a.subject_id));
-      let q = svc.from('files').select('filename,range_id,category,created_at').eq('subject_id', String(a.subject_id)).order('created_at');
+      let q = svc.from('files').select('filename,range_id,category,series,mode,week,created_at').eq('subject_id', String(a.subject_id)).order('created_at');
       if (a.range_id) q = q.eq('range_id', String(a.range_id));
       const { data } = await q;
-      return (data || []).length ? (data || []).map((x) => `- ${x.filename}`).join('\n') : '올라간 PDF 가 없습니다. 사용자가 채팅에 올린 파일 이름을 쓰세요.';
+      if (!(data || []).length) return '올라간 PDF 가 없습니다. 사용자가 채팅에 올린 파일 이름을 쓰세요.';
+      const CAT = { summary: '써머리', past: '기출', etc: '기타 자료' };
+      const groups = new Map();
+      for (const x of data || []) {
+        const k = `${x.category}|${x.series}`;
+        if (!groups.has(k)) groups.set(k, { cat: CAT[x.category] || '써머리', series: x.series, mode: x.mode, weeks: new Set(), files: [] });
+        const g = groups.get(k); if (x.week) g.weeks.add(x.week); g.files.push(x.filename);
+      }
+      return [...groups.values()].map((g) => `[${g.cat}] ${g.series} (${g.mode === 'weekly' ? `주차별 : ${[...g.weeks].join(', ')}` : '한 파일'})\n${g.files.map((f) => `  - ${f}`).join('\n')}`).join('\n');
+    }
+
+    if (name === 'prepare_upload') {
+      const { sub, range } = await subjectOf(String(a.subject_id), String(a.range_id));
+      const { data: bl } = await svc.from('blocks').select('kind').eq('subject_id', sub.id).eq('kind', 'summary');
+      if (!(bl || []).length) throw new Error('이 과목에는 자료 탭이 없습니다. 관리 화면에서 자료 탭을 먼저 추가해야 합니다.');
+      const cat = String(a.category);
+      const p = new URLSearchParams({ r: range!.id, b: 'summary', up: '1', cat });
+      let what: string;
+      if (cat === 'past') {
+        const no = String(a.exam_no || '').trim();
+        if (!/^\d{2}$/.test(no)) throw new Error('기출은 학번 두 자리(exam_no)가 필요합니다. 사용자에게 몇 학번 시험인지 물어보세요.');
+        const term = a.exam_term === '중간' ? '중간' : '기말';
+        p.set('no', no); p.set('term', term); p.set('mode', 'single');
+        what = `기출 ${no}학번 ${term}`;
+      } else {
+        const series = String(a.series || '').trim();
+        if (!series) throw new Error('자료 이름(series)이 필요합니다. 예: 본초학 써머리');
+        const mode = a.mode === 'weekly' ? 'weekly' : 'single';
+        p.set('ser', series); p.set('mode', mode);
+        if (mode === 'weekly') { const wk = String(a.week || '').trim(); if (!wk) throw new Error('주차별로 쌓기면 주차(week)가 필요합니다. 예: 3주차'); p.set('wk', wk); }
+        what = `${cat === 'etc' ? '기타 자료' : '써머리'} "${series}"${mode === 'weekly' ? ` ${p.get('wk')}` : ''}`;
+      }
+      const link = `${APP_URL}/#/s/${sub.id}?${p.toString()}`;
+      return `올리기 링크를 만들었습니다. 사용자에게 아래 링크를 그대로 보여 주세요.
+
+${link}
+
+안내 : 링크를 누르면 공부하니 ${sub.name} ${range!.name} 자료 탭에서 올리기 창이 ${what} 로 채워져 열립니다. PDF 파일만 고르고 업로드를 누르면 됩니다. (앱에 로그인되어 있어야 하고, 이미 같은 이름의 자료가 있으면 그 묶음에 이어서 올라갑니다)`;
     }
 
     if (name === 'submit_draft') {

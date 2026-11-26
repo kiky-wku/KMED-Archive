@@ -31,7 +31,13 @@ const catOf = (f) => (f.category === 'etc' || f.category === 'past' ? f.category
 const fname = (f) => (f.filename || '').replace(/\.pdf$/i, '') || '파일';
 const latest = (fs) => fs.reduce((t, f) => (f.updated_at > t ? f.updated_at : t), '');
 
+// Claude 연결 링크로 받은 올리기 정보 : 새로고침돼도 남도록 sessionStorage 에 두고, 창을 열면 지움
+const UP_KEY = 'kmed:up';
+const readUp = (sid) => { try { const u = JSON.parse(sessionStorage.getItem(UP_KEY) || 'null'); return u && u.sid === sid && Date.now() - u.at < 600000 ? u : null; } catch { return null; } };
+let PENDING_T = 0;
+
 export function filesBlock(ctx, el) {
+  if (ctx.upload) { try { sessionStorage.setItem(UP_KEY, JSON.stringify({ ...ctx.upload, sid: ctx.subject.id, at: Date.now() })); } catch { /* 저장 못 하면 이번 화면에서만 */ } ctx.upload = null; }
   let alive = true;
   let all = [];
   let seen = new Map(); let counts = new Map(); let ccount = new Map();
@@ -78,6 +84,12 @@ export function filesBlock(ctx, el) {
     }
     catch { list.replaceChildren(h('div', { class: 'box-empty' }, '자료를 불러올 수 없습니다')); return; }
     if (alive) draw();
+    // Claude 연결 링크로 들어온 경우 : 한 번만 올리기 창을 엶
+    // 과목 화면이 처음에 한 번 다시 그려질 수 있어서, 살아 있는 목록에서만 엶
+    if (alive && readUp(ctx.subject.id) && !quiet) {
+      // 앱이 처음 뜰 때 화면을 한 번 더 그릴 수 있어서, 마지막으로 뜬 목록에서 잠깐 기다렸다가 엶
+      clearTimeout(PENDING_T); PENDING_T = setTimeout(openPending, 700);
+    }
     // 알림에서 넘어온 경우 : 댓글 바로 열기
     const cid = ctx.openComments; ctx.openComments = null;
     const cf = cid && all.find((f) => f.id === cid);
@@ -271,16 +283,35 @@ export function filesBlock(ctx, el) {
     }
   }
 
+  function openPending() {
+    const u = alive && readUp(ctx.subject.id);
+    if (!u) return;
+    try { sessionStorage.removeItem(UP_KEY); } catch { /* 없음 */ }
+    if (!canWrite) { toast('이 과목에 자료를 올릴 권한이 없습니다'); return; }
+    const cat = CATS.some(([k]) => k === u.category) ? u.category : CATS[0][0];
+    const name = cat === 'past' && /^\d{2}$/.test(u.no) ? pastName(u.no, u.term === '중간' ? '중간' : '기말') : u.series.trim();
+    const same = all.filter((f) => catOf(f) === cat && f.series === name);
+    if (same.length) {
+      // 이미 있는 이름이면 그 묶음에 이어서 올림
+      const mode = same[0].mode;
+      const hasWeek = mode === 'weekly' && same.some((f) => f.week === u.week);
+      uploadModal({ series: name, category: cat, mode, week: mode === 'weekly' ? (u.week || nextWeek(same)) : '', fixed: mode === 'single' || hasWeek });
+    } else {
+      uploadModal({ prefill: { category: cat, mode: u.mode === 'weekly' ? 'weekly' : 'single', series: u.series, week: u.week, no: u.no, term: u.term } });
+    }
+  }
+
   // ── 업로드 창 (여러 파일 한 번에) ──
   function uploadModal(pre) {
-    const mode0 = pre.mode || 'single';
-    let mode = mode0; let c = pre.category || (PAST ? 'past' : 'summary');
-    const past = pastFields({ n: '', t: '기말' });
+    const pf = pre.prefill || {};
+    const mode0 = pre.mode || pf.mode || 'single';
+    let mode = mode0; let c = pre.category || pf.category || (PAST ? 'past' : 'summary');
+    const past = pastFields({ n: pf.no || '', t: pf.term === '중간' ? '중간' : '기말' });
     let files = [];
     const fixed = !!pre.fixed;           // 이미 있는 이름 · 주차에 파일 추가
     const sameSeries = !!pre.series;     // 이미 있는 이름 아래
-    const series = h('input', { class: 'input', placeholder: '예) 본초학 써머리', value: pre.series || '' });
-    const week = h('input', { class: 'input', placeholder: '예) 3주차', value: pre.week || '' });
+    const series = h('input', { class: 'input', placeholder: '예) 본초학 써머리', value: pre.series || pf.series || '' });
+    const week = h('input', { class: 'input', placeholder: '예) 3주차', value: pre.week || pf.week || '' });
     const weekRow = h('label', { class: 'fld' }, h('span', {}, '주차'), week);
     const modeDesc = h('p', { class: 'fl-desc' });
     const paintMode = () => {
@@ -311,8 +342,11 @@ export function filesBlock(ctx, el) {
       });
       input.value = '';
       if (files[0] && !series.value.trim()) series.value = files[0].name.replace(/\.pdf$/i, '');
-      const yr = files[0]?.name.match(/(\d{2})\s*학번/); if (yr && !past.no.value) past.no.value = yr[1];
-      if (files[0] && /중간/.test(files[0].name)) past.row.querySelector('.segc button:first-of-type')?.click();
+      // Claude 가 정한 학번과 시험이 있으면 파일 이름보다 우선
+      if (!pf.no) {
+        const yr = files[0]?.name.match(/(\d{2})\s*학번/); if (yr && !past.no.value) past.no.value = yr[1];
+        if (files[0] && /중간/.test(files[0].name)) past.row.querySelector('.segc button:first-of-type')?.click();
+      }
       const wk = files[0] && weekFromName(files[0].name);
       if (wk && mode === 'weekly' && !fixed && (!week.value || week.value === '1주차' || week.value === pre.week)) week.value = wk;
       paintDrop();
@@ -364,7 +398,9 @@ export function filesBlock(ctx, el) {
     if (sid && sid !== ctx.subject.id) return;
     clearTimeout(lt); lt = setTimeout(() => { if (alive) load(true); }, 400);
   });
-  return () => { alive = false; offLive(); clearTimeout(lt); };
+  return () => {
+    alive = false; offLive(); clearTimeout(lt);
+  };
 }
 
 function pickFile(cb) {
