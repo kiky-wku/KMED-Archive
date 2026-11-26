@@ -1,5 +1,6 @@
 import { sb } from '../sb.js';
-import { h, icon, seg, popover } from '../ui.js';
+import { h, icon, seg, popover, drawer, toast, ago } from '../ui.js';
+import { loadDrafts, setDraft } from '../data/drafts.js';
 import { S, go, isAdmin } from '../app.js';
 import { openDataSheet } from './data-sheet.js';
 import { openReports } from './reports.js';
@@ -50,8 +51,9 @@ export function subjectView(id, q) {
   tabs.addEventListener('scroll', fade, { passive: true });
   new ResizeObserver(fade).observe(tabs);
   const area = h('div', { class: 'block-area' });
+  const draftBar = h('div', { class: 'dr-slot' });
   const back = h('button', { class: 'ib', 'aria-label': '뒤로', onclick: () => go('#/home') }, icon('back'));
-  const root = shell({ title: titleEl, left: back, right, body: h('div', { class: 'subj-body' }, tabs, area), tone: 'gray' });
+  const root = shell({ title: titleEl, left: back, right, body: h('div', { class: 'subj-body' }, tabs, draftBar, area), tone: 'gray' });
 
   let cleanup = null;
   const prev = root.cleanup;
@@ -148,6 +150,53 @@ export function subjectView(id, q) {
       if (!['summary', 'stats', 'hanja_grid', 'um_answers'].includes(kind)) sb.from('user_state').upsert({ user_id: S.user.id, key: 'last', value: { hash: location.hash, label }, updated_at: new Date().toISOString() }).then(() => {}, () => {});
     }
     show();
+
+    // ── Claude 연결로 들어온 검토 대기 (과목 담당만) ──
+    let drafts = [];
+    const openDraft = (d) => {
+      const r = ranges.find((x) => x.id === d.range_id) || ranges.find((x) => x.id === rangeId);
+      openDataSheet(sub, r, () => { if (r.id !== rangeId) { rangeId = r.id; } show(); }, {
+        keys: d.keys,
+        draft: { ...d, done: () => setDraft(d.id, 'done').catch(() => {}).then(refreshDrafts) },
+      });
+    };
+    const keyName = { flash: '카드', occ: '그림', past: '기출', pred: '예상문제', hanja: '한자', jung: '해석', units: '단원', hanja_unit: '단원 한자', um: '문장' };
+    function openDraftList() {
+      const body = h('div', { class: 'dr-list' });
+      const d = drawer({ title: '검토 대기', body });
+      const paint = () => {
+        if (!drafts.length) { d.close(); return; }
+        body.replaceChildren(...drafts.map((x) => {
+          const rname = ranges.length > 1 ? (ranges.find((r) => r.id === x.range_id)?.name || '') : '';
+          let armed = 0;
+          const del = h('button', { class: 'tool-ic dr-del', 'aria-label': '버리기', title: '버리기', onclick: async (e) => {
+            e.stopPropagation();
+            const b = e.currentTarget;
+            if (Date.now() - armed > 2500) { armed = Date.now(); b.classList.add('armed'); setTimeout(() => b.classList.remove('armed'), 2500); toast('한 번 더 누르면 버립니다'); return; }
+            try { await setDraft(x.id, 'discarded'); drafts = drafts.filter((y) => y.id !== x.id); paintBar(); paint(); } catch { toast('버리지 못했습니다'); }
+          } }, icon('trash', 'icon s'));
+          return h('div', { class: 'dr-item', role: 'button', tabindex: 0, onclick: () => { d.close(); openDraft(x); } },
+            h('div', { class: 'dr-tx' },
+              h('b', {}, x.title || 'Claude가 보낸 데이터'),
+              h('span', {}, [rname, ...x.keys.map((k) => `${keyName[k] || k} ${x.rows?.[k] ?? ''}`.trim()), ago(x.created_at)].filter(Boolean).join('   ')),
+              x.note ? h('p', {}, x.note) : null),
+            del, icon('right', 'icon s'));
+        }));
+      };
+      paint();
+    }
+    function paintBar() {
+      draftBar.replaceChildren(drafts.length ? h('button', { class: 'dr-bar', onclick: () => (drafts.length === 1 ? openDraft(drafts[0]) : openDraftList()) },
+        h('span', {}, `Claude가 보낸 데이터 ${drafts.length}건 검토하기`), icon('right', 'icon s')) : '');
+    }
+    async function refreshDrafts() { if (!canWrite) return; drafts = await loadDrafts(id); paintBar(); }
+    refreshDrafts();
+    // 다른 기기(Claude)에서 보낸 뒤 앱으로 돌아오면 다시 확인
+    const onVis = () => { if (document.visibilityState === 'visible') refreshDrafts(); };
+    document.addEventListener('visibilitychange', onVis);
+    const prevClean2 = root.cleanup;
+    root.cleanup = () => { document.removeEventListener('visibilitychange', onVis); prevClean2?.(); };
+
     // 알림에서 넘어온 경우
     if (q.get('open') === 'report') setTimeout(() => report(q.get('id')), 300);
   })();

@@ -9,7 +9,8 @@ import { resetStudyCaches } from '../data/study.js';
 // 데이터 넣기 (과목 화면 오른쪽 위 아이콘 → 아래에서 올라오는 창)
 //  ① 프롬프트 복사 → (AI 에게 자료와 함께 보내 엑셀 받기) → ② 붙여넣기 → ③ 넣기
 // ─────────────────────────────────────────────
-export function openDataSheet(sub, range, onDone, { keys: only } = {}) {
+// draft : Claude 연결로 들어온 검토 대기 { id, payload, note, title } → 붙여넣기 칸을 채우고 바로 확인 화면으로
+export function openDataSheet(sub, range, onDone, { keys: only, draft } = {}) {
   // 기출 탭에서 열면 기출 표만
   const keys = only || formatsFor((sub.blocks || []).map((b) => b.kind));
   const isPast = keys.length === 1 && keys[0] === 'past';
@@ -27,7 +28,7 @@ export function openDataSheet(sub, range, onDone, { keys: only } = {}) {
   const prev = h('button', { class: 'btn ghost ds-prev', onclick: () => go(step - 1) }, icon('back', 'icon s'), '이전');
   const sheet = h('div', { class: 'ds', role: 'dialog', 'aria-modal': 'true' },
     h('header', { class: 'ds-head' },
-      h('div', { class: 'ds-ttl' }, h('span', { class: 'emo' }, sub.icon || ''), h('div', {}, h('h2', {}, isPast ? '기출문제 넣기' : isPred ? '예상문제 넣기' : '데이터 넣기'), h('span', {}, `${sub.name} ${range.name}`))),
+      h('div', { class: 'ds-ttl' }, h('span', { class: 'emo' }, sub.icon || ''), h('div', {}, h('h2', {}, draft ? (draft.title || 'Claude가 보낸 데이터') : isPast ? '기출문제 넣기' : isPred ? '예상문제 넣기' : '데이터 넣기'), h('span', {}, `${sub.name} ${range.name}`))),
       h('button', { class: 'ib', 'aria-label': '닫기', onclick: close }, icon('x'))),
     h('nav', { class: 'ds-steps' }, stepBtns),
     h('div', { class: 'ds-body' }, pages),
@@ -106,7 +107,11 @@ export function openDataSheet(sub, range, onDone, { keys: only } = {}) {
     ta.addEventListener('input', () => { clearTimeout(ta.t); ta.t = setTimeout(() => { card.run(); if (k === 'units') cards.forEach((c) => c !== card && c.run()); }, 250); });
     return card;
   });
-  pages[1].append(h('p', { class: 'ds-lead' }, '넣을 탭만 붙여넣으면 됩니다. 틀린 곳이 있으면 바로 표시됩니다.'), ...cards);
+  pages[1].append(
+    draft ? h('p', { class: 'ds-lead' }, 'Claude가 보낸 내용입니다. 틀린 곳이 있으면 칸에서 바로 고칠 수 있습니다.')
+      : h('p', { class: 'ds-lead' }, '넣을 탭만 붙여넣으면 됩니다. 틀린 곳이 있으면 바로 표시됩니다.'),
+    ...(draft?.note ? [h('div', { class: 'ds-note' }, h('b', {}, 'Claude 검수 메모'), h('p', {}, draft.note))] : []),
+    ...cards);
 
   // ── ③ 넣기 ──
   const summary = h('div', { class: 'ds-sum' });
@@ -158,14 +163,20 @@ export function openDataSheet(sub, range, onDone, { keys: only } = {}) {
       const ready = Object.fromEntries(keys.filter((k) => parsed[k]).map((k) => [k, parsed[k].rows]));
       await apply(range.id, mode, ready, { pool: sub.progress_pool || sub.id });
       resetCaches(); resetHints(); resetStudyCaches();
+      if (draft) await draft.done?.();
       close(); toast('데이터를 넣었습니다'); onDone?.();
     } catch (err) { busy(next, false); paintFoot(); toast(err.message || '넣지 못했습니다'); }
   }
 
-  go(0);
+  go(draft ? 1 : 0);
   (async () => {
     [cnt, units] = await Promise.all([counts(range.id), existingCodes(range.id)]);
     cards.forEach((c, i) => { const v = cnt[keys[i]]; c.now.textContent = v == null ? '' : `지금 ${v}개`; });
+    if (draft) {
+      // 단원 표가 먼저 읽혀야 다른 표의 단원 확인이 맞음
+      const order = [...keys].sort((a, b) => (a === 'units' ? -1 : b === 'units' ? 1 : 0));
+      order.forEach((k) => { const c = cards[keys.indexOf(k)]; const t = draft.payload?.[k]; if (c && t) { c.querySelector('textarea').value = t; c.run(); } });
+    }
   })();
 }
 
