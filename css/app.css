@@ -2115,15 +2115,6 @@ html.offline body::after{content:'인터넷 연결 없음. 이 기기에 저장�
 .auth select.input{color:var(--text);padding-right:28px;background:none;background-image:none}
 .auth select.input:invalid{color:var(--faint);border-color:var(--line)}
 .auth select.input option{color:var(--text)}
-.su-notice{display:block;margin-top:18px;padding:14px 16px;border-radius:14px;border:1.5px solid var(--red);background:#fff;cursor:pointer}
-.su-notice b{display:block;font-size:14px;font-weight:700;color:var(--red);margin-bottom:6px}
-.su-notice p{margin:0;font-size:13.5px;line-height:1.55;font-weight:500;color:#333D4B}
-.su-check{display:flex;align-items:center;gap:8px;margin-top:12px;font-size:14px;font-weight:700;color:var(--text)}
-.su-check input{position:absolute;opacity:0;width:1px;height:1px}
-.su-check i{width:22px;height:22px;border-radius:7px;border:1.5px solid var(--line);display:grid;place-items:center;color:transparent;transition:background .15s,border-color .15s,color .15s}
-.su-check i .icon{width:15px;height:15px;stroke-width:3}
-.su-check input:checked+i{background:var(--text);border-color:var(--text);color:#fff}
-.su-check input:focus-visible+i{outline:2px solid var(--text);outline-offset:2px}
 .su-done{margin:4px 0 0;text-align:center;font-size:15px;line-height:1.6;font-weight:500;color:#4E5968}
 
 /* 관리 : 가입 요청 목록 */
@@ -2138,3 +2129,32 @@ html.offline body::after{content:'인터넷 연결 없음. 이 기기에 저장�
 .sr-no{height:36px;padding:0 14px;border-radius:10px;background:#F2F4F6;color:#4E5968;font-size:14px;font-weight:700}
 .sr-ok{height:36px;padding:0 16px;border-radius:10px;background:var(--text);color:#fff;font-size:14px;font-weight:700}
 .sr-no:disabled,.sr-ok:disabled{opacity:.5}
+
+.su-wrap{position:relative;width:100%;display:grid;place-items:center}
+.su-back{position:fixed;top:calc(14px + var(--safe-t, 0px));left:14px;width:44px;height:44px;border-radius:50%;display:grid;place-items:center;color:var(--text);transition:background .15s,scale .15s var(--spring);z-index:2}
+.su-back:active{background:#F2F4F6;scale:.92}
+.su-back .icon{width:24px;height:24px}
+
+/* 가입 안내 : 사이렌이 깜빡이며 뜨는 작은 창 */
+.nt{width:min(340px,100%);background:#fff;border-radius:28px;padding:34px 28px 26px;display:flex;flex-direction:column;align-items:center;text-align:center;box-shadow:0 30px 80px rgba(0,12,30,.25);
+  opacity:0;transform:translateY(24px) scale(.96);transition:opacity .3s var(--ease),transform .4s var(--spring)}
+.gd-wrap.on .nt{opacity:1;transform:none}
+.nt h2{margin:18px 0 0;font-size:20px;font-weight:800;letter-spacing:-.03em}
+.nt p{margin:10px 0 0;font-size:15px;line-height:1.65;font-weight:500;color:#4E5968;word-break:keep-all}
+.nt p b{color:var(--red);font-weight:700}
+.nt-siren{position:relative;width:76px;height:76px;display:grid;place-items:center}
+.nt-ic{position:relative;width:64px;height:64px;border-radius:50%;display:grid;place-items:center;background:#FDECEE;color:var(--red);animation:ntShake 1.6s var(--ease) .35s infinite}
+.nt-ic .icon{width:32px;height:32px;stroke-width:2.2}
+.nt-ic::after{content:'';position:absolute;inset:6px;border-radius:50%;background:var(--red);opacity:0;animation:ntPulse 1.6s ease-out .35s infinite}
+.nt-ray{position:absolute;width:3px;height:12px;border-radius:3px;background:var(--red);opacity:0;animation:ntRay 1.6s ease-out .35s infinite}
+.nt-ray.t{top:-8px;left:calc(50% - 1.5px)}
+.nt-ray.l{top:6px;left:2px;rotate:-45deg}
+.nt-ray.r{top:6px;right:2px;rotate:45deg}
+@keyframes ntShake{0%,60%,100%{transform:rotate(0)}8%{transform:rotate(-12deg)}16%{transform:rotate(10deg)}24%{transform:rotate(-7deg)}32%{transform:rotate(4deg)}40%{transform:rotate(0)}}
+@keyframes ntPulse{0%{opacity:.28;transform:scale(.9)}70%,100%{opacity:0;transform:scale(1.55)}}
+@keyframes ntRay{0%,4%{opacity:0;translate:0 4px}12%{opacity:1;translate:0 0}40%,100%{opacity:0;translate:0 -3px}}
+.nt-ok{margin-top:26px;width:60px;height:60px;border-radius:50%;display:grid;place-items:center;background:var(--text);color:#fff;transition:scale .15s var(--spring)}
+.nt-ok:active{scale:.9}
+.nt-ok .icon{width:26px;height:26px;stroke-width:2.6}
+.nt-lab{margin-top:10px;font-size:13px;font-weight:700;color:var(--sub)}
+@media (prefers-reduced-motion:reduce){.nt-ic,.nt-ic::after,.nt-ray{animation:none}}

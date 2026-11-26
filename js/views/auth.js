@@ -94,25 +94,19 @@ function signupCard(back) {
   const pw1 = h('input', { class: 'input', type: 'password', placeholder: '비밀번호 (6자 이상)', autocomplete: 'new-password' });
   const pw2 = h('input', { class: 'input', type: 'password', placeholder: '비밀번호 확인', autocomplete: 'new-password' });
   const hp = h('input', { class: 'auth-hp', type: 'text', tabindex: '-1', autocomplete: 'off', 'aria-hidden': 'true' });
-  const agree = h('input', { type: 'checkbox' });
-  const notice = h('label', { class: 'su-notice' },
-    h('b', {}, '확인해 주세요'),
-    h('p', {}, '로그인한 기기는 계정에 기록됩니다. 한 계정으로 30일 안에 5대가 넘는 기기에서 로그인하면 계정 공유나 유출로 판단해 로그인이 차단될 수 있습니다. 계정은 본인만 사용하세요.'),
-    h('span', { class: 'su-check' }, agree, h('i', {}, icon('check', 'icon s')), '확인했습니다'));
   const err = h('div', { class: 'err' });
   const btn = goButton('가입 요청 보내기');
   const inputs = [name, sno, grade, id, pw1, pw2];
-  const sync = () => btn.classList.toggle('on', inputs.every((i) => String(i.value).trim()) && agree.checked);
+  const sync = () => btn.classList.toggle('on', inputs.every((i) => String(i.value).trim()));
   inputs.forEach((i) => { i.addEventListener('input', sync); i.addEventListener('change', sync); });
-  agree.addEventListener('change', sync);
   sno.addEventListener('input', () => { sno.value = sno.value.replace(/\D/g, '').slice(0, 2); });
   id.addEventListener('input', () => { id.value = id.value.toLowerCase().replace(/\s/g, ''); });
 
+  const backBtn = h('button', { class: 'su-back', type: 'button', 'aria-label': '로그인으로', onclick: back }, icon('back'));
   const card = h('form', { class: 'auth-card su-card', novalidate: true, onsubmit: submit },
     h('img', { class: 'brand sm', src: 'icons/logo.png', alt: '工夫韓醫 YRR STUDY' }),
     h('h1', { class: 'auth-title' }, '가입 요청'),
-    name, sno, grade, id, pw1, pw2, hp, notice, err, btn,
-    h('button', { class: 'auth-link', type: 'button', onclick: back }, '로그인으로 돌아가기'));
+    name, sno, grade, id, pw1, pw2, hp, err, btn);
 
   async function submit(e) {
     e.preventDefault();
@@ -124,7 +118,7 @@ function signupCard(back) {
     if (!/^[a-z0-9_]{3,20}$/.test(id.value.trim())) return fail('아이디는 영문 소문자, 숫자, _ 로 3~20자입니다.', id);
     if (pw1.value.length < 6) return fail('비밀번호는 6자 이상이어야 합니다.', pw1);
     if (pw1.value !== pw2.value) return fail('비밀번호가 서로 다릅니다.', pw2);
-    if (!agree.checked) return fail('안내를 읽고 확인했습니다에 체크하세요.');
+    if (!(await notice())) return;
     busy(btn, true);
     const { data, error } = await sb.functions.invoke('signup', { body: {
       action: 'request', name: name.value.trim(), student_no: +sno.value, grade: +grade.value,
@@ -136,11 +130,40 @@ function signupCard(back) {
     await doneCheck(() => card.replaceChildren(
       h('img', { class: 'brand sm', src: 'icons/logo.png', alt: '工夫韓醫 YRR STUDY' }),
       h('h1', { class: 'auth-title' }, '요청을 보냈습니다'),
-      h('p', { class: 'su-done' }, `관리자가 승인하면 아이디 ${id.value.trim()} 와 정한 비밀번호로 로그인할 수 있습니다.`),
+      h('p', { class: 'su-done' }, `승인되면 ${id.value.trim()} 아이디로 로그인할 수 있습니다.`),
       h('button', { class: 'auth-link strong', type: 'button', onclick: back }, '로그인으로 돌아가기')));
+    backBtn.remove();
   }
   setTimeout(() => name.focus(), 300);
-  return card;
+  return h('div', { class: 'su-wrap' }, backBtn, card);
+}
+
+// 보내기 전 안내 : 사이렌과 함께 뜨고, 아래 동그란 체크를 눌러야 보냄
+function notice() {
+  return new Promise((done) => {
+    let closed = false;
+    const close = (ok) => {
+      if (closed) return; closed = true;
+      wrap.classList.remove('on');
+      document.removeEventListener('keydown', onKey);
+      setTimeout(() => wrap.remove(), 320);
+      done(ok);
+    };
+    const onKey = (e) => { if (e.key === 'Escape') close(false); else if (e.key === 'Enter') { e.preventDefault(); close(true); } };
+    const siren = h('div', { class: 'nt-siren', 'aria-hidden': 'true' },
+      h('i', { class: 'nt-ray l' }), h('i', { class: 'nt-ray r' }), h('i', { class: 'nt-ray t' }),
+      h('span', { class: 'nt-ic' }, icon('siren')));
+    const box = h('div', { class: 'nt', role: 'alertdialog', 'aria-modal': 'true', 'aria-labelledby': 'nt-t' },
+      siren,
+      h('h2', { id: 'nt-t' }, '계정은 본인만 사용하세요'),
+      h('p', {}, '로그인한 기기는 기록됩니다.', h('br'), '30일 안에 ', h('b', {}, '5대'), '를 넘으면 유출로 보고', h('br'), '로그인이 막힐 수 있습니다.'),
+      h('button', { class: 'nt-ok', type: 'button', 'aria-label': '확인했습니다', onclick: () => close(true) }, icon('check')),
+      h('span', { class: 'nt-lab' }, '확인했습니다'));
+    const wrap = h('div', { class: 'gd-wrap nt-wrap', onclick: (e) => { if (e.target === wrap) close(false); } }, box);
+    document.body.append(wrap);
+    document.addEventListener('keydown', onKey);
+    requestAnimationFrame(() => wrap.classList.add('on'));
+  });
 }
 
 // 첫 로그인 : 비밀번호 변경 + 학번 확인
