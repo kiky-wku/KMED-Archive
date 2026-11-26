@@ -67,7 +67,7 @@ export function subjectView(id, q) {
     if (si >= 0) blocks.splice(si + 1, 0, { kind: 'past', title: '기출문제', sort: blocks[si].sort + 0.5 }, { kind: 'pred', title: '예상문제', sort: blocks[si].sort + 0.6 });
     // 플래시카드가 있으면 바로 뒤에 단어 목록 탭
     const fi = blocks.findIndex((b) => b.kind === 'flash');
-    if (fi >= 0) blocks.splice(fi + 1, 0, { kind: 'wlist', title: '단어 목록', sort: blocks[fi].sort + 0.3 });
+    if (fi >= 0) blocks.splice(fi + 1, 0, { kind: 'wlist', title: '카드 목록', sort: blocks[fi].sort + 0.3 });
     // 문제가 있는 과목은 맨 끝에 통계 탭
     if (hasStats(blocks.map((b) => b.kind))) blocks.push({ kind: 'stats', title: '통계', sort: 999 });
     titleEl.replaceChildren(sub.icon ? h('span', { class: 'emo' }, sub.icon) : null, sub.name);

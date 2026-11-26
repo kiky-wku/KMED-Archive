@@ -25,7 +25,7 @@ export function parseTSV(text) {
   return rows.map((r) => r.map((x) => x.trim())).filter((r) => r.some(Boolean));
 }
 
-const HEAD = new Set(['id', 'unit', 'hanja', 'page', '한자', '단원', 'hun-eum', 'label', 'deck', '묶음', 'front', '앞면', 'exam', '시험 이름', '시험', '묶음 (단원)']);
+const HEAD = new Set(['id', 'unit', 'hanja', 'page', '한자', '단원', 'hun-eum', 'label', 'deck', '묶음', 'front', '앞면', 'exam', '시험 이름', '시험', '묶음 (단원)', '자료 이름', '자료', '문항 번호']);
 const splitSlash = (v) => String(v || '').split('/').map((x) => x.replace(/\s+/g, '')).filter(Boolean);
 
 // 형식별 확인 : { rows, errors[], warns[] }
@@ -136,6 +136,8 @@ export function check(key, text, ctx = {}) {
         a = a.replace(/[①-⑩]/g, (c) => String(CIRC.indexOf(c) + 1)).replace(/번/g, '');
         if (!cs.length) errors.push(`${at(i)} : 객관식인데 보기가 없습니다`);
         if (!/^\d+(\s*,\s*\d+)*$/.test(a)) warns.push(`${at(i)} : 객관식 정답 "${answer}" 이 번호가 아닙니다`);
+        else if (cs.length && a.split(',').some((n) => +n < 1 || +n > cs.length)) errors.push(`${at(i)} : 객관식 정답 ${a} 번이 보기 ${cs.length}개 밖입니다`);
+        if (cs.length === 1) warns.push(`${at(i)} : 객관식 보기가 1개뿐입니다. 보기를 " | " 로 나눴는지 확인하세요`);
       } else if (t === 'ox') {
         a = /^(o|O|○|맞)/.test(a) ? 'O' : /^(x|X|×|틀)/.test(a) ? 'X' : a;
         if (!['O', 'X'].includes(a)) warns.push(`${at(i)} : OX 정답이 O 나 X 가 아닙니다`);
@@ -154,8 +156,10 @@ export function check(key, text, ctx = {}) {
 // 지금 들어 있는 개수
 export async function counts(rangeId) {
   const c = async (t) => { const { count } = await sb.from(t).select('id', { count: 'exact', head: true }).eq('range_id', rangeId); return count ?? null; };
-  const [units, hanja, jung, um, flash, past, occ] = await Promise.all([c('hanja_units'), c('hanja_cards'), c('jung_lines'), c('um_sentences'), c('flash_cards').catch(() => null), c('past_questions').catch(() => null), c('occ_sets').catch(() => null)]);
-  return { units, hanja, hanja_unit: hanja, jung, um, flash, past, occ };
+  // 기출과 예상문제는 같은 표 (kind 로 구분, 23 SQL 전이면 전부 기출)
+  const ck = async (k) => { const r = await sb.from('past_questions').select('id', { count: 'exact', head: true }).eq('range_id', rangeId).eq('kind', k); if (r.error) return k === 'past' ? c('past_questions') : 0; return r.count ?? null; };
+  const [units, hanja, jung, um, flash, past, pred, occ] = await Promise.all([c('hanja_units'), c('hanja_cards'), c('jung_lines'), c('um_sentences'), c('flash_cards').catch(() => null), ck('past').catch(() => null), ck('pred').catch(() => null), c('occ_sets').catch(() => null)]);
+  return { units, hanja, hanja_unit: hanja, jung, um, flash, past, pred, occ };
 }
 
 export async function existingCodes(rangeId) {

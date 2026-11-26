@@ -85,14 +85,14 @@ export function flash(ctx, el) {
             repaint(); build(); render();
           })) : null,
         }) : null,
-        seg([['f', '앞 → 뒤'], ['b', '뒤 → 앞']], mode, async (v) => {
+        seg([['f', '앞면 먼저'], ['b', '뒷면 먼저']], mode, async (v) => {
           mode = v; try { localStorage.setItem('kmed:fmode', v); } catch { /* 무시 */ }
           items = await loadItems(`flash_${mode}`); build(); render();
         }),
         counts, h('div', { class: 'sp' }),
-        h('button', { class: 'tool-ic', title: '섞기', 'aria-label': '섞기', onclick: () => { shuffle(deck.order); deck.pos = 0; deck.save(); render(); toast('카드를 섞었습니다'); } }, icon('shuffle')),
+        h('div', { class: 'q-tools' }, h('button', { class: 'tool-ic', title: '섞기', 'aria-label': '섞기', onclick: () => { shuffle(deck.order); deck.pos = 0; deck.save(); render(); toast('카드를 섞었습니다'); } }, icon('shuffle')),
         h('button', { class: 'tool-ic', title: '원래 순서', 'aria-label': '원래 순서', onclick: () => { deck.order = scope.slice(); deck.pos = 0; deck.save(); render(); toast('원래 순서로 되돌렸습니다'); } }, icon('restore')),
-        recBtn, fullBtn),
+        recBtn, fullBtn)),
       bar, stage);
 
     let phase = 'ask';
@@ -153,7 +153,7 @@ export function flash(ctx, el) {
       const hn = hint(c.hint, myHintOf(c.id));
       const meta = h('div', { class: 'card-meta' },
         h('span', { class: 'idx' }, `${deck.pos + 1}`, h('i', {}, ` / ${r.length}`)),
-        c.deck ? h('span', { class: 'fc-deck' }, c.deck.replace(' > ', ' › ')) : null,
+        c.deck ? h('span', { class: 'fc-deck', title: c.deck.replace(/ > /g, ' › ') }, c.deck.split(' > ').pop()) : null,
         h('div', { class: 'meta-act' }, hn.btn,
           h('button', { class: 'tool-ic sm', title: '이전 카드', 'aria-label': '이전 카드', disabled: !deck.hist.length, onclick: (e) => { e.stopPropagation(); back(); } }, icon('undo', 'icon s')),
           h('button', { class: 'tool-ic sm', title: '건너뛰기', 'aria-label': '건너뛰기', onclick: (e) => { e.stopPropagation(); skip(); } }, icon('skip', 'icon s'))));

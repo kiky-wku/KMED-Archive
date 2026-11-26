@@ -26,8 +26,8 @@ export async function rangeStats(sub, range) {
       const by = new Map(u.map((c) => [c.ch, c]));
       const chs = u.map((c) => c.ch);
       const qa = (ch) => ({ q: ch, a: readingText(by.get(ch)) });
-      if (kinds.includes('hanja_r')) parts.push(part('hanja_r', '한자 → 훈음', 'hanja_r', chs, (ch) => prog.r.get(ch), qa));
-      if (kinds.includes('hanja_h')) parts.push(part('hanja_h', '훈음 → 한자', 'hanja_h', chs, (ch) => prog.h.get(ch), qa));
+      if (kinds.includes('hanja_r')) parts.push(part('hanja_r', '한자 읽기', 'hanja_r', chs, (ch) => prog.r.get(ch), qa));
+      if (kinds.includes('hanja_h')) parts.push(part('hanja_h', '한자 쓰기', 'hanja_h', chs, (ch) => prog.h.get(ch), qa));
     }));
   }
   if (kinds.includes('jung_translate')) {
@@ -48,8 +48,8 @@ export async function rangeStats(sub, range) {
     jobs.push(Promise.all([loadFlashAll(range.id), loadItems('flash_f'), loadItems('flash_b')]).then(([cards, f, b]) => {
       const by = new Map(cards.map((c) => [c.id, c]));
       const ids = cards.map((c) => c.id);
-      parts.push(part('flash_f', '플래시카드 앞 → 뒤', 'flash', ids, (id) => f.get(id)?.status, (id) => ({ q: by.get(id).front, a: by.get(id).back })));
-      if (ids.some((id) => b.get(id)?.status)) parts.push(part('flash_b', '플래시카드 뒤 → 앞', 'flash', ids, (id) => b.get(id)?.status, (id) => ({ q: by.get(id).back, a: by.get(id).front })));
+      parts.push(part('flash_f', '플래시카드 앞면 먼저', 'flash', ids, (id) => f.get(id)?.status, (id) => ({ q: by.get(id).front, a: by.get(id).back })));
+      if (ids.some((id) => b.get(id)?.status)) parts.push(part('flash_b', '플래시카드 뒷면 먼저', 'flash', ids, (id) => b.get(id)?.status, (id) => ({ q: by.get(id).back, a: by.get(id).front })));
     }));
   }
   await Promise.all(jobs);

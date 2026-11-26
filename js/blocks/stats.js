@@ -34,7 +34,7 @@ export function statsBlock(ctx, el) {
         h('div', { class: 'stx-nums' },
           h('div', {}, h('b', { class: 'g' }, s.ok), h('span', {}, '맞음')),
           h('div', {}, h('b', { class: 'r' }, s.no), h('span', {}, '틀림')),
-          h('div', {}, h('b', {}, s.total - done), h('span', {}, '안 푼 것'))),
+          h('div', {}, h('b', {}, s.total - done), h('span', {}, '남음'))),
         statBar(s, 'lg')),
       ...parts.filter((p) => p.total).map((p, i) => card(p, i)));
   }).catch(() => wrap.replaceChildren(h('div', { class: 'box-empty' }, '통계를 불러오지 못했습니다')));
@@ -51,10 +51,10 @@ export function statsBlock(ctx, el) {
       }
     } }, icon('list', 'icon s'), h('span', {}, '틀린 것 보기'));
     const c = h('section', { class: 'stx-card', style: { animationDelay: `${0.05 + i * 0.04}s` } },
-      h('div', { class: 'stx-h' }, h('b', {}, p.label), h('span', {}, `${p.ok + p.no} / ${p.total} 풀음`),
+      h('div', { class: 'stx-h' }, h('b', {}, p.label), h('span', {}, `${p.total}개 중 ${p.ok + p.no}개 풀었음`),
         h('em', {}, p.ok + p.no ? `정답률 ${pct(p.ok, p.ok + p.no)}%` : '아직 풀지 않음')),
       statBar(p),
-      h('div', { class: 'stx-leg' }, h('span', { class: 'g' }, `맞음 ${p.ok}`), h('span', { class: 'r' }, `틀림 ${p.no}`), h('span', {}, `안 푼 것 ${p.total - p.ok - p.no}`)),
+      h('div', { class: 'stx-leg' }, h('span', { class: 'g' }, `맞음 ${p.ok}`), h('span', { class: 'r' }, `틀림 ${p.no}`), h('span', {}, `남음 ${p.total - p.ok - p.no}`)),
       p.no ? h('div', { class: 'stx-acts' }, toggle,
         h('button', { class: 'stx-btn dark', onclick: () => go(`#/s/${ctx.subject.id}?r=${ctx.range.id}&b=${p.tab}&retry=1`) }, icon('undo', 'icon s'), h('span', {}, `틀린 ${p.no}개 다시 풀기`))) : null,
       list);

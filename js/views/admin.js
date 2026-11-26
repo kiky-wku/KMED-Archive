@@ -13,8 +13,8 @@ const SCOPE = { all: '전체', own: '자기 학년' };
 export const BLOCK_KINDS = [
   ['summary', '자료'],
   ['jung_translate', '해석 쓰기'],
-  ['hanja_r', '한자 → 훈음'],
-  ['hanja_h', '훈음 → 한자'],
+  ['hanja_r', '한자 읽기'],
+  ['hanja_h', '한자 쓰기'],
   ['hanja_grid', '한자 목록'],
   ['wordbook', '단어장'],
   ['um_order', '순서 맞추기'],

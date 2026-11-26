@@ -2044,5 +2044,23 @@ html.offline body::after{content:'인터넷 연결 없음. 이 기기에 저장�
 .wl-bar .segc{flex:none}
 .wl-list{gap:18px}
 .wl-sec:first-child .wl-h,.wl-wk:first-child{margin-top:0}
-@media (max-width:560px){.wl-bar{flex-wrap:wrap}.wl-bar .sp{display:none}}
+@media (max-width:560px){.wl-bar{gap:4px}.wl-bar .segc+.segc,.wl-bar .unit-pill+.segc{margin-left:0}.wl-bar .segc button{padding:0 8px;font-size:12.5px}.wl-bar .unit-pill{padding:0 8px}.wl-srch2.on{position:absolute;right:0;left:0;z-index:3;width:auto}.wl-bar{position:relative}}
 .wl-bar .segc+.segc,.wl-bar .unit-pill+.segc{margin-left:6px}
+/* 좁은 화면 : 묶음과 방식은 한 줄, 개수는 아래 줄 왼쪽, 도구는 오른쪽 */
+@media (max-width:560px){
+  .q-bar{gap:6px}
+  .q-bar .segc{margin:0}
+  .q-bar .segc button{padding:0 10px;font-size:13px}
+  .q-bar .q-counts{order:5;flex:1;min-width:0}
+  .q-bar > .sp{display:none}
+  .q-bar > .tool-ic{order:6}
+  .q-bar .q-tools{order:6;margin-left:auto}
+  .q-bar > .unit-pill{flex:1;min-width:0;justify-content:space-between}
+}
+.q-tools{display:flex;align-items:center;gap:8px}
+@media (max-width:560px){
+  .wl-bar > .unit-pill{flex:none;width:38px;padding:0;justify-content:center}
+  .wl-bar > .unit-pill .chev,.wl-bar > .unit-pill > span{display:none}
+  .wl-bar .segc button{padding:0 7px}
+  .wl-bar .wl-srch2:not(.on){width:38px;height:38px;flex:none;margin-left:auto}
+}

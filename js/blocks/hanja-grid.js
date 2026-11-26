@@ -25,7 +25,7 @@ export function hanjaGrid(ctx, el) {
     const wrap = h('div', { class: 'g-wrap' },
       h('div', { class: 'q-bar hg-bar' },
         h('div', { class: 'hg-top' },
-          seg([['r', '한자 → 훈음'], ['h', '훈음 → 한자']], mode, (v) => { mode = v; draw(); }),
+          seg([['r', '한자 읽기'], ['h', '한자 쓰기']], mode, (v) => { mode = v; draw(); }),
           legend),
         h('div', { class: 'hg-find' },
           units.length ? unitPicker(units, sel, (v) => { sel = v; draw(); }) : null,
@@ -45,7 +45,7 @@ export function hanjaGrid(ctx, el) {
       legend.replaceChildren(
         h('span', { class: 'ok' }, h('b', {}, ok), ' 맞음'),
         h('span', { class: 'no' }, h('b', {}, no), ' 틀림'),
-        h('span', {}, h('b', {}, list.length - ok - no), ' 안 함'));
+        h('span', {}, h('b', {}, list.length - ok - no), ' 남음'));
       find();
     }
     function find() {

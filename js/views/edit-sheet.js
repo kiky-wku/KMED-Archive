@@ -173,7 +173,7 @@ export function openEditSheet({ sub, range, pool, kind: k0, query = '', onDone }
     else if (kind === 'jung') { main = it.lines.map((l) => l.hanja).join(' '); sub2 = it.page ? `${it.page}쪽, ${it.lines.length}줄` : `${it.lines.length}줄`; hasHint = it.lines.some((l) => l.hint); }
     else { main = it.sentence; sub2 = it.translation; hasHint = !!it.hint; }
     const head = h('button', { class: 'es-h', onclick: () => { openId = open ? null : it.id; paint(); } },
-      kind === 'flash' && it.deck ? h('span', { class: 'es-deck' }, it.deck.replace(' > ', ' › ')) : null,
+      kind === 'flash' && it.deck ? h('span', { class: 'es-deck', title: it.deck.replace(/ > /g, ' › ') }, it.deck.split(' > ').pop()) : null,
       h('span', { class: 'es-tx' }, h('span', { class: 'es-m' }, main), sub2 ? h('span', { class: 'es-s' }, sub2) : null),
       kind === 'flash' && (it.front_img || it.back_img) ? h('span', { class: 'es-hint es-picon', title: '사진 있음' }, icon('image', 'icon s')) : null,
       hasHint ? h('span', { class: 'es-hint', title: '암기법 있음' }, icon('bulb', 'icon s')) : null,
@@ -192,7 +192,7 @@ export function openEditSheet({ sub, range, pool, kind: k0, query = '', onDone }
     const names = it.kind === 'whole' ? (it.labels || [])[0] || '' : (nb ? it.boxes.map((b) => b.name).filter(Boolean) : it.labels || []).join(', ');
     return h('div', { class: 'es-i', style: { animationDelay: `${Math.min(i, 12) * 0.02}s` } },
       h('button', { class: 'es-h', onclick: () => openOcc(it) },
-        it.deck ? h('span', { class: 'es-deck' }, it.deck.replace(' > ', ' › ')) : null,
+        it.deck ? h('span', { class: 'es-deck', title: it.deck.replace(/ > /g, ' › ') }, it.deck.split(' > ').pop()) : null,
         h('span', { class: 'es-tx' }, h('span', { class: 'es-m' }, it.title || '그림'), names ? h('span', { class: 'es-s' }, names) : null),
         h('span', { class: `es-occst ${st[0]}` }, st[1]),
         h('span', { class: 'es-chev r' }, icon('right', 'icon s'))));

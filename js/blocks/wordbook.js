@@ -97,9 +97,9 @@ export function wordbook(ctx, el) {
           h('span', {}, h('b', {}, list.length), ' 담음'), h('span', { class: 'ok' }, h('b', {}, ok), ' 맞음'), h('span', { class: 'no' }, h('b', {}, no), ' 틀림')),
         h('div', { class: 'sp' }), h('button', { class: 'tool-ic', title: '한자 담기', 'aria-label': '한자 담기', onclick: pick }, icon('plus'))),
         h('section', { class: 'wb-test' },
-          h('div', { class: 'f' }, h('label', {}, '방식'), seg([['r', '한자 → 훈음'], ['h', '훈음 → 한자']], mode, (v) => { mode = v; try { localStorage.setItem('kmed:wb-mode', v); } catch { /* 무시 */ } })),
+          h('div', { class: 'f' }, h('label', {}, '방식'), seg([['r', '한자 읽기'], ['h', '한자 쓰기']], mode, (v) => { mode = v; try { localStorage.setItem('kmed:wb-mode', v); } catch { /* 무시 */ } })),
           h('div', { class: 'f' }, h('label', {}, '범위'), seg([['all', `전체 ${list.length}`], ...(no ? [['no', `틀린 것 ${no}`]] : []), ...(nw ? [['new', `안 본 것 ${nw}`]] : [])], range, (v) => { range = v; paintStart(); })),
-          h('div', { class: 'f' }, h('label', {}, '순서'), seg([['1', '섞기'], ['0', '그대로']], shuf ? '1' : '0', (v) => { shuf = v === '1'; try { localStorage.setItem('kmed:wb-shuf', v); } catch { /* 무시 */ } })),
+          h('div', { class: 'f' }, h('label', {}, '순서'), seg([['1', '섞기'], ['0', '순서대로']], shuf ? '1' : '0', (v) => { shuf = v === '1'; try { localStorage.setItem('kmed:wb-shuf', v); } catch { /* 무시 */ } })),
           startBtn),
         grid, selbar]);
     }
