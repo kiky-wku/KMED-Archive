@@ -51,7 +51,7 @@ export function loginView() {
     pw,
     err,
     btn,
-    h('button', { class: 'auth-link', type: 'button', onclick: () => wrap.replaceChildren(signupCard(() => wrap.replaceChildren(card))) }, '계정이 없다면 가입 요청'),
+    h('button', { class: 'auth-link', type: 'button', onclick: () => wrap.replaceChildren(signupCard(() => wrap.replaceChildren(card))) }, '계정이 없으신가요? ', h('b', {}, '새 계정 만들기')),
   );
   const wrap = h('div', { class: 'auth' }, card);
 
@@ -105,7 +105,7 @@ function signupCard(back) {
   const backBtn = h('button', { class: 'su-back', type: 'button', 'aria-label': '로그인으로', onclick: back }, icon('back'));
   const card = h('form', { class: 'auth-card su-card', novalidate: true, onsubmit: submit },
     h('img', { class: 'brand sm', src: 'icons/logo.png', alt: '工夫韓醫 YRR STUDY' }),
-    h('h1', { class: 'auth-title' }, '가입 요청'),
+    h('h1', { class: 'auth-title' }, '새 계정 만들기'),
     name, sno, grade, id, pw1, pw2, hp, err, btn);
 
   async function submit(e) {

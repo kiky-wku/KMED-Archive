@@ -2158,3 +2158,8 @@ html.offline body::after{content:'인터넷 연결 없음. 이 기기에 저장�
 .nt-ok .icon{width:26px;height:26px;stroke-width:2.6}
 .nt-lab{margin-top:10px;font-size:13px;font-weight:700;color:var(--sub)}
 @media (prefers-reduced-motion:reduce){.nt-ic,.nt-ic::after,.nt-ray{animation:none}}
+
+.auth-link b{color:var(--text);font-weight:700;margin-left:2px}
+/* 새 계정 만들기 : 위에서부터 한 칸씩 차례로 */
+.su-card>*{animation:rise .45s var(--ease) both}
+.su-card>*:nth-child(1){animation-delay:0.06s}.su-card>*:nth-child(2){animation-delay:0.11s}.su-card>*:nth-child(3){animation-delay:0.16s}.su-card>*:nth-child(4){animation-delay:0.21s}.su-card>*:nth-child(5){animation-delay:0.26s}.su-card>*:nth-child(6){animation-delay:0.31s}.su-card>*:nth-child(7){animation-delay:0.36s}.su-card>*:nth-child(8){animation-delay:0.41s}.su-card>*:nth-child(9){animation-delay:0.46s}.su-card>*:nth-child(10){animation-delay:0.51s}.su-card>*:nth-child(11){animation-delay:0.56s}
