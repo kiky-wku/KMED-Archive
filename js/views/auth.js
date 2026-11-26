@@ -51,7 +51,9 @@ export function loginView() {
     pw,
     err,
     btn,
+    h('button', { class: 'auth-link', type: 'button', onclick: () => wrap.replaceChildren(signupCard(() => wrap.replaceChildren(card))) }, '계정이 없다면 가입 요청'),
   );
+  const wrap = h('div', { class: 'auth' }, card);
 
   async function submit(e) {
     e.preventDefault();
@@ -63,6 +65,12 @@ export function loginView() {
       busy(btn, false);
       err.textContent = /invalid/i.test(error.message) ? '아이디 또는 비밀번호가 올바르지 않습니다.' : '로그인할 수 없습니다. 잠시 후 다시 시도하세요.';
       shake(card);
+      // 가입 요청만 해 둔 아이디면 알려 줌
+      if (/invalid/i.test(error.message)) {
+        const { data } = await sb.functions.invoke('signup', { body: { action: 'status', username: email.value } }).catch(() => ({}));
+        if (data?.status === 'pending') err.textContent = '가입 승인을 기다리는 아이디입니다. 관리자가 승인하면 로그인할 수 있습니다.';
+        else if (data?.status === 'rejected') err.textContent = '가입 요청이 거절되었습니다. 관리자에게 문의하세요.';
+      }
       return;
     }
     await loadMe();
@@ -73,7 +81,66 @@ export function loginView() {
   }
 
   setTimeout(() => email.focus(), 400);
-  return h('div', { class: 'auth' }, card);
+  return wrap;
+}
+
+// 가입 요청 : 관리자가 승인하면 여기서 정한 아이디와 비밀번호로 로그인
+function signupCard(back) {
+  const name = h('input', { class: 'input', type: 'text', placeholder: '이름', autocomplete: 'name', maxlength: '20' });
+  const sno = h('input', { class: 'input', type: 'text', inputmode: 'numeric', maxlength: '2', placeholder: '학번 (예: 26)' });
+  const grade = h('select', { class: 'input', required: true }, h('option', { value: '', disabled: true, selected: true }, '학년'),
+    ...[1, 2, 3, 4, 5, 6].map((g) => h('option', { value: g }, gradeLabel(g))));
+  const id = h('input', { class: 'input', type: 'text', placeholder: '아이디 (영문 소문자, 숫자)', autocomplete: 'username', autocapitalize: 'none', autocorrect: 'off', spellcheck: 'false', maxlength: '20' });
+  const pw1 = h('input', { class: 'input', type: 'password', placeholder: '비밀번호 (6자 이상)', autocomplete: 'new-password' });
+  const pw2 = h('input', { class: 'input', type: 'password', placeholder: '비밀번호 확인', autocomplete: 'new-password' });
+  const hp = h('input', { class: 'auth-hp', type: 'text', tabindex: '-1', autocomplete: 'off', 'aria-hidden': 'true' });
+  const agree = h('input', { type: 'checkbox' });
+  const notice = h('label', { class: 'su-notice' },
+    h('b', {}, '확인해 주세요'),
+    h('p', {}, '로그인한 기기는 계정에 기록됩니다. 한 계정으로 30일 안에 5대가 넘는 기기에서 로그인하면 계정 공유나 유출로 판단해 로그인이 차단될 수 있습니다. 계정은 본인만 사용하세요.'),
+    h('span', { class: 'su-check' }, agree, h('i', {}, icon('check', 'icon s')), '확인했습니다'));
+  const err = h('div', { class: 'err' });
+  const btn = goButton('가입 요청 보내기');
+  const inputs = [name, sno, grade, id, pw1, pw2];
+  const sync = () => btn.classList.toggle('on', inputs.every((i) => String(i.value).trim()) && agree.checked);
+  inputs.forEach((i) => { i.addEventListener('input', sync); i.addEventListener('change', sync); });
+  agree.addEventListener('change', sync);
+  sno.addEventListener('input', () => { sno.value = sno.value.replace(/\D/g, '').slice(0, 2); });
+  id.addEventListener('input', () => { id.value = id.value.toLowerCase().replace(/\s/g, ''); });
+
+  const card = h('form', { class: 'auth-card su-card', novalidate: true, onsubmit: submit },
+    h('img', { class: 'brand sm', src: 'icons/logo.png', alt: '工夫韓醫 YRR STUDY' }),
+    h('h1', { class: 'auth-title' }, '가입 요청'),
+    name, sno, grade, id, pw1, pw2, hp, notice, err, btn,
+    h('button', { class: 'auth-link', type: 'button', onclick: back }, '로그인으로 돌아가기'));
+
+  async function submit(e) {
+    e.preventDefault();
+    err.textContent = '';
+    const fail = (m, el) => { err.textContent = m; shake(card); el?.focus(); };
+    if (!name.value.trim()) return fail('이름을 입력하세요.', name);
+    if (!/^\d{2}$/.test(sno.value)) return fail('학번은 두 자리 숫자로 입력하세요. (예: 26)', sno);
+    if (!grade.value) return fail('학년을 고르세요.', grade);
+    if (!/^[a-z0-9_]{3,20}$/.test(id.value.trim())) return fail('아이디는 영문 소문자, 숫자, _ 로 3~20자입니다.', id);
+    if (pw1.value.length < 6) return fail('비밀번호는 6자 이상이어야 합니다.', pw1);
+    if (pw1.value !== pw2.value) return fail('비밀번호가 서로 다릅니다.', pw2);
+    if (!agree.checked) return fail('안내를 읽고 확인했습니다에 체크하세요.');
+    busy(btn, true);
+    const { data, error } = await sb.functions.invoke('signup', { body: {
+      action: 'request', name: name.value.trim(), student_no: +sno.value, grade: +grade.value,
+      username: id.value.trim(), password: pw1.value, agree: true, hp: hp.value,
+    } });
+    let msg = data?.error;
+    if (error) { try { msg = (await error.context.json()).error; } catch { msg = '요청을 보내지 못했습니다. 잠시 후 다시 시도하세요.'; } }
+    if (msg) { busy(btn, false); return fail(msg); }
+    await doneCheck(() => card.replaceChildren(
+      h('img', { class: 'brand sm', src: 'icons/logo.png', alt: '工夫韓醫 YRR STUDY' }),
+      h('h1', { class: 'auth-title' }, '요청을 보냈습니다'),
+      h('p', { class: 'su-done' }, `관리자가 승인하면 아이디 ${id.value.trim()} 와 정한 비밀번호로 로그인할 수 있습니다.`),
+      h('button', { class: 'auth-link strong', type: 'button', onclick: back }, '로그인으로 돌아가기')));
+  }
+  setTimeout(() => name.focus(), 300);
+  return card;
 }
 
 // 첫 로그인 : 비밀번호 변경 + 학번 확인

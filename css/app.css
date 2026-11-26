@@ -2103,3 +2103,38 @@ html.offline body::after{content:'인터넷 연결 없음. 이 기기에 저장�
 .ds-note{margin:12px 0 4px;padding:12px 16px;border-radius:14px;background:#F4F5F7;font-size:14px;line-height:1.55}
 .ds-note b{display:block;font-size:13px;color:var(--sub);margin-bottom:4px}
 .ds-note p{margin:0;white-space:pre-wrap;font-weight:500;color:#333D4B}
+
+/* 로그인 : 가입 요청 */
+.auth-link{align-self:center;margin-top:18px;padding:8px 10px;font-size:14px;font-weight:600;color:var(--sub);border-radius:10px;transition:color .2s}
+.auth-link:active{color:var(--text)}
+.auth-link.strong{color:var(--text);font-weight:700;margin-top:28px}
+.auth-hp{position:absolute;left:-9999px;width:1px;height:1px;opacity:0}
+.su-card{max-width:300px}
+.su-card>.brand.sm{margin-bottom:20px}
+.su-card .auth-title{margin-bottom:8px}
+.auth select.input{color:var(--text);padding-right:28px;background:none;background-image:none}
+.auth select.input:invalid{color:var(--faint);border-color:var(--line)}
+.auth select.input option{color:var(--text)}
+.su-notice{display:block;margin-top:18px;padding:14px 16px;border-radius:14px;border:1.5px solid var(--red);background:#fff;cursor:pointer}
+.su-notice b{display:block;font-size:14px;font-weight:700;color:var(--red);margin-bottom:6px}
+.su-notice p{margin:0;font-size:13.5px;line-height:1.55;font-weight:500;color:#333D4B}
+.su-check{display:flex;align-items:center;gap:8px;margin-top:12px;font-size:14px;font-weight:700;color:var(--text)}
+.su-check input{position:absolute;opacity:0;width:1px;height:1px}
+.su-check i{width:22px;height:22px;border-radius:7px;border:1.5px solid var(--line);display:grid;place-items:center;color:transparent;transition:background .15s,border-color .15s,color .15s}
+.su-check i .icon{width:15px;height:15px;stroke-width:3}
+.su-check input:checked+i{background:var(--text);border-color:var(--text);color:#fff}
+.su-check input:focus-visible+i{outline:2px solid var(--text);outline-offset:2px}
+.su-done{margin:4px 0 0;text-align:center;font-size:15px;line-height:1.6;font-weight:500;color:#4E5968}
+
+/* 관리 : 가입 요청 목록 */
+.sr-box{margin-bottom:22px}
+.sr-box:empty{display:none}
+.sr-list{display:grid;gap:8px}
+.sr-row{display:flex;align-items:center;gap:12px;padding:14px 14px 14px 18px;border-radius:16px;background:#fff;box-shadow:var(--sh1);animation:rise .35s var(--ease) both}
+.sr-tx{flex:1;min-width:0;display:grid;gap:3px}
+.sr-tx b{font-size:16px;font-weight:700}
+.sr-tx span{display:flex;flex-wrap:wrap;gap:2px 10px;font-size:13px;font-weight:600;color:var(--sub)}
+.sr-tx em{font-style:normal}
+.sr-no{height:36px;padding:0 14px;border-radius:10px;background:#F2F4F6;color:#4E5968;font-size:14px;font-weight:700}
+.sr-ok{height:36px;padding:0 16px;border-radius:10px;background:var(--text);color:#fff;font-size:14px;font-weight:700}
+.sr-no:disabled,.sr-ok:disabled{opacity:.5}

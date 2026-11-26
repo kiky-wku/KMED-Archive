@@ -82,7 +82,38 @@ async function membersTab(area) {
   const search = h('input', { class: 'search-in', type: 'search', placeholder: '이름 · 아이디 검색' });
   const add = h('button', { class: 'btn sm', onclick: () => memberModal(null, reload) }, icon('plus'), '회원 등록');
   const list = h('div', { class: 'mb-groups' }, h('div', { class: 'card tbl-card' }, skelRows()));
-  area.append(h('div', { class: 'toolbar' }, search, add), list);
+  const reqBox = h('div', { class: 'sr-box' });
+  area.append(h('div', { class: 'toolbar' }, search, add), reqBox, list);
+
+  // 가입 요청 (SQL 26 전이면 조용히 없음)
+  async function loadReqs() {
+    const { data, error } = await sb.from('signup_requests').select('id,name,student_no,grade,username,created_at').eq('status', 'pending').order('created_at');
+    if (error || !data?.length) { reqBox.replaceChildren(); return; }
+    reqBox.replaceChildren(
+      h('h3', { class: 'mb-gh' }, '가입 요청', h('span', {}, `${data.length}명`)),
+      h('div', { class: 'sr-list' }, ...data.map((r) => {
+        const no = h('button', { class: 'sr-no' }, '거절');
+        const ok = h('button', { class: 'sr-ok' }, '승인');
+        let armed = 0;
+        const act = async (action) => {
+          if (action === 'reject' && Date.now() - armed > 2500) { armed = Date.now(); no.textContent = '한 번 더'; setTimeout(() => { if (no.isConnected) no.textContent = '거절'; }, 2500); return; }
+          no.disabled = ok.disabled = true;
+          const { data: d, error: e } = await sb.functions.invoke('signup', { body: { action, id: r.id } });
+          let msg = d?.error;
+          if (e) { try { msg = (await e.context.json()).error; } catch { msg = '처리하지 못했습니다. signup 함수가 배포되었는지 확인하세요.'; } }
+          if (msg) { toast(msg); no.disabled = ok.disabled = false; return; }
+          toast(action === 'approve' ? `${r.name} 님을 등록했습니다` : '요청을 거절했습니다');
+          loadReqs(); if (action === 'approve') reload();
+        };
+        no.addEventListener('click', () => act('reject'));
+        ok.addEventListener('click', () => act('approve'));
+        return h('div', { class: 'sr-row' },
+          h('div', { class: 'sr-tx' }, h('b', {}, r.name),
+            h('span', {}, ...[`${r.student_no}학번`, gradeLabel(r.grade), r.username, ago(r.created_at)].map((t) => h('em', {}, t)))),
+          no, ok);
+      })));
+  }
+  loadReqs();
 
   let rows = [];
   async function reload() {
