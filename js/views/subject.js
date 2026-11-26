@@ -72,7 +72,7 @@ export function subjectView(id, q) {
     if (fi >= 0) blocks.splice(fi + 1, 0, { kind: 'wlist', title: '카드 목록', sort: blocks[fi].sort + 0.3 });
     // 문제가 있는 과목은 맨 끝에 통계 탭
     if (hasStats(blocks.map((b) => b.kind))) blocks.push({ kind: 'stats', title: '통계', sort: 999 });
-    titleEl.replaceChildren(sub.icon ? h('span', { class: 'emo' }, sub.icon) : null, sub.name);
+    titleEl.replaceChildren(...(sub.icon ? [h('span', { class: 'emo' }, sub.icon)] : []), sub.name);
 
     // 범위(중간, 기말) : 주소에 있으면 그것, 없으면 날짜로 자동
     //  2월 ~ 4월 : 1학기 중간 / 5월 ~ 7월 : 1학기 기말 / 8월 ~ 10월 : 2학기 중간 / 11월 ~ 1월 : 2학기 기말
