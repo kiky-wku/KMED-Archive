@@ -9,7 +9,7 @@
   --red:#D22030; --red-soft:#FDECEE;
   --radius:14px;
   --ease:cubic-bezier(.2,.8,.2,1);
-  --spring:cubic-bezier(.16,1,.3,1);
+  --spring:cubic-bezier(.3,1.5,.5,1);
   --safe-t:env(safe-area-inset-top,0px); --safe-b:env(safe-area-inset-bottom,0px);
 }
 *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
