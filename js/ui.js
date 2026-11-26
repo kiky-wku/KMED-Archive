@@ -1,7 +1,5 @@
 // 화면 도우미 : 요소 만들기 · 화면 전환 · 토스트 · 아이콘
 
-import { sealSvg, gradeOf } from './seal.js';
-
 export function h(tag, attrs = {}, ...kids) {
   const el = document.createElement(tag);
   for (const [k, v] of Object.entries(attrs || {})) {
@@ -121,12 +119,6 @@ const P = {
   spark: '<path d="M11 3.5l1.9 5.1 5.1 1.9-5.1 1.9L11 17.5l-1.9-5.1L4 10.5l5.1-1.9z"/><path d="M18.5 15.5l.8 1.7 1.7.8-1.7.8-.8 1.7-.8-1.7-1.7-.8 1.7-.8z"/>',
   sheet: '<rect x="4" y="4" width="16" height="16" rx="2.5"/><path d="M4 9.5h16M4 14.5h16M9.5 4v16"/>',
 };
-// 끝냄 낙관 : 정답률 80% 이상 高能韓醫, 60% 이상 中能韓醫, 그 아래 低能韓醫
-export function seal(ratio) {
-  const g = gradeOf(ratio);
-  return h('div', { class: `seal ${g}`, html: sealSvg(ratio) });
-}
-
 export function icon(name, cls = 'icon') {
   const s = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
   s.setAttribute('viewBox', '0 0 24 24');

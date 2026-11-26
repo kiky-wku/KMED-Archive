@@ -1,5 +1,5 @@
 import { sb } from '../sb.js';
-import { h, icon, seal, toast, seg, modal, busy, drawer } from '../ui.js';
+import { h, icon, toast, seg, modal, busy, drawer } from '../ui.js';
 import { fetchAll } from '../data/hanja.js';
 import { loadItems, saveItem, clearItems } from '../data/study.js';
 import { filesBlock } from './files.js';
@@ -306,8 +306,8 @@ export function pastBlock(ctx, el, mode = 'past') {
       const no = ids.filter((id) => stOf(id) === 'no').length;
       pos = 0; save();
       stage.replaceChildren(h('div', { class: 'pq-done' },
-        seal(ok / (ids.length || 1)),
-        h('b', {}, `${ids.length}문제 중 ${ok}문제 맞음, ${Math.round((ok / (ids.length || 1)) * 100)}%`),
+        h('div', { class: 'emo' }, no ? '📝' : '🎉'),
+        h('b', {}, `${ids.length}문제 중 ${ok}문제 맞음`),
         h('div', { class: 'pq-n' }, h('span', { class: 'ok' }, `맞음 ${ok}`), h('span', { class: 'no' }, `틀림 ${no}`)),
         h('div', { class: 'pq-done-act' },
           no ? h('button', { class: 'btn ink', onclick: () => { off(); quiz(exam, true); } }, `틀린 ${no}개 다시`) : null,
