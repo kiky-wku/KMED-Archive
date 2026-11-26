@@ -1,5 +1,7 @@
 // 화면 도우미 : 요소 만들기 · 화면 전환 · 토스트 · 아이콘
 
+import { sealSvg, gradeOf } from './seal.js';
+
 export function h(tag, attrs = {}, ...kids) {
   const el = document.createElement(tag);
   for (const [k, v] of Object.entries(attrs || {})) {
@@ -119,12 +121,10 @@ const P = {
   spark: '<path d="M11 3.5l1.9 5.1 5.1 1.9-5.1 1.9L11 17.5l-1.9-5.1L4 10.5l5.1-1.9z"/><path d="M18.5 15.5l.8 1.7 1.7.8-1.7.8-.8 1.7-.8-1.7-1.7-.8 1.7-.8z"/>',
   sheet: '<rect x="4" y="4" width="16" height="16" rx="2.5"/><path d="M4 9.5h16M4 14.5h16M9.5 4v16"/>',
 };
-// 완 (完) 명조 글리프 : 기기에 명조 글꼴이 없어도 같게 보이도록 모양을 그대로 넣음 (Noto Serif CJK, OFL)
-const SEAL_GLYPH = () => h('span', { class: 'seal-g', html: '<svg viewBox="28 -848 949 936"><path transform="scale(1,-1)" fill="currentColor" d="M215 527 223 498H768C782 498 793 503 796 514C754 551 685 600 685 600L625 527ZM45 364 54 335H308C300 176 270 36 28 -75L36 -88C373 -8 417 143 435 335H538V35C538 -44 560 -65 663 -65H764C932 -65 974 -44 974 5C974 27 967 41 935 54L931 179H921C902 121 886 75 875 59C869 49 863 46 849 45C836 44 808 44 777 44H690C660 44 655 48 655 64V335H930C944 335 955 340 958 351C915 388 844 440 844 440L782 364ZM169 765C170 689 124 624 80 600C50 582 30 552 43 517C59 479 108 472 144 497C183 523 214 582 206 665H808C797 626 780 577 767 545L775 538C826 563 897 608 937 641C958 642 968 644 977 653L868 756L805 693H559V808C586 812 594 822 595 836L438 848V693H203C199 715 192 740 182 765Z"/></svg>' });
-
-// 끝냄 도장 : 한 바퀴를 다 돌면 찍힘. 다 맞으면 꽉 찬 빨간 도장, 아니면 테두리만
-export function seal(perfect) {
-  return h('div', { class: 'seal' + (perfect ? ' full' : ''), 'aria-hidden': 'true' }, SEAL_GLYPH());
+// 끝냄 낙관 : 정답률 80% 이상 高能韓醫, 60% 이상 中能韓醫, 그 아래 低能韓醫
+export function seal(ratio) {
+  const g = gradeOf(ratio);
+  return h('div', { class: `seal ${g}`, html: sealSvg(ratio) });
 }
 
 export function icon(name, cls = 'icon') {

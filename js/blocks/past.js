@@ -306,8 +306,8 @@ export function pastBlock(ctx, el, mode = 'past') {
       const no = ids.filter((id) => stOf(id) === 'no').length;
       pos = 0; save();
       stage.replaceChildren(h('div', { class: 'pq-done' },
-        seal(!no),
-        h('b', {}, `${ids.length}문제 중 ${ok}문제 맞음`),
+        seal(ok / (ids.length || 1)),
+        h('b', {}, `${ids.length}문제 중 ${ok}문제 맞음, ${Math.round((ok / (ids.length || 1)) * 100)}%`),
         h('div', { class: 'pq-n' }, h('span', { class: 'ok' }, `맞음 ${ok}`), h('span', { class: 'no' }, `틀림 ${no}`)),
         h('div', { class: 'pq-done-act' },
           no ? h('button', { class: 'btn ink', onclick: () => { off(); quiz(exam, true); } }, `틀린 ${no}개 다시`) : null,

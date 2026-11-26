@@ -95,8 +95,8 @@ export function hanjaQuiz(ctx, el, mode) {
       if (!r.length) {
         const wrong = scope.filter((c) => status.get(c) === 'no').length;
         stage.replaceChildren(h('div', { class: 'q-done' },
-          seal(!wrong), h('h2', {}, '한 바퀴를 다 풀었습니다'),
-          h('div', { class: 'sub' }, `맞음 ${scope.length - wrong} · 틀림 ${wrong}`),
+          seal((scope.length - wrong) / (scope.length || 1)), h('h2', {}, '한 바퀴를 다 풀었습니다'),
+          h('div', { class: 'sub' }, `${scope.length}개 중 ${scope.length - wrong}개 맞음, ${Math.round(((scope.length - wrong) / (scope.length || 1)) * 100)}%`),
           h('div', { class: 'row' },
             wrong ? h('button', { class: 'btn', onclick: retryWrong }, `틀린 ${wrong}개 다시`) : null,
             h('button', { class: 'btn ghost', onclick: openRecords }, '기록 보기'))));
