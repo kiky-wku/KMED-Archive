@@ -1,6 +1,8 @@
 import { sb } from '../sb.js';
 import { h, icon, shake, toast, gradeLabel } from '../ui.js';
 import { S, loadMe, route, touch } from '../app.js';
+import { bio, pkSupported, pkOnDevice, pkWarmLogin, pkSignIn, pkCancelled, pkForget } from '../data/passkey.js';
+import { pkMaybeAsk, ro } from './passkey.js';
 
 // 아이디 → 로그인용 내부 주소 (@가 있으면 이메일 그대로)
 export const ID_DOMAIN = 'yrr-study.app';
@@ -55,6 +57,34 @@ export function loginView() {
   );
   const wrap = h('div', { class: 'auth' }, card);
 
+  // 이 기기에서 Face ID 등을 켜 두었으면 화살표 옆에 버튼
+  pkSupported().then((ok) => {
+    if (!ok || !pkOnDevice()) return;
+    pkWarmLogin();
+    const b = bio();
+    const pk = h('button', { class: 'pk-go', type: 'button', 'aria-label': `${ro(b.name)} 로그인`, title: `${ro(b.name)} 로그인`, onclick: bioLogin }, icon(b.icon));
+    const row = h('div', { class: 'auth-go' });
+    btn.replaceWith(row); row.append(pk, btn);
+    async function bioLogin() {
+      err.textContent = '';
+      pk.disabled = true;
+      try {
+        await pkSignIn();
+      } catch (e) {
+        pk.disabled = false;
+        if (pkCancelled(e)) return;
+        if (/not.?found|credential/i.test(`${e?.code || ''} ${e?.message || ''}`)) { pkForget(); row.replaceWith(btn); }
+        err.textContent = `${ro(b.name)} 로그인하지 못했습니다. 비밀번호로 로그인하세요.`;
+        shake(card); return;
+      }
+      await loadMe();
+      if (!S.profile) { pk.disabled = false; err.textContent = '등록되지 않은 계정입니다.'; shake(card); return; }
+      touch();
+      if (S.profile.must_change_pw) { route(); return; }
+      await doneCheck(() => route({ instant: true }));
+    }
+  });
+
   async function submit(e) {
     e.preventDefault();
     err.textContent = '';
@@ -78,6 +108,7 @@ export function loginView() {
     touch();
     if (S.profile.must_change_pw) { route(); return; }      // 첫 로그인은 비밀번호 변경 후에 체크
     await doneCheck(() => route({ instant: true }));
+    pkMaybeAsk();
   }
 
   setTimeout(() => email.focus(), 400);
@@ -219,6 +250,7 @@ export function firstView() {
     if (r.error) { busy(btn, false); err.textContent = '저장할 수 없습니다. 다시 시도하세요.'; shake(card); return; }
     await loadMe();
     await doneCheck(() => route({ instant: true }));
+    pkMaybeAsk();
   }
 
   setTimeout(() => pw1.focus(), 400);

@@ -7,6 +7,7 @@ import { pushRow } from './reports.js';
 import { isIOS, isStandalone } from '../data/push.js';
 import { savedSize, clearSaved } from '../data/offline.js';
 import { fmtSize } from '../data/files.js';
+import { pkSettingsRow } from './passkey.js';
 
 // ─────────────────────────────────────────────
 // 설정 : 내 정보 · 알림 · 비밀번호 · 앱
@@ -90,6 +91,7 @@ export function settingsView() {
     infoBox,
     section('알림', pushRow()),
     p.role === 'writer' || isAdmin() ? section('Claude 연결', claudeBox()) : null,
+    Object.assign(section('빠른 로그인', pkSettingsRow()), { hidden: true }),
     section('비밀번호 바꾸기', pwForm),
     section('앱', installRow, savedRow(),
       h('button', { class: 'st-row st-btn', onclick: () => location.reload() }, h('span', { class: 'k' }, '새로고침'), h('span', { class: 'v' }), icon('right', 'icon s')),
