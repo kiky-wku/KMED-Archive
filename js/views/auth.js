@@ -46,7 +46,7 @@ export function loginView() {
   watchFilled(btn, [email, pw]);
 
   const card = h('form', { class: 'auth-card', novalidate: true, onsubmit: submit },
-    h('img', { class: 'brand', src: 'icons/logo.png', alt: '工夫韓醫 STUDYHANI' }),
+    h('img', { class: 'brand', src: 'icons/logo.png', alt: '工夫韓醫 STUDY HANI' }),
     email,
     pw,
     err,
@@ -104,7 +104,7 @@ function signupCard(back) {
 
   const backBtn = h('button', { class: 'su-back', type: 'button', 'aria-label': '로그인으로', onclick: back }, icon('back'));
   const card = h('form', { class: 'auth-card su-card', novalidate: true, onsubmit: submit },
-    h('img', { class: 'brand sm', src: 'icons/logo.png', alt: '工夫韓醫 STUDYHANI' }),
+    h('img', { class: 'brand sm', src: 'icons/logo.png', alt: '工夫韓醫 STUDY HANI' }),
     h('h1', { class: 'auth-title' }, '새 계정 만들기'),
     name, sno, grade, id, pw1, pw2, hp, err, btn);
 
@@ -128,7 +128,7 @@ function signupCard(back) {
     if (error) { try { msg = (await error.context.json()).error; } catch { msg = '요청을 보내지 못했습니다. 잠시 후 다시 시도하세요.'; } }
     if (msg) { busy(btn, false); return fail(msg); }
     await doneCheck(() => card.replaceChildren(
-      h('img', { class: 'brand sm', src: 'icons/logo.png', alt: '工夫韓醫 STUDYHANI' }),
+      h('img', { class: 'brand sm', src: 'icons/logo.png', alt: '工夫韓醫 STUDY HANI' }),
       h('h1', { class: 'auth-title' }, '요청을 보냈습니다'),
       h('p', { class: 'su-done' }, `승인되면 ${id.value.trim()} 아이디로 로그인할 수 있습니다.`),
       h('button', { class: 'auth-link strong', type: 'button', onclick: back }, '로그인으로 돌아가기')));
@@ -190,7 +190,7 @@ export function firstView() {
   showGrade();
 
   const card = h('form', { class: 'auth-card', novalidate: true, onsubmit: submit },
-    h('img', { class: 'brand sm', src: 'icons/logo.png', alt: '工夫韓醫 STUDYHANI' }),
+    h('img', { class: 'brand sm', src: 'icons/logo.png', alt: '工夫韓醫 STUDY HANI' }),
     h('h1', { class: 'auth-title' }, '비밀번호 변경'),
     pw1,
     pw2,
