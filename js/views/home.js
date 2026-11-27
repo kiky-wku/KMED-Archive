@@ -24,7 +24,7 @@ const LINES = [
 ];
 const DAY = ['일', '월', '화', '수', '목', '금', '토'];
 const NICON = { signup: 'bell', report: 'siren', suggest: 'chat', done: 'check', upload: 'file', comment: 'chat', device: 'shield' };
-const KIND_ICON = { flash: 'layers', past: 'list', pred: 'list', hanja_r: 'pen', hanja_h: 'pen', hanja_grid: 'pen', jung_translate: 'pen', um_order: 'list', wordlist: 'list' };
+const KIND_ICON = { flash: 'layers', past: 'list', pred: 'list', hanja_r: 'pen', hanja_h: 'pen', hanja_grid: 'pen', jung_translate: 'pen', um_order: 'list', wordlist: 'list', wordbook: 'list' };
 const fileTitle = (f) => [f.series || (f.filename || '').replace(/\.pdf$/i, ''), f.mode === 'weekly' ? f.week : ''].filter(Boolean).join(' ');
 const dayStart = (d) => { const x = new Date(d); x.setHours(0, 0, 0, 0); return x; };
 const dDays = (t) => Math.round((dayStart(t) - dayStart(new Date())) / 86400e3);
@@ -57,13 +57,15 @@ export function homeView(q) {
   const semBtn = h('button', { class: 'hm-sem' + (seesAll() ? '' : ' fixed') }, gradeLabel(g, s), seesAll() ? icon('down') : null);
   if (seesAll()) semBtn.addEventListener('click', () => openSemMenu(semBtn, g, s));
   const rail = h('div', { class: 'hm-rail' }, Array.from({ length: 4 }, () => h('i', { class: 'skel hm-sk' })));
+  const railWrap = h('div', { class: 'hm-railw at-l at-r' }, rail, h('i', { class: 'hm-fade l' }), h('i', { class: 'hm-fade r' }));
   const prev = h('button', { class: 'hm-ic', 'aria-label': '앞 과목', disabled: true, onclick: () => slide(-1) }, icon('left'));
   const next = h('button', { class: 'hm-ic', 'aria-label': '다음 과목', onclick: () => slide(1) }, icon('right'));
   const slide = (d) => rail.scrollBy({ left: d * Math.max(200, rail.clientWidth - 120), behavior: 'smooth' });
   const navPaint = () => {
     prev.disabled = rail.scrollLeft < 4;
     next.disabled = rail.scrollLeft + rail.clientWidth > rail.scrollWidth - 4;
-    rail.classList.toggle('more', !next.disabled);
+    railWrap.classList.toggle('at-l', prev.disabled);
+    railWrap.classList.toggle('at-r', next.disabled);
   };
   rail.addEventListener('scroll', navPaint, { passive: true });
 
@@ -83,7 +85,7 @@ export function homeView(q) {
     h('div', { class: 'hm-grid' },
       h('section', { class: 'hm-sec hm-subj' },
         h('div', { class: 'hm-lb' }, semBtn, h('span', { class: 'g' }), prev, next),
-        rail),
+        railWrap),
       sec('hm-recent', h('h2', {}, '최근 본 자료'), iconBtn('right', '최근 본 자료 전체', () => openRecentAll()), recentBox),
       sec('hm-wk', h('h2', {}, '이번 주 학습'), iconBtn('right', '내 학습', () => go('#/stats')), weekBox),
       h('div', { class: 'hm-side' },
@@ -175,7 +177,7 @@ export function homeView(q) {
       const sub = subjects.find((v) => v.id === sid);
       return h('button', { class: 'hm-row' + cur, onclick: () => go(x.hash) },
         h('span', { class: 'hm-ri' }, icon(KIND_ICON[kind] || 'play')),
-        h('span', { class: 'hm-tx' }, h('b', {}, x.label), h('span', {}, sub ? `${sub.name}, 이어서 학습하기` : '이어서 학습하기')),
+        h('span', { class: 'hm-tx' }, h('b', {}, x.label.replace(/\s*·\s*/g, ' ')), h('span', {}, sub ? `${sub.name}, 이어서 학습하기` : '이어서 학습하기')),
         h('span', { class: 'hm-t' }, ago(x.at)));
     }
     const f = x.file;
