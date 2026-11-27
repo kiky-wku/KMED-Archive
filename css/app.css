@@ -2366,6 +2366,7 @@ html.offline body::after{content:'인터넷 연결 없음. 이 기기에 저장�
 .pl-emo{font-size:22px;width:28px;text-align:center;flex:none;line-height:1}
 .pl-tx{flex:1;min-width:0}
 .pl-tx b{display:block;font-size:15px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.pl-tx span{display:block;font-size:12px;font-weight:500;color:#8B95A1;margin-top:2px}
 .pl-row .pl-d{flex:0 0 150px;height:42px;font-size:14px;padding:0 10px}
 .pl-row .pl-t{flex:0 0 128px;height:42px;font-size:14px;padding:0 10px}
 .pl-clr{width:30px;height:30px;flex:none}.pl-clr .icon{width:16px;height:16px}

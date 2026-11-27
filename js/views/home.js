@@ -330,14 +330,19 @@ function openPlan(g, s, subjects, onChange) {
   function majorView() {
     const wrap = h('div', { class: 'pl-major' }, h('div', { class: 'hm-empty' }, '불러오는 중'));
     (grade === g ? Promise.resolve(subjects) : loadSubjects(grade, s).catch(() => [])).then((subs) => {
-      const names = [...new Set(subs.flatMap((x) => x.ranges.map((r) => r.name)))];
-      if (!names.length) { wrap.replaceChildren(h('div', { class: 'hm-empty' }, '이 학기에 과목이 없습니다')); return; }
-      if (!names.includes(rangeTab)) rangeTab = names.find((n) => subs.some((x) => x.ranges.some((r) => r.name === n && r.exam_at && dDays(r.exam_at) >= 0))) || names[0];
+      if (!subs.length) { wrap.replaceChildren(h('div', { class: 'hm-empty' }, '이 학기에 과목이 없습니다')); return; }
+      // 탭은 중간, 기말 두 개뿐. 다른 이름의 범위(예: 2학기)는 기말 탭에
+      const tabOf = (r) => (r.name === '중간' ? '중간' : '기말');
+      if (!['중간', '기말'].includes(rangeTab)) {
+        const soon = subs.flatMap((x) => x.ranges).filter((r) => r.exam_at && dDays(r.exam_at) >= 0).sort((p, q) => new Date(p.exam_at) - new Date(q.exam_at))[0];
+        rangeTab = soon ? tabOf(soon) : (new Date().getMonth() % 6 < 3 ? '중간' : '기말');
+      }
       const list = h('div', { class: 'pl-rows' });
-      const sub = names.length > 1 ? seg(names.map((n) => [n, n]), rangeTab, (v) => { rangeTab = v; fill(); }) : null;
+      const sub = seg([['중간', '중간'], ['기말', '기말']], rangeTab, (v) => { rangeTab = v; fill(); });
       function fill() {
         const rows = [];
-        for (const x of subs) for (const r of x.ranges) if (r.name === rangeTab) rows.push([x, r]);
+        for (const x of subs) for (const r of x.ranges) if (tabOf(r) === rangeTab) rows.push([x, r]);
+        if (!rows.length) { list.replaceChildren(h('div', { class: 'hm-empty' }, `${rangeTab} 범위가 있는 과목이 없습니다`)); return; }
         list.replaceChildren(...rows.map(([x, r]) => {
           const { di, ti, val } = dateInputs(r.exam_at);
           const clr = h('button', { class: 'hm-ic pl-clr', 'aria-label': '날짜 지우기', title: '날짜 지우기' }, icon('x'));
@@ -352,7 +357,7 @@ function openPlan(g, s, subjects, onChange) {
           clr.addEventListener('click', () => { di.value = ''; ti.value = ''; save(null); });
           return h('div', { class: 'pl-row' },
             h('span', { class: 'pl-emo' }, x.icon || x.name.slice(0, 1)),
-            h('span', { class: 'pl-tx' }, h('b', {}, x.name)),
+            h('span', { class: 'pl-tx' }, h('b', {}, x.name), /^(중간|기말)$/.test(r.name) ? null : h('span', {}, r.name)),
             di, ti, clr);
         }));
       }
