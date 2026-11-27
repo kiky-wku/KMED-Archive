@@ -57,17 +57,21 @@ export function homeView(q) {
   const semBtn = h('button', { class: 'hm-sem' + (seesAll() ? '' : ' fixed') }, gradeLabel(g, s), seesAll() ? icon('down') : null);
   if (seesAll()) semBtn.addEventListener('click', () => openSemMenu(semBtn, g, s));
   const rail = h('div', { class: 'hm-rail' }, Array.from({ length: 4 }, () => h('i', { class: 'skel hm-sk' })));
-  const railWrap = h('div', { class: 'hm-railw at-l at-r' }, rail, h('i', { class: 'hm-fade l' }), h('i', { class: 'hm-fade r' }));
+  const railWrap = h('div', { class: 'hm-railw' }, rail, h('i', { class: 'hm-fade l' }), h('i', { class: 'hm-fade r' }));
   const prev = h('button', { class: 'hm-ic', 'aria-label': '앞 과목', disabled: true, onclick: () => slide(-1) }, icon('left'));
   const next = h('button', { class: 'hm-ic', 'aria-label': '다음 과목', onclick: () => slide(1) }, icon('right'));
   const slide = (d) => rail.scrollBy({ left: d * Math.max(200, rail.clientWidth - 120), behavior: 'smooth' });
   const navPaint = () => {
     prev.disabled = rail.scrollLeft < 4;
     next.disabled = rail.scrollLeft + rail.clientWidth > rail.scrollWidth - 4;
-    railWrap.classList.toggle('at-l', prev.disabled);
-    railWrap.classList.toggle('at-r', next.disabled);
+    // 흐림 폭 = 남은 거리 (끝 카드의 오른쪽 가장자리를 따라 줄어듦)
+    const restR = Math.max(0, rail.scrollWidth - rail.clientWidth - rail.scrollLeft);
+    railWrap.style.setProperty('--fr', `${Math.min(72, restR)}px`);
+    railWrap.style.setProperty('--fl', `${Math.min(72, rail.scrollLeft)}px`);
   };
-  rail.addEventListener('scroll', navPaint, { passive: true });
+  let rafN = 0;
+  rail.addEventListener('scroll', () => { cancelAnimationFrame(rafN); rafN = requestAnimationFrame(navPaint); }, { passive: true });
+  window.addEventListener('resize', navPaint); cleanups.push(() => window.removeEventListener('resize', navPaint));
 
   // ── 칸 ──
   const recentBox = h('div', { class: 'hm-list' });

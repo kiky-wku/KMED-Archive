@@ -2259,11 +2259,10 @@ html.offline body::after{content:'인터넷 연결 없음. 이 기기에 저장�
 /* 과목 */
 .hm-rail{display:flex;gap:14px;overflow-x:auto;scroll-snap-type:x mandatory;scrollbar-width:none;padding:2px 2px 6px;margin:-2px -2px -6px}
 .hm-rail::-webkit-scrollbar{display:none}
-.hm-railw{position:relative;min-width:0}
-.hm-fade{position:absolute;top:0;bottom:0;width:72px;pointer-events:none;z-index:1;opacity:1;transition:opacity .35s var(--ease)}
-.hm-fade.r{right:-2px;background:linear-gradient(90deg,rgba(244,245,247,0),#F4F5F7 88%)}
-.hm-fade.l{left:-2px;background:linear-gradient(270deg,rgba(244,245,247,0),#F4F5F7 88%)}
-.hm-railw.at-r .hm-fade.r,.hm-railw.at-l .hm-fade.l{opacity:0}
+.hm-railw{position:relative;min-width:0;--fr:0px;--fl:0px}
+.hm-fade{position:absolute;top:0;bottom:0;pointer-events:none;z-index:1}
+.hm-fade.r{right:-2px;width:var(--fr);background:linear-gradient(90deg,rgba(244,245,247,0),#F4F5F7)}
+.hm-fade.l{left:-2px;width:var(--fl);background:linear-gradient(270deg,rgba(244,245,247,0),#F4F5F7)}
 .hm-sk{flex:0 0 212px;height:172px;border-radius:20px}
 .hm-card{flex:0 0 212px;height:172px;scroll-snap-align:start;border-radius:20px;background:#fff;padding:22px;display:flex;flex-direction:column;text-align:left;box-shadow:0 1px 2px rgba(17,24,39,.04);animation:rise .4s var(--ease) both;transition:transform .2s var(--ease),box-shadow .2s}
 .hm-card:hover{transform:translateY(-2px);box-shadow:0 8px 24px rgba(17,24,39,.07)}
