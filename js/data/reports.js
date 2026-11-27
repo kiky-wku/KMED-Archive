@@ -58,6 +58,12 @@ export async function markAllRead() {
   await sb.from('notifications').update({ read_at: new Date().toISOString() }).eq('user_id', S.user.id).is('read_at', null);
   listeners.forEach((f) => f());
 }
+// 모두 지우기 : 내 알림 전부 삭제
+export async function clearNotifs() {
+  const { error } = await sb.from('notifications').delete().eq('user_id', S.user.id);
+  if (error) throw error;
+  listeners.forEach((f) => f());
+}
 export function cleanupNotifs() { sb.rpc('notif_cleanup').then(() => {}, () => {}); }
 
 // 읽음 상태가 바뀌면 배지 · 홈 카드 새로 그림

@@ -181,16 +181,16 @@ function notice() {
       done(ok);
     };
     const onKey = (e) => { if (e.key === 'Escape') close(false); else if (e.key === 'Enter') { e.preventDefault(); close(true); } };
-    const siren = h('div', { class: 'nt-siren', 'aria-hidden': 'true' },
-      h('i', { class: 'nt-ray l' }), h('i', { class: 'nt-ray r' }), h('i', { class: 'nt-ray t' }),
-      h('span', { class: 'nt-ic' }, icon('siren')));
-    const box = h('div', { class: 'nt', role: 'alertdialog', 'aria-modal': 'true', 'aria-labelledby': 'nt-t' },
+    const siren = h('div', { class: 'sn-siren', 'aria-hidden': 'true' },
+      h('i', { class: 'sn-ray l' }), h('i', { class: 'sn-ray r' }), h('i', { class: 'sn-ray t' }),
+      h('span', { class: 'sn-ic' }, icon('siren')));
+    const box = h('div', { class: 'sn', role: 'alertdialog', 'aria-modal': 'true', 'aria-labelledby': 'sn-t' },
       siren,
-      h('h2', { id: 'nt-t' }, '계정은 본인만 사용하세요'),
+      h('h2', { id: 'sn-t' }, '계정은 본인만 사용하세요'),
       h('p', {}, '로그인한 기기는 기록됩니다.', h('br'), '30일 안에 ', h('b', {}, '5대'), '를 넘으면 유출로 보고', h('br'), '로그인이 막힐 수 있습니다.'),
-      h('button', { class: 'nt-ok', type: 'button', 'aria-label': '확인했습니다', onclick: () => close(true) }, icon('check')),
-      h('span', { class: 'nt-lab' }, '확인했습니다'));
-    const wrap = h('div', { class: 'gd-wrap nt-wrap', onclick: (e) => { if (e.target === wrap) close(false); } }, box);
+      h('button', { class: 'sn-ok', type: 'button', 'aria-label': '확인했습니다', onclick: () => close(true) }, icon('check')),
+      h('span', { class: 'sn-lab' }, '확인했습니다'));
+    const wrap = h('div', { class: 'gd-wrap sn-wrap', onclick: (e) => { if (e.target === wrap) close(false); } }, box);
     document.body.append(wrap);
     document.addEventListener('keydown', onKey);
     requestAnimationFrame(() => wrap.classList.add('on'));

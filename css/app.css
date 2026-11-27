@@ -2136,28 +2136,28 @@ html.offline body::after{content:'인터넷 연결 없음. 이 기기에 저장�
 .su-back .icon{width:24px;height:24px}
 
 /* 가입 안내 : 사이렌이 깜빡이며 뜨는 작은 창 */
-.nt{width:min(340px,100%);background:#fff;border-radius:28px;padding:34px 28px 26px;display:flex;flex-direction:column;align-items:center;text-align:center;box-shadow:0 30px 80px rgba(0,12,30,.25);
+.sn{width:min(340px,100%);background:#fff;border-radius:28px;padding:34px 28px 26px;display:flex;flex-direction:column;align-items:center;text-align:center;box-shadow:0 30px 80px rgba(0,12,30,.25);
   opacity:0;transform:translateY(24px) scale(.96);transition:opacity .3s var(--ease),transform .4s var(--spring)}
-.gd-wrap.on .nt{opacity:1;transform:none}
-.nt h2{margin:18px 0 0;font-size:20px;font-weight:800;letter-spacing:-.03em}
-.nt p{margin:10px 0 0;font-size:15px;line-height:1.65;font-weight:500;color:#4E5968;word-break:keep-all}
-.nt p b{color:var(--red);font-weight:700}
-.nt-siren{position:relative;width:76px;height:76px;display:grid;place-items:center}
-.nt-ic{position:relative;width:64px;height:64px;border-radius:50%;display:grid;place-items:center;background:#FDECEE;color:var(--red);animation:ntShake 1.6s var(--ease) .35s infinite}
-.nt-ic .icon{width:32px;height:32px;stroke-width:2.2}
-.nt-ic::after{content:'';position:absolute;inset:6px;border-radius:50%;background:var(--red);opacity:0;animation:ntPulse 1.6s ease-out .35s infinite}
-.nt-ray{position:absolute;width:3px;height:12px;border-radius:3px;background:var(--red);opacity:0;animation:ntRay 1.6s ease-out .35s infinite}
-.nt-ray.t{top:-8px;left:calc(50% - 1.5px)}
-.nt-ray.l{top:6px;left:2px;rotate:-45deg}
-.nt-ray.r{top:6px;right:2px;rotate:45deg}
+.gd-wrap.on .sn{opacity:1;transform:none}
+.sn h2{margin:18px 0 0;font-size:20px;font-weight:800;letter-spacing:-.03em}
+.sn p{margin:10px 0 0;font-size:15px;line-height:1.65;font-weight:500;color:#4E5968;word-break:keep-all}
+.sn p b{color:var(--red);font-weight:700}
+.sn-siren{position:relative;width:76px;height:76px;display:grid;place-items:center}
+.sn-ic{position:relative;width:64px;height:64px;border-radius:50%;display:grid;place-items:center;background:#FDECEE;color:var(--red);animation:ntShake 1.6s var(--ease) .35s infinite}
+.sn-ic .icon{width:32px;height:32px;stroke-width:2.2}
+.sn-ic::after{content:'';position:absolute;inset:6px;border-radius:50%;background:var(--red);opacity:0;animation:ntPulse 1.6s ease-out .35s infinite}
+.sn-ray{position:absolute;width:3px;height:12px;border-radius:3px;background:var(--red);opacity:0;animation:ntRay 1.6s ease-out .35s infinite}
+.sn-ray.t{top:-8px;left:calc(50% - 1.5px)}
+.sn-ray.l{top:6px;left:2px;rotate:-45deg}
+.sn-ray.r{top:6px;right:2px;rotate:45deg}
 @keyframes ntShake{0%,60%,100%{transform:rotate(0)}8%{transform:rotate(-12deg)}16%{transform:rotate(10deg)}24%{transform:rotate(-7deg)}32%{transform:rotate(4deg)}40%{transform:rotate(0)}}
 @keyframes ntPulse{0%{opacity:.28;transform:scale(.9)}70%,100%{opacity:0;transform:scale(1.55)}}
 @keyframes ntRay{0%,4%{opacity:0;translate:0 4px}12%{opacity:1;translate:0 0}40%,100%{opacity:0;translate:0 -3px}}
-.nt-ok{margin-top:26px;width:60px;height:60px;border-radius:50%;display:grid;place-items:center;background:var(--text);color:#fff;transition:scale .15s var(--spring)}
-.nt-ok:active{scale:.9}
-.nt-ok .icon{width:26px;height:26px;stroke-width:2.6}
-.nt-lab{margin-top:10px;font-size:13px;font-weight:700;color:var(--sub)}
-@media (prefers-reduced-motion:reduce){.nt-ic,.nt-ic::after,.nt-ray{animation:none}}
+.sn-ok{margin-top:26px;width:60px;height:60px;border-radius:50%;display:grid;place-items:center;background:var(--text);color:#fff;transition:scale .15s var(--spring)}
+.sn-ok:active{scale:.9}
+.sn-ok .icon{width:26px;height:26px;stroke-width:2.6}
+.sn-lab{margin-top:10px;font-size:13px;font-weight:700;color:var(--sub)}
+@media (prefers-reduced-motion:reduce){.sn-ic,.sn-ic::after,.sn-ray{animation:none}}
 
 .auth-link b{color:var(--text);font-weight:700;margin-left:2px}
 /* 새 계정 만들기 : 위에서부터 한 칸씩 차례로 */
@@ -2217,3 +2217,8 @@ html.offline body::after{content:'인터넷 연결 없음. 이 기기에 저장�
 .pk-del .icon{width:18px;height:18px}
 .pk-del.arm{background:var(--red);color:#fff}
 @media (prefers-reduced-motion:reduce){.pk-line,.pk-mark.scan .icon{animation:none}}
+
+/* 알림 모두 지우기 */
+.nt-all{color:var(--faint);transition:color .15s}
+.nt-all.arm{color:var(--red)}
+.nt.out{opacity:0;transform:translateX(24px);transition:opacity .22s var(--ease),transform .26s var(--ease)}

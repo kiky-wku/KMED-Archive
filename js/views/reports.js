@@ -2,7 +2,7 @@ import { h, icon, drawer, seg, ago, toast, shake, skelRows } from '../ui.js';
 import { S, isAdmin, go } from '../app.js';
 import {
   listReports, listSuggests, sendReport, resolveReport, deleteReport,
-  listNotifs, unreadNotifs, markRead, markAllRead, onNotifChange, cleanupNotifs,
+  listNotifs, unreadNotifs, markRead, markAllRead, clearNotifs, onNotifChange, cleanupNotifs,
 } from '../data/reports.js';
 import { pushState, enablePush, disablePush, testPush } from '../data/push.js';
 
@@ -158,14 +158,27 @@ function card(r, i, canResolve, repaint, removed, onEdit) {
 // ─────────────────────────────────────────────
 // 알림 목록
 // ─────────────────────────────────────────────
-const NICON = { report: 'siren', suggest: 'chat', done: 'check', upload: 'file', comment: 'chat', device: 'shield' };
+const NICON = { signup: 'bell', report: 'siren', suggest: 'chat', done: 'check', upload: 'file', comment: 'chat', device: 'shield' };
 export function openNotifs() {
   const list = h('div', { class: 'nt-list' }, skelRows(5, 64));
-  const allBtn = h('button', { class: 'nt-all', onclick: async () => { await markAllRead(); list.querySelectorAll('.nt.new').forEach((x) => x.classList.remove('new')); allBtn.disabled = true; } }, '모두 읽음');
-  const d = drawer({ title: '알림', body: h('div', {}, pushRow(), h('div', { class: 'nt-bar' }, allBtn), list) });
+  // 모두 지우기 : 3초 안에 한 번 더 누르면 위에서부터 차례로 사라짐
+  let armed = 0;
+  const allBtn = h('button', { class: 'nt-all', onclick: async () => {
+    if (Date.now() - armed > 3000) {
+      armed = Date.now(); allBtn.textContent = '한 번 더 누르면 지웁니다'; allBtn.classList.add('arm');
+      setTimeout(() => { if (Date.now() - armed >= 2900) { allBtn.textContent = '모두 지우기'; allBtn.classList.remove('arm'); } }, 3000);
+      return;
+    }
+    allBtn.disabled = true;
+    try { await clearNotifs(); } catch { allBtn.disabled = false; allBtn.textContent = '모두 지우기'; allBtn.classList.remove('arm'); toast('지우지 못했습니다'); return; }
+    const items = [...list.querySelectorAll('.nt')];
+    items.forEach((x, i) => { x.style.animation = 'none'; x.style.transitionDelay = `${Math.min(i, 8) * 0.03}s`; x.classList.add('out'); });
+    setTimeout(() => { list.replaceChildren(h('div', { class: 'rp-empty' }, '알림이 없습니다')); bar.remove(); }, 260 + Math.min(items.length, 8) * 30);
+  } }, '모두 지우기');
+  const bar = h('div', { class: 'nt-bar' }, allBtn);
+  const d = drawer({ title: '알림', body: h('div', {}, pushRow(), bar, list) });
   listNotifs().then((rows) => {
-    allBtn.disabled = !rows.some((n) => !n.read_at);
-    if (!rows.length) { list.replaceChildren(h('div', { class: 'rp-empty' }, '알림이 없습니다')); return; }
+    if (!rows.length) { bar.remove(); list.replaceChildren(h('div', { class: 'rp-empty' }, '알림이 없습니다')); return; }
     list.replaceChildren(...rows.map((n, i) => h('button', { class: 'nt' + (n.read_at ? '' : ' new'), style: { animationDelay: `${Math.min(i, 10) * 0.025}s` },
       onclick: () => { markRead(n.id); d.close(); if (n.link) setTimeout(() => go(n.link), 200); } },
       h('span', { class: `nt-ic k-${n.kind}` }, icon(NICON[n.kind] || 'bell', 'icon s')),
