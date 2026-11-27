@@ -1,83 +1,281 @@
 import { sb } from '../sb.js';
-import { h, icon, gradeLabel, popover, toast } from '../ui.js';
+import { h, icon, gradeLabel, popover, toast, modal, seg, ago } from '../ui.js';
 import { S, seesAll, go } from '../app.js';
 import { shell } from './shell.js';
-import { loadFavs, removeFav, resetFavs } from '../data/favs.js';
+import { loadFavs } from '../data/favs.js';
 import { markViewed } from '../data/files.js';
 import { openPdf } from './pdf-viewer.js';
 import { openComments } from './comments.js';
 import { savedFile } from '../data/offline.js';
-import { bellButton, noticeStack, openSuggest, pushNudge } from './reports.js';
+import { bellButton, openSuggest, openNotifs } from './reports.js';
+import { listNotifs, markRead, onNotifChange } from '../data/reports.js';
+import { loadSubjects, loadProgress, loadEvents, addEvent, updateEvent, deleteEvent, setExam, loadRecent, loadWeek } from '../data/home.js';
 
-// 홈 : 인사 · 이어서 하기 · 과목 목록 (한 박스)
+// ─────────────────────────────────────────────
+// 홈 : 인사 + 찾기 / 과목 / 최근 본 자료, 이번 주 학습 / 다가오는 일정, 새 소식
+//  제목은 칸 밖, 내용은 흰 칸 안. 목록은 칸 높이에 들어가는 만큼만 보여 줌
+// ─────────────────────────────────────────────
+
+// 날마다 바뀌는 한마디 (짧고 담백하게)
+const LINES = [
+  '꾸준히 한 만큼 남습니다', '오늘 한 장이 시험장에서 한 문제가 됩니다', '조금씩이라도 매일 합니다', '어제보다 한 걸음만 더',
+  '틀린 문제가 제일 좋은 선생님입니다', '쉬어 가도 멈추지만 않으면 됩니다', '외운 건 다시 볼 때 내 것이 됩니다', '오늘 할 만큼만 해도 충분합니다',
+  '천천히, 그래도 꾸준히', '한 번 더 보면 오래 남습니다', '작은 습관이 성적을 만듭니다', '지금 보는 한 줄이 쌓입니다',
+];
+const DAY = ['일', '월', '화', '수', '목', '금', '토'];
+const NICON = { signup: 'bell', report: 'siren', suggest: 'chat', done: 'check', upload: 'file', comment: 'chat', device: 'shield' };
+const KIND_ICON = { flash: 'layers', past: 'list', pred: 'list', hanja_r: 'pen', hanja_h: 'pen', hanja_grid: 'pen', jung_translate: 'pen', um_order: 'list', wordlist: 'list' };
+const fileTitle = (f) => [f.series || (f.filename || '').replace(/\.pdf$/i, ''), f.mode === 'weekly' ? f.week : ''].filter(Boolean).join(' ');
+const dayStart = (d) => { const x = new Date(d); x.setHours(0, 0, 0, 0); return x; };
+const dDays = (t) => Math.round((dayStart(t) - dayStart(new Date())) / 86400e3);
+const hm = (t) => {
+  const d = new Date(t); const H = d.getHours(); const M = d.getMinutes();
+  if (H === 23 && M === 59) return '밤 11시 59분';
+  return `${H < 12 ? '오전' : '오후'} ${H % 12 || 12}시${M ? ` ${M}분` : ''}`;
+};
+
 export function homeView(q) {
   const g = parseInt(q.get('g'), 10) || S.grade || 1;
   const s = parseInt(q.get('s'), 10) || S.sem || 1;
-  const today = new Date().toLocaleDateString('ko-KR', { month: 'long', day: 'numeric', weekday: 'long' });
+  const now = new Date();
+  const today = now.toLocaleDateString('ko-KR', { month: 'long', day: 'numeric', weekday: 'long' });
+  const line = LINES[Math.floor(dayStart(now).getTime() / 86400e3) % LINES.length];
+  const cleanups = [];
 
-  const semBtn = h('button', { class: 'sem-pill' + (seesAll() ? '' : ' fixed') }, gradeLabel(g, s), seesAll() ? icon('down', 'icon s') : null);
+  // ── 인사 + 찾기 ──
+  const search = h('button', { class: 'hm-search', onclick: () => openSearch() },
+    icon('search'), h('span', {}, '과목, 자료, 카드 찾기'), h('kbd', {}, navigator.platform?.includes('Mac') ? '⌘K' : 'Ctrl K'));
+  const hello = h('div', { class: 'hm-hello' },
+    h('span', { class: 'hm-wave', 'aria-hidden': 'true' }, '👋'),
+    h('div', { class: 'hm-hi' }, h('h1', {}, `${S.profile.name || ''}님, 안녕하세요`), h('p', {}, `${today}, ${line}`)),
+    search);
+  const onKey = (e) => { if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 'k') { e.preventDefault(); openSearch(); } };
+  document.addEventListener('keydown', onKey);
+  cleanups.push(() => document.removeEventListener('keydown', onKey));
+
+  // ── 과목 ──
+  const semBtn = h('button', { class: 'hm-sem' + (seesAll() ? '' : ' fixed') }, gradeLabel(g, s), seesAll() ? icon('down') : null);
   if (seesAll()) semBtn.addEventListener('click', () => openSemMenu(semBtn, g, s));
+  const rail = h('div', { class: 'hm-rail' }, Array.from({ length: 4 }, () => h('i', { class: 'skel hm-sk' })));
+  const prev = h('button', { class: 'hm-ic', 'aria-label': '앞 과목', disabled: true, onclick: () => slide(-1) }, icon('left'));
+  const next = h('button', { class: 'hm-ic', 'aria-label': '다음 과목', onclick: () => slide(1) }, icon('right'));
+  const slide = (d) => rail.scrollBy({ left: d * Math.max(200, rail.clientWidth - 120), behavior: 'smooth' });
+  const navPaint = () => {
+    prev.disabled = rail.scrollLeft < 4;
+    next.disabled = rail.scrollLeft + rail.clientWidth > rail.scrollWidth - 4;
+    rail.classList.toggle('more', !next.disabled);
+  };
+  rail.addEventListener('scroll', navPaint, { passive: true });
 
-  const resume = h('div', { class: 'resume-slot' });
-  const list = h('div', { class: 'tiles2' }, Array.from({ length: 4 }, () => h('i', { class: 'skel tile-skel' })));
-  const count = h('span', { class: 'cnt' });
-  const stack = noticeStack();
+  // ── 칸 ──
+  const recentBox = h('div', { class: 'hm-list' });
+  const weekBox = h('div', { class: 'hm-week' });
+  const evBox = h('div', { class: 'hm-list hm-ev' });
+  const newsBox = h('div', { class: 'hm-list' });
+  const sec = (cls, title, btn, box) => h('section', { class: `hm-sec ${cls}` },
+    h('div', { class: 'hm-lb' }, title, h('span', { class: 'g' }), btn),
+    h('div', { class: 'hm-pn' }, box));
+  const iconBtn = (ic, label, fn) => h('button', { class: 'hm-ic', 'aria-label': label, title: label, onclick: fn }, icon(ic));
+
+  let subjects = [];
+  const body = h('div', { class: 'hm' },
+    hello,
+    h('div', { class: 'hm-grid' },
+      h('section', { class: 'hm-sec hm-subj' },
+        h('div', { class: 'hm-lb' }, semBtn, h('span', { class: 'g' }), prev, next),
+        rail),
+      sec('hm-recent', h('h2', {}, '최근 본 자료'), iconBtn('right', '최근 본 자료 전체', () => openRecentAll()), recentBox),
+      sec('hm-wk', h('h2', {}, '이번 주 학습'), iconBtn('right', '내 학습', () => go('#/stats')), weekBox),
+      h('div', { class: 'hm-side' },
+        sec('hm-plan', h('h2', {}, '다가오는 일정'), iconBtn('pen', '일정 고치기', () => openPlan(g, s, subjects, refreshPlan)), evBox),
+        sec('hm-news', h('h2', {}, '새 소식'), iconBtn('bell', '알림', () => openNotifs()), newsBox))));
+
+  // 목록은 칸 높이에 통째로 들어가는 줄만 보여 줌
+  const fits = [];
+  const fit = (box) => {
+    const rows = [...box.children].filter((x) => x.classList.contains('hm-row'));
+    rows.forEach((r) => { r.hidden = false; });
+    const lim = box.clientHeight;
+    if (!lim || getComputedStyle(box).overflow === 'visible') return;
+    rows.forEach((r) => { if (r.offsetTop + r.offsetHeight > lim + 1) r.hidden = true; });
+  };
+  const ro = new ResizeObserver(() => fits.forEach(fit));
+  [recentBox, evBox, newsBox].forEach((b) => { fits.push(b); ro.observe(b); });
+  cleanups.push(() => ro.disconnect());
+  const refit = () => requestAnimationFrame(() => fits.forEach(fit));
+
+  // ── 과목 + 진도 + 일정 ──
+  let events = [];
+  function examsOf(list) {
+    const out = [];
+    for (const sub of list) for (const r of sub.ranges) if (r.exam_at && dDays(r.exam_at) >= 0) out.push({ major: true, sub, range: r, at: r.exam_at });
+    return out;
+  }
+  function paintPlan() {
+    const all = [...examsOf(subjects), ...events.map((e) => ({ ev: e, at: e.at }))].sort((a, b) => new Date(a.at) - new Date(b.at));
+    if (!all.length) {
+      evBox.replaceChildren(h('button', { class: 'hm-empty', onclick: () => openPlan(g, s, subjects, refreshPlan) }, '시험이나 과제를 넣어 두면 여기에 보입니다'));
+      return;
+    }
+    evBox.replaceChildren(...all.map((x, i) => {
+      const d = new Date(x.at); const n = dDays(x.at);
+      const title = x.major ? x.sub.name : x.ev.title;
+      const kind = x.major ? `${/^(중간|기말)$/.test(x.range.name) ? `${x.range.name}고사` : `${x.range.name} 시험`}`
+        : `${x.ev.scope === 'grade' ? '학과 ' : ''}${{ exam: '시험', task: '과제', etc: '일정' }[x.ev.kind]}`;
+      const left = n === 0 ? 'D-DAY' : `D-${n}`;
+      return h('div', { class: 'hm-row hm-evr' + (i === 0 ? ' hot' : '') },
+        h('span', { class: 'hm-dt' }, h('b', {}, String(d.getDate())), h('span', {}, `${d.getMonth() + 1}월 ${DAY[d.getDay()]}`)),
+        h('span', { class: 'hm-tx' }, h('b', {}, title), h('span', {}, `${kind}, ${hm(x.at)}`)),
+        h('span', { class: 'hm-left' }, left));
+    }));
+    refit();
+  }
+  async function refreshPlan() {
+    try { subjects = await loadSubjects(g, s); } catch { /* 그대로 */ }
+    events = await loadEvents(g);
+    paintSubjects(lastProg); paintPlan();
+  }
+
+  let lastProg = new Map();
+  function paintSubjects(prog) {
+    lastProg = prog;
+    if (!subjects.length) { rail.replaceChildren(h('div', { class: 'hm-none' }, navigator.onLine ? '등록된 과목이 없습니다' : '인터넷에 연결되면 과목이 보입니다')); return; }
+    const next = (sub) => sub.ranges.filter((r) => r.exam_at && dDays(r.exam_at) >= 0).sort((a, b) => new Date(a.exam_at) - new Date(b.exam_at))[0];
+    const ord = subjects.map((sub, i) => ({ sub, i, nx: next(sub) }))
+      .sort((a, b) => (a.nx ? new Date(a.nx.exam_at) : Infinity) - (b.nx ? new Date(b.nx.exam_at) : Infinity) || a.i - b.i);
+    rail.replaceChildren(...ord.map(({ sub, nx }, i) => {
+      const p = prog.get(sub.id);
+      const pct = p && p.total ? Math.round((p.ok / p.total) * 100) : null;
+      const n = nx ? dDays(nx.exam_at) : null;
+      const sub2 = nx ? `${nx.name} ${n === 0 ? 'D-DAY' : `D-${n}`}` : sub.ranges.map((r) => r.name).join(', ');
+      return h('button', { class: 'hm-card', style: { animationDelay: `${i * 0.035}s` }, onclick: () => go(`#/s/${sub.id}`) },
+        h('span', { class: 'hm-emo' }, sub.icon || sub.name.slice(0, 1)),
+        h('span', { class: 'hm-name' }, sub.name),
+        h('span', { class: 'hm-sub' + (n !== null && n <= 10 ? ' r' : '') }, sub2),
+        pct === null ? h('span', { class: 'hm-pb' }) : h('span', { class: 'hm-pb' }, h('span', { class: 'hm-bar' }, h('i', { style: { width: `${pct}%` } })), `${pct}%`));
+    }));
+    requestAnimationFrame(navPaint);
+  }
+
+  (async () => {
+    try { subjects = await loadSubjects(g, s); } catch { subjects = []; }
+    paintSubjects(new Map());
+    const [prog, evs] = await Promise.all([loadProgress(subjects.map((x) => x.id)), loadEvents(g)]);
+    events = evs;
+    paintSubjects(prog); paintPlan(); paintWeak(prog);
+  })();
+
+  // ── 최근 본 자료 ──
+  let recent = [];
+  function recentRow(x, i) {
+    const cur = i === 0 ? ' cur' : '';
+    if (x.type === 'study') {
+      const kind = x.hash.match(/[?&]b=([^&]+)/)?.[1] || '';
+      const sid = x.hash.match(/#\/s\/([^?]+)/)?.[1];
+      const sub = subjects.find((v) => v.id === sid);
+      return h('button', { class: 'hm-row' + cur, onclick: () => go(x.hash) },
+        h('span', { class: 'hm-ri' }, icon(KIND_ICON[kind] || 'play')),
+        h('span', { class: 'hm-tx' }, h('b', {}, x.label), h('span', {}, sub ? `${sub.name}, 이어서 학습하기` : '이어서 학습하기')),
+        h('span', { class: 'hm-t' }, ago(x.at)));
+    }
+    const f = x.file;
+    return h('button', { class: 'hm-row' + cur, onclick: () => openFile(f) },
+      h('span', { class: 'hm-ri' }, icon('file')),
+      h('span', { class: 'hm-tx' }, h('b', {}, fileTitle(f)), h('span', {}, f.subjects?.name || '')),
+      h('span', { class: 'hm-t' }, ago(x.at)));
+  }
+  loadRecent(12).then((list) => {
+    recent = list;
+    if (!list.length) { recentBox.replaceChildren(h('div', { class: 'hm-empty' }, '자료를 열거나 공부를 시작하면 여기에 보입니다')); return; }
+    recentBox.replaceChildren(...list.map(recentRow));
+    refit();
+  }).catch(() => recentBox.replaceChildren(h('div', { class: 'hm-empty' }, '인터넷에 연결되면 보입니다')));
+
+  function openRecentAll() {
+    const body2 = h('div', { class: 'hm-all' }, h('div', { class: 'hm-list free' }, recent.length ? recent.map(recentRow) : h('div', { class: 'hm-empty' }, '아직 본 자료가 없습니다')));
+    const favs = h('div', { class: 'hm-list free' });
+    loadFavs().then((list) => {
+      if (!list.length) return;
+      body2.append(h('h3', { class: 'hm-h3' }, '즐겨찾기'), favs);
+      favs.replaceChildren(...list.map((x) => h('button', { class: 'hm-row', onclick: () => { m.close(); openFav(x); } },
+        h('span', { class: 'hm-ri' }, icon('star')), h('span', { class: 'hm-tx' }, h('b', {}, x.title), h('span', {}, x.sub)), h('span', { class: 'hm-t' }))));
+    }).catch(() => {});
+    const m = modal({ title: '최근 본 자료', body: body2 });
+    body2.addEventListener('click', (e) => { if (e.target.closest('.hm-row')) setTimeout(() => m.close(), 0); });
+  }
+
+  // ── 이번 주 학습 ──
+  let weak = null;
+  function paintWeak(prog) {
+    const list = subjects.map((sub) => ({ sub, p: prog.get(sub.id) }))
+      .filter((x) => x.p && x.p.q_ok + x.p.q_no >= 5)
+      .map((x) => ({ ...x, rate: Math.round((x.p.q_ok / (x.p.q_ok + x.p.q_no)) * 100) }))
+      .sort((a, b) => a.rate - b.rate).slice(0, 2);
+    weak = list;
+    paintWeek();
+  }
+  let week = null;
+  function paintWeek() {
+    if (!week) return;
+    const max = Math.max(1, ...week.days.map((x) => x.n));
+    const diff = week.total - week.last;
+    weekBox.replaceChildren(
+      h('div', { class: 'hm-tot' }, h('b', {}, week.total.toLocaleString()), h('span', {}, '문제')),
+      h('div', { class: 'hm-cmp' }, week.last || week.total
+        ? (diff >= 0 ? ['지난주보다 ', h('em', {}, `${diff.toLocaleString()}문제`), ' 더 풀었어요'] : ['지난주보다 ', h('em', {}, `${(-diff).toLocaleString()}문제`), ' 덜 풀었어요'])
+        : '이번 주 첫 문제를 풀어 보세요'),
+      h('div', { class: 'hm-bars' }, week.days.map((x, i) => h('div', { class: i === week.today ? 'on' : '' },
+        i === week.today && x.n ? h('b', { style: { bottom: `calc(${Math.max(6, (x.n / max) * 100)}% + 30px)` } }, String(x.n)) : null,
+        h('i', { style: { height: `${Math.max(6, (x.n / max) * 100)}%` } }),
+        h('span', {}, DAY[i])))),
+      weak?.length ? h('div', { class: 'hm-weak' }, h('div', { class: 'k' }, '정답률이 낮은 과목'),
+        weak.map((w, i) => h('button', { class: 'hm-wr', onclick: () => go(`#/s/${w.sub.id}`) },
+          h('span', { class: 'hm-tx' }, h('b', {}, w.sub.name), h('span', {}, `기출과 예상문제 ${w.p.q_ok + w.p.q_no}문항`)),
+          h('span', { class: 'hm-rate' + (i === 0 && w.rate < 70 ? ' r' : '') }, `${w.rate}%`)))) : null);
+  }
+  loadWeek().then((w) => { week = w; paintWeek(); }).catch(() => weekBox.replaceChildren(h('div', { class: 'hm-empty' }, '인터넷에 연결되면 보입니다')));
+
+  // ── 새 소식 ──
+  async function paintNews() {
+    let rows = [];
+    try { rows = await listNotifs(10); } catch { newsBox.replaceChildren(h('div', { class: 'hm-empty' }, '인터넷에 연결되면 보입니다')); return; }
+    if (!rows.length) { newsBox.replaceChildren(h('div', { class: 'hm-empty' }, '새 소식이 없습니다')); return; }
+    newsBox.replaceChildren(...rows.map((n) => h('button', { class: 'hm-row', onclick: () => { markRead(n.id); if (n.link) go(n.link); } },
+      h('span', { class: 'hm-ri' }, icon(NICON[n.kind] || 'bell')),
+      h('span', { class: 'hm-tx' }, h('b', {}, n.title), n.body ? h('span', {}, n.body) : null),
+      h('span', { class: 'hm-t' }, ago(n.created_at)),
+      n.read_at ? null : h('i', { class: 'hm-dot', 'aria-label': '안 읽음' }))));
+    refit();
+  }
+  paintNews();
+  cleanups.push(onNotifChange(paintNews));
+
+  // ── 화면 ──
   const bell = bellButton();
   const right = [h('button', { class: 'tool-ic', title: '건의하기', 'aria-label': '건의하기', onclick: () => openSuggest() }, icon('chat')), bell];
-
-  const body = h('div', { class: 'home2' },
-    h('aside', { class: 'h-left' },
-      h('div', { class: 'wave-hand' }, '👋'),
-      h('h1', {}, `${S.profile.name || ''}님,`, h('br'), '안녕하세요'),
-      h('div', { class: 'date' }, today),
-      h('div', { class: 'h-acts' },
-        resume,
-        favBox(),
-        pushNudge(),
-        stack)),
-    h('section', { class: 'h-right' },
-      h('div', { class: 'r-head' }, semBtn, count),
-      list),
-  );
-
-  // 이어서 하기
-  let subjList = null;
-  sb.from('user_state').select('value').eq('user_id', S.user.id).eq('key', 'last').maybeSingle().then(({ data }) => {
-    const v = data?.value;
-    if (!v?.hash || !v?.label) return;
-    const sid = v.hash.match(/#\/s\/([^?]+)/)?.[1];
-    const ss = subjList?.find((x) => x.id === sid);
-    resume.append(h('button', { class: 'resume3', 'data-sid': sid || '', onclick: () => go(v.hash) },
-      h('span', { class: 'r-emo' }, ss ? ss.icon || ss.name.slice(0, 1) : ''),
-      h('span', { class: 'r-tx' }, h('span', { class: 'k' }, '이어서 학습하기'), h('span', { class: 'v' }, v.label)),
-      h('span', { class: 'r-go' }, icon('right'))));
-  });
-
-  // 과목
-  sb.from('subjects').select('id,name,sort,icon,ranges(name,sort),blocks(kind)').eq('grade', g).eq('semester', s).order('sort').order('name').then(({ data, error }) => {
-    if (error || !data?.length) { list.replaceChildren(h('div', { class: 'box-empty' }, !navigator.onLine || error ? '인터넷에 연결되면 과목이 보입니다' : '등록된 과목이 없습니다')); count.textContent = ''; return; }
-    count.textContent = `${data.length}과목`;
-    subjList = data;
-    // 이어서 하기 카드에 과목 이모지
-    const rb = resume.querySelector('.resume3'); const rs = rb && data.find((x) => x.id === rb.dataset.sid);
-    if (rs) rb.querySelector('.r-emo').textContent = rs.icon || rs.name.slice(0, 1);
-    list.replaceChildren(...data.map((sub, i) => h('button', { class: 'tile2', style: { animationDelay: `${i * 0.035}s` }, onclick: () => go(`#/s/${sub.id}`) },
-      h('span', { class: 'emo' }, sub.icon || sub.name.slice(0, 1)),
-      h('span', { class: 'n' }, sub.name),
-      h('span', { class: 'm' }, (sub.ranges || []).sort((a, b) => a.sort - b.sort).map((r) => r.name).join(' · ') || ''))));
-  });
-
   const logo = h('button', { class: 'logo-btn', 'aria-label': '홈', onclick: () => go('#/home') },
     h('img', { class: 'logo-h', src: 'icons/logo-h.png', alt: '工夫韓醫 YRR STUDY' }));
   const root = shell({ title: logo, active: 'home', body, right, tone: 'gray', fit: 'home-fit' });
-  const prev = root.cleanup;
-  root.cleanup = () => { prev?.(); stack.cleanup?.(); bell.cleanup?.(); };
-  // 알림에서 넘어온 경우
+  const prevClean = root.cleanup;
+  root.cleanup = () => { prevClean?.(); bell.cleanup?.(); cleanups.forEach((f) => f()); };
   if (q.get('open') === 'suggest') {
     history.replaceState(null, '', '#/home');
     setTimeout(() => openSuggest({ focusId: q.get('id') }), 250);
   }
   return root;
+}
+
+// 자료 열기
+async function openFile(f) {
+  markViewed(f);
+  openPdf(f, { onComments: () => openComments(f, {}) });
+}
+async function openFav(x) {
+  let f = null; let net = true;
+  try { const r = await sb.from('files').select('*').eq('id', x.id).maybeSingle(); if (r.error) throw r.error; f = r.data; } catch { net = false; }
+  if (!net) { f = savedFile(x.id); if (!f) { toast('인터넷에 연결되면 열 수 있습니다'); return; } openPdf(f); return; }
+  if (!f) { toast('지워진 자료입니다'); return; }
+  openFile(f);
 }
 
 // 학기 이동 (전체 열람 계정)
@@ -92,36 +290,146 @@ async function openSemMenu(anchor, g, s) {
   }, gradeLabel(gg, ss), gg === g && ss === s ? icon('check', 'icon s') : null))));
 }
 
-// 즐겨찾기 자료 : 눌러서 바로 열기, ★ 눌러서 빼기
-function favBox() {
-  const el = h('div', { class: 'fav' });
-  let all = false;
-  resetFavs();
-  const paint = (list) => {
-    if (!list.length) { el.replaceChildren(); el.classList.remove('on'); return; }
-    el.classList.add('on');
-    const shown = all ? list : list.slice(0, 3);
-    el.replaceChildren(
-      h('div', { class: 'fav-h' }, h('b', {}, '즐겨찾기'), h('span', {}, `${list.length}`),
-        list.length > 3 ? h('button', { onclick: () => { all = !all; paint(list); } }, all ? '접기' : '모두 보기') : null),
-      h('div', { class: 'fav-list' }, shown.map((x, i) => h('div', { class: 'fav-i', style: { animationDelay: `${i * 0.04}s` } },
-        h('button', { class: 'fav-main', onclick: () => open(x) },
-          h('span', { class: 'fav-ic' }, x.icon || 'PDF'),
-          h('span', { class: 'fav-tx' }, h('b', {}, x.title), h('span', {}, x.sub, savedFile(x.id) ? h('i', { class: 'fav-off', title: '이 기기에 저장됨' }, icon('download', 'icon s')) : null))),
-        h('button', { class: 'fav-x', 'aria-label': '즐겨찾기 빼기', title: '즐겨찾기 빼기', onclick: async () => { await removeFav(x.id); paint(await loadFavs()); } }, icon('star', 'icon s'))))));
-  };
-  async function open(x) {
-    let f = null; let net = true;
-    try { const r = await sb.from('files').select('*').eq('id', x.id).maybeSingle(); if (r.error) throw r.error; f = r.data; } catch { net = false; }
-    if (!net) {
-      f = savedFile(x.id);
-      if (!f) { toast('인터넷에 연결되면 열 수 있습니다'); return; }
-      openPdf(f); return;
+// ─────────────────────────────────────────────
+// 일정 고치기 : 전공 시험 날짜 / 일정 넣기 (학과 일정, 개인 일정)
+// ─────────────────────────────────────────────
+const pad = (n) => String(n).padStart(2, '0');
+const toLocal = (t) => { if (!t) return ''; const d = new Date(t); return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`; };
+const fromLocal = (v) => (v ? new Date(v).toISOString() : null);
+
+function openPlan(g, s, subjects, onChange) {
+  let changed = false;
+  const tabs = seg([['add', '일정 넣기'], ['major', '전공 시험']], 'add', (v) => paint(v));
+  const area = h('div', { class: 'pl-area' });
+  const m = modal({ title: '다가오는 일정', body: h('div', { class: 'pl' }, tabs, area), onClose: () => { if (changed) onChange(); } });
+
+  function paint(v) { area.replaceChildren(v === 'add' ? addView() : majorView()); }
+
+  // 전공 시험 : 과목 범위마다 날짜
+  function majorView() {
+    if (!subjects.length) return h('div', { class: 'hm-empty' }, '이 학기에 과목이 없습니다');
+    const wrap = h('div', { class: 'pl-major' },
+      h('p', { class: 'pl-note' }, `${gradeLabel(g)} 모두에게 보이고, 같은 학년이면 누구나 고칠 수 있습니다.`));
+    for (const sub of subjects) for (const r of sub.ranges) {
+      const inp = h('input', { class: 'input pl-dt', type: 'datetime-local', value: toLocal(r.exam_at) });
+      const clr = h('button', { class: 'hm-ic', 'aria-label': '날짜 지우기', title: '날짜 지우기', hidden: !r.exam_at }, icon('x'));
+      const save = async (val) => {
+        const { error } = await setExam(r.id, val);
+        if (error) { toast('저장하지 못했습니다'); return; }
+        r.exam_at = val; changed = true; clr.hidden = !val; toast('저장했습니다');
+      };
+      inp.addEventListener('change', () => save(fromLocal(inp.value)));
+      clr.addEventListener('click', () => { inp.value = ''; save(null); });
+      wrap.append(h('div', { class: 'pl-row' },
+        h('span', { class: 'pl-emo' }, sub.icon || sub.name.slice(0, 1)),
+        h('span', { class: 'pl-tx' }, h('b', {}, sub.name), h('span', {}, r.name)),
+        inp, clr));
     }
-    if (!f) { toast('지워진 자료라 즐겨찾기에서 뺐습니다'); await removeFav(x.id); paint(await loadFavs()); return; }
-    markViewed(f);
-    openPdf(f, { onComments: () => openComments(f, {}) });
+    return wrap;
   }
-  loadFavs().then(paint).catch(() => {});
-  return el;
+
+  // 일정 넣기 : 학과 / 개인, 시험 / 과제 / 기타
+  function addView() {
+
+    const kind = seg([['exam', '시험'], ['task', '과제'], ['etc', '기타']], 'exam');
+    const title = h('input', { class: 'input', placeholder: '이름 (예: 교양 영어 중간고사)', maxlength: 60 });
+    const dflt = new Date(); dflt.setDate(dflt.getDate() + 1); dflt.setHours(9, 0, 0, 0);
+    const when = h('input', { class: 'input', type: 'datetime-local', value: toLocal(dflt) });
+    const hint = h('p', { class: 'pl-note' });
+    const sh = (v) => { hint.textContent = v === 'grade' ? `${gradeLabel(g)} 모두에게 보이고, 같은 학년이면 누구나 고치고 지울 수 있습니다.` : '나에게만 보입니다.'; };
+    const scope = seg([['grade', '학과 일정'], ['me', '개인 일정']], 'me', sh); sh('me');
+    const list = h('div', { class: 'pl-list' });
+    const add = h('button', { class: 'btn primary pl-add', onclick: async () => {
+      const t = title.value.trim();
+      if (!t) { title.focus(); return; }
+      if (!when.value) { when.focus(); return; }
+      add.disabled = true;
+      const row = { scope: scope.get(), kind: kind.get(), title: t, at: fromLocal(when.value), ...(scope.get() === 'grade' ? { grade: g } : {}) };
+      const { error } = await addEvent(row);
+      add.disabled = false;
+      if (error) { toast('넣지 못했습니다'); return; }
+      changed = true; title.value = ''; toast('넣었습니다'); loadList();
+    } }, '넣기');
+    title.addEventListener('keydown', (e) => { if (e.key === 'Enter' && !e.isComposing) add.click(); });
+
+    async function loadList() {
+      const evs = await loadEvents(g);
+      if (!evs.length) { list.replaceChildren(); return; }
+      list.replaceChildren(h('h3', { class: 'hm-h3' }, '넣어 둔 일정'), ...evs.map((e) => {
+        let armed = 0;
+        const del = h('button', { class: 'hm-ic pl-del', 'aria-label': '지우기', title: '지우기' }, icon('trash'));
+        del.onclick = async () => {
+          if (Date.now() - armed > 3000) { armed = Date.now(); del.classList.add('arm'); setTimeout(() => del.classList.remove('arm'), 3000); return; }
+          const { error } = await deleteEvent(e.id);
+          if (error) { toast('지우지 못했습니다'); return; }
+          changed = true; loadList();
+        };
+        const inp = h('input', { class: 'input pl-dt', type: 'datetime-local', value: toLocal(e.at) });
+        inp.addEventListener('change', async () => {
+          if (!inp.value) return;
+          const { error } = await updateEvent(e.id, { at: fromLocal(inp.value) });
+          if (error) toast('저장하지 못했습니다'); else { changed = true; toast('저장했습니다'); }
+        });
+        return h('div', { class: 'pl-row' },
+          h('span', { class: 'pl-tx' }, h('b', {}, e.title), h('span', {}, `${e.scope === 'grade' ? '학과' : '개인'} ${{ exam: '시험', task: '과제', etc: '기타' }[e.kind]}`)),
+          inp, del);
+      }));
+    }
+    loadList();
+    return h('div', { class: 'pl-add-wrap' },
+      h('div', { class: 'pl-field' }, h('label', {}, '누구에게'), scope),
+      h('div', { class: 'pl-field' }, h('label', {}, '종류'), kind),
+      h('div', { class: 'pl-field' }, h('label', {}, '이름'), title),
+      h('div', { class: 'pl-field' }, h('label', {}, '날짜와 시간'), when),
+      hint, add, list);
+  }
+  paint('add');
+  return m;
+}
+
+// ─────────────────────────────────────────────
+// 찾기 : 과목, 자료, 카드 (⌘K)
+// ─────────────────────────────────────────────
+let searchOpen = null;
+function openSearch() {
+  if (searchOpen) { searchOpen.focus(); return; }
+  const inp = h('input', { class: 'sr-in', placeholder: '과목, 자료, 카드 찾기', autocomplete: 'off', enterkeyhint: 'search' });
+  const res = h('div', { class: 'sr-res' });
+  const box = h('div', { class: 'sr-box', role: 'dialog', 'aria-modal': 'true' }, h('div', { class: 'sr-top' }, icon('search'), inp), res);
+  const wrap = h('div', { class: 'sr-wrap', onclick: (e) => { if (e.target === wrap) close(); } }, box);
+  document.body.append(wrap);
+  requestAnimationFrame(() => { wrap.classList.add('on'); inp.focus(); });
+  searchOpen = inp;
+  let sel = 0; let items = [];
+  const onKey = (e) => {
+    if (e.key === 'Escape') { close(); return; }
+    if (e.key === 'ArrowDown' || e.key === 'ArrowUp') { e.preventDefault(); sel = Math.max(0, Math.min(items.length - 1, sel + (e.key === 'ArrowDown' ? 1 : -1))); mark(); }
+    if (e.key === 'Enter' && !e.isComposing && items[sel]) { e.preventDefault(); items[sel].click(); }
+  };
+  document.addEventListener('keydown', onKey);
+  function close() { wrap.classList.remove('on'); document.removeEventListener('keydown', onKey); searchOpen = null; setTimeout(() => wrap.remove(), 220); }
+  const mark = () => items.forEach((b, i) => b.classList.toggle('sel', i === sel));
+  const row = (ic, t, sub, fn) => h('button', { class: 'hm-row', onclick: () => { close(); fn(); } }, h('span', { class: 'hm-ri' }, ic), h('span', { class: 'hm-tx' }, h('b', {}, t), sub ? h('span', {}, sub) : null));
+  let tm = 0; let seq = 0;
+  inp.addEventListener('input', () => { clearTimeout(tm); tm = setTimeout(run, 180); });
+  async function run() {
+    const qv = inp.value.trim().replace(/[%,()]/g, ' ').trim();
+    const my = ++seq;
+    if (!qv) { res.replaceChildren(); items = []; return; }
+    const like = `%${qv}%`;
+    const [subs, files, cards] = await Promise.all([
+      sb.from('subjects').select('id,name,icon,grade,semester').ilike('name', like).limit(6),
+      sb.from('files').select('*,subjects(name)').or(`series.ilike.${like},filename.ilike.${like}`).limit(6),
+      sb.from('flash_cards').select('id,front,back,range_id,ranges(subject_id,subjects(name))').or(`front.ilike.${like},back.ilike.${like}`).limit(8),
+    ]);
+    if (my !== seq) return;
+    const out = [];
+    if (subs.data?.length) out.push(h('h3', { class: 'hm-h3' }, '과목'), ...subs.data.map((x) => row(h('span', { class: 'sr-emo' }, x.icon || x.name.slice(0, 1)), x.name, gradeLabel(x.grade, x.semester), () => go(`#/s/${x.id}`))));
+    if (files.data?.length) out.push(h('h3', { class: 'hm-h3' }, '자료'), ...files.data.map((f) => row(icon('file'), fileTitle(f), f.subjects?.name, () => openFile(f))));
+    if (cards.data?.length) out.push(h('h3', { class: 'hm-h3' }, '카드'), ...cards.data.map((c) => row(icon('layers'), c.front.split('\n')[0].slice(0, 60), `${c.ranges?.subjects?.name || ''}${c.back ? `, ${c.back.split('\n')[0].slice(0, 40)}` : ''}`,
+      () => go(`#/s/${c.ranges?.subject_id}?r=${c.range_id}&b=flash`))));
+    if (!out.length) out.push(h('div', { class: 'hm-empty' }, '찾는 내용이 없습니다'));
+    res.replaceChildren(...out);
+    items = [...res.querySelectorAll('.hm-row')]; sel = 0; mark();
+  }
 }
