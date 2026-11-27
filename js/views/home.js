@@ -300,57 +300,86 @@ async function openSemMenu(anchor, g, s) {
 // 일정 고치기 : 전공 시험 날짜 / 일정 넣기 (학과 일정, 개인 일정)
 // ─────────────────────────────────────────────
 const pad = (n) => String(n).padStart(2, '0');
-const toLocal = (t) => { if (!t) return ''; const d = new Date(t); return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`; };
-const fromLocal = (v) => (v ? new Date(v).toISOString() : null);
 
 function openPlan(g, s, subjects, onChange) {
   let changed = false;
-  const tabs = seg([['add', '일정 넣기'], ['major', '전공 시험']], 'add', (v) => paint(v));
+  const admin = seesAll();
+  let grade = g;                       // 관리자는 학년을 골라 다른 학년 일정도 넣고 고침
+  let tab = 'add';
+  const tabs = seg([['add', '일정 넣기'], ['major', '전공 시험']], 'add', (v) => { tab = v; paint(); });
+  const gradeSel = admin ? h('select', { class: 'pl-grade', 'aria-label': '학년' },
+    [1, 2, 3, 4, 5, 6].map((n) => h('option', { value: n, selected: n === g }, gradeLabel(n)))) : null;
+  gradeSel?.addEventListener('change', () => { grade = Number(gradeSel.value); paint(); });
   const area = h('div', { class: 'pl-area' });
-  const m = modal({ title: '다가오는 일정', body: h('div', { class: 'pl' }, tabs, area), onClose: () => { if (changed) onChange(); } });
+  const m = modal({ title: '다가오는 일정', body: h('div', { class: 'pl' }, h('div', { class: 'pl-tabs' }, tabs, gradeSel), area), onClose: () => { if (changed) onChange(); } });
+  m.box.classList.add('pl-modal');
 
-  function paint(v) { area.replaceChildren(v === 'add' ? addView() : majorView()); }
+  function paint() { area.replaceChildren(tab === 'add' ? addView() : majorView()); }
 
-  // 전공 시험 : 과목 범위마다 날짜
+  const field = (label, ...ctl) => h('div', { class: 'pl-f' }, h('span', { class: 'pl-k' }, label), h('div', { class: 'pl-v' }, ...ctl));
+  const dateInputs = (t) => {
+    const d = t ? new Date(t) : null;
+    const di = h('input', { class: 'input pl-d', type: 'date', value: d ? `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}` : '' });
+    const ti = h('input', { class: 'input pl-t', type: 'time', step: 300, value: d ? `${pad(d.getHours())}:${pad(d.getMinutes())}` : '' });
+    const val = () => (di.value ? new Date(`${di.value}T${ti.value || '09:00'}`).toISOString() : null);
+    return { di, ti, val };
+  };
+
+  // ── 전공 시험 : 중간, 기말 탭으로 나눠 과목마다 날짜 ──
+  let rangeTab = null;
   function majorView() {
-    if (!subjects.length) return h('div', { class: 'hm-empty' }, '이 학기에 과목이 없습니다');
-    const wrap = h('div', { class: 'pl-major' },
-      h('p', { class: 'pl-note' }, `${gradeLabel(g)} 모두에게 보이고, 같은 학년이면 누구나 고칠 수 있습니다.`));
-    for (const sub of subjects) for (const r of sub.ranges) {
-      const inp = h('input', { class: 'input pl-dt', type: 'datetime-local', value: toLocal(r.exam_at) });
-      const clr = h('button', { class: 'hm-ic', 'aria-label': '날짜 지우기', title: '날짜 지우기', hidden: !r.exam_at }, icon('x'));
-      const save = async (val) => {
-        const { error } = await setExam(r.id, val);
-        if (error) { toast('저장하지 못했습니다'); return; }
-        r.exam_at = val; changed = true; clr.hidden = !val; toast('저장했습니다');
-      };
-      inp.addEventListener('change', () => save(fromLocal(inp.value)));
-      clr.addEventListener('click', () => { inp.value = ''; save(null); });
-      wrap.append(h('div', { class: 'pl-row' },
-        h('span', { class: 'pl-emo' }, sub.icon || sub.name.slice(0, 1)),
-        h('span', { class: 'pl-tx' }, h('b', {}, sub.name), h('span', {}, r.name)),
-        inp, clr));
-    }
+    const wrap = h('div', { class: 'pl-major' }, h('div', { class: 'hm-empty' }, '불러오는 중'));
+    (grade === g ? Promise.resolve(subjects) : loadSubjects(grade, s).catch(() => [])).then((subs) => {
+      const names = [...new Set(subs.flatMap((x) => x.ranges.map((r) => r.name)))];
+      if (!names.length) { wrap.replaceChildren(h('div', { class: 'hm-empty' }, '이 학기에 과목이 없습니다')); return; }
+      if (!names.includes(rangeTab)) rangeTab = names.find((n) => subs.some((x) => x.ranges.some((r) => r.name === n && r.exam_at && dDays(r.exam_at) >= 0))) || names[0];
+      const list = h('div', { class: 'pl-rows' });
+      const sub = names.length > 1 ? seg(names.map((n) => [n, n]), rangeTab, (v) => { rangeTab = v; fill(); }) : null;
+      function fill() {
+        const rows = [];
+        for (const x of subs) for (const r of x.ranges) if (r.name === rangeTab) rows.push([x, r]);
+        list.replaceChildren(...rows.map(([x, r]) => {
+          const { di, ti, val } = dateInputs(r.exam_at);
+          const clr = h('button', { class: 'hm-ic pl-clr', 'aria-label': '날짜 지우기', title: '날짜 지우기' }, icon('x'));
+          clr.style.visibility = r.exam_at ? 'visible' : 'hidden';
+          const save = async (v) => {
+            const { error } = await setExam(r.id, v);
+            if (error) { toast('저장하지 못했습니다'); return; }
+            r.exam_at = v; changed = true; clr.style.visibility = v ? 'visible' : 'hidden'; toast('저장했습니다');
+          };
+          di.addEventListener('change', () => { if (di.value && !ti.value) ti.value = '09:00'; save(val()); });
+          ti.addEventListener('change', () => { if (di.value) save(val()); });
+          clr.addEventListener('click', () => { di.value = ''; ti.value = ''; save(null); });
+          return h('div', { class: 'pl-row' },
+            h('span', { class: 'pl-emo' }, x.icon || x.name.slice(0, 1)),
+            h('span', { class: 'pl-tx' }, h('b', {}, x.name)),
+            di, ti, clr);
+        }));
+      }
+      fill();
+      wrap.replaceChildren(...[sub, list, h('p', { class: 'pl-note' }, `${gradeLabel(grade)} 학생 모두에게 보이고, 누구나 고칠 수 있습니다`)].filter(Boolean));
+    });
     return wrap;
   }
 
-  // 일정 넣기 : 학과 / 개인, 시험 / 과제 / 기타
+  // ── 일정 넣기 : 학과 / 개인, 시험 / 과제 / 기타 ──
   function addView() {
-
-    const kind = seg([['exam', '시험'], ['task', '과제'], ['etc', '기타']], 'exam');
-    const title = h('input', { class: 'input', placeholder: '이름 (예: 교양 영어 중간고사)', maxlength: 60 });
-    const dflt = new Date(); dflt.setDate(dflt.getDate() + 1); dflt.setHours(9, 0, 0, 0);
-    const when = h('input', { class: 'input', type: 'datetime-local', value: toLocal(dflt) });
+    let scopeV = 'me';
     const hint = h('p', { class: 'pl-note' });
-    const sh = (v) => { hint.textContent = v === 'grade' ? `${gradeLabel(g)} 모두에게 보이고, 같은 학년이면 누구나 고치고 지울 수 있습니다.` : '나에게만 보입니다.'; };
-    const scope = seg([['grade', '학과 일정'], ['me', '개인 일정']], 'me', sh); sh('me');
-    const list = h('div', { class: 'pl-list' });
+    const sh = () => { hint.textContent = scopeV === 'grade' ? `${gradeLabel(grade)} 학생 모두에게 보이고, 누구나 고치고 지울 수 있습니다` : '나에게만 보입니다'; };
+    const scope = seg([['me', '개인 일정'], ['grade', '학과 일정']], 'me', (v) => { scopeV = v; sh(); });
+    const kind = seg([['exam', '시험'], ['task', '과제'], ['etc', '기타']], 'exam');
+    const title = h('input', { class: 'input', placeholder: '예: 교양 영어 중간고사', maxlength: 60 });
+    const dflt = new Date(); dflt.setDate(dflt.getDate() + 1); dflt.setHours(9, 0, 0, 0);
+    const { di, ti, val } = dateInputs(dflt);
+    sh();
+    const list = h('div', { class: 'pl-saved' });
     const add = h('button', { class: 'btn primary pl-add', onclick: async () => {
       const t = title.value.trim();
       if (!t) { title.focus(); return; }
-      if (!when.value) { when.focus(); return; }
+      if (!di.value) { di.focus(); return; }
       add.disabled = true;
-      const row = { scope: scope.get(), kind: kind.get(), title: t, at: fromLocal(when.value), ...(scope.get() === 'grade' ? { grade: g } : {}) };
+      const row = { scope: scopeV, kind: kind.get(), title: t, at: val(), ...(scopeV === 'grade' ? { grade } : {}) };
       const { error } = await addEvent(row);
       add.disabled = false;
       if (error) { toast('넣지 못했습니다'); return; }
@@ -359,9 +388,10 @@ function openPlan(g, s, subjects, onChange) {
     title.addEventListener('keydown', (e) => { if (e.key === 'Enter' && !e.isComposing) add.click(); });
 
     async function loadList() {
-      const evs = await loadEvents(g);
+      const evs = await loadEvents(grade);
       if (!evs.length) { list.replaceChildren(); return; }
-      list.replaceChildren(h('h3', { class: 'hm-h3' }, '넣어 둔 일정'), ...evs.map((e) => {
+      list.replaceChildren(h('div', { class: 'pl-sh' }, '넣어 둔 일정'), ...evs.map((e) => {
+        const d = new Date(e.at);
         let armed = 0;
         const del = h('button', { class: 'hm-ic pl-del', 'aria-label': '지우기', title: '지우기' }, icon('trash'));
         del.onclick = async () => {
@@ -370,26 +400,22 @@ function openPlan(g, s, subjects, onChange) {
           if (error) { toast('지우지 못했습니다'); return; }
           changed = true; loadList();
         };
-        const inp = h('input', { class: 'input pl-dt', type: 'datetime-local', value: toLocal(e.at) });
-        inp.addEventListener('change', async () => {
-          if (!inp.value) return;
-          const { error } = await updateEvent(e.id, { at: fromLocal(inp.value) });
-          if (error) toast('저장하지 못했습니다'); else { changed = true; toast('저장했습니다'); }
-        });
-        return h('div', { class: 'pl-row' },
-          h('span', { class: 'pl-tx' }, h('b', {}, e.title), h('span', {}, `${e.scope === 'grade' ? '학과' : '개인'} ${{ exam: '시험', task: '과제', etc: '기타' }[e.kind]}`)),
-          inp, del);
+        return h('div', { class: 'pl-ev' },
+          h('span', { class: 'hm-dt' }, h('b', {}, String(d.getDate())), h('span', {}, `${d.getMonth() + 1}월 ${DAY[d.getDay()]}`)),
+          h('span', { class: 'hm-tx' }, h('b', {}, e.title), h('span', {}, `${e.scope === 'grade' ? '학과' : '개인'} ${{ exam: '시험', task: '과제', etc: '일정' }[e.kind]}, ${hm(e.at)}`)),
+          del);
       }));
     }
     loadList();
     return h('div', { class: 'pl-add-wrap' },
-      h('div', { class: 'pl-field' }, h('label', {}, '누구에게'), scope),
-      h('div', { class: 'pl-field' }, h('label', {}, '종류'), kind),
-      h('div', { class: 'pl-field' }, h('label', {}, '이름'), title),
-      h('div', { class: 'pl-field' }, h('label', {}, '날짜와 시간'), when),
+      h('div', { class: 'pl-form' },
+        field('대상', scope),
+        field('종류', kind),
+        field('이름', title),
+        field('날짜', di, ti)),
       hint, add, list);
   }
-  paint('add');
+  paint();
   return m;
 }
 

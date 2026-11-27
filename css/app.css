@@ -2338,22 +2338,46 @@ html.offline body::after{content:'인터넷 연결 없음. 이 기기에 저장�
 .sr-emo{font-size:20px;line-height:1}
 
 /* 일정 고치기 창 */
-.pl{display:flex;flex-direction:column;gap:18px}
+.modal.pl-modal{width:min(570px,calc(100vw - 32px))}
+.pl{display:flex;flex-direction:column}
+.pl-tabs{display:flex;align-items:center;gap:12px;margin:-4px 0 22px}
+.pl-grade{margin-left:auto;height:36px;border:0;background:#F2F4F6;border-radius:10px;padding:0 30px 0 12px;font:inherit;font-size:14px;font-weight:600;color:var(--text);-webkit-appearance:none;appearance:none;background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%238B95A1' stroke-width='2.2' stroke-linecap='round'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E");background-repeat:no-repeat;background-position:right 10px center;background-size:14px}
 .pl-note{font-size:13px;font-weight:500;color:#8B95A1;line-height:1.5}
-.pl-field{display:flex;flex-direction:column;gap:8px}
-.pl-field label{font-size:13px;font-weight:600;color:var(--sub)}
-.pl-add-wrap{display:flex;flex-direction:column;gap:16px}
-.pl-add{height:50px;font-size:16px}
-.pl .input{height:50px;font-size:16px}
-.pl-major{display:flex;flex-direction:column;gap:6px}
-.pl-row{display:flex;align-items:center;gap:12px;min-height:60px}
-.pl-emo{font-size:22px;width:28px;text-align:center;flex:none}
-.pl-tx{flex:1;min-width:0;display:flex;flex-direction:column}
-.pl-tx b{font-size:15px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.pl-tx span{font-size:12px;font-weight:500;color:#8B95A1;margin-top:2px}
-.pl .pl-dt{width:200px;flex:none;height:44px;font-size:14px;padding:0 10px}
+.pl-add-wrap{display:flex;flex-direction:column}
+.pl-form{display:flex;flex-direction:column;gap:14px}
+.pl-f{display:grid;grid-template-columns:52px 1fr;align-items:center;gap:12px;min-height:44px}
+.pl-k{font-size:14px;font-weight:600;color:#6B7684}
+.pl-v{display:flex;align-items:center;gap:8px;min-width:0}
+.pl-v .segc{margin-left:-8px;padding-bottom:5px}
+.pl .input{height:46px;font-size:15px;border-radius:12px;flex:1;min-width:0}
+.pl .pl-d{flex:1.4}.pl .pl-t{flex:1}
+.pl-add-wrap>.pl-note{margin:14px 0 0 64px}
+.pl-add{height:50px;font-size:16px;margin-top:20px;border-radius:14px}
+.pl-saved:empty{display:none}
+.pl-saved{margin-top:28px;display:flex;flex-direction:column}
+.pl-sh{font-size:13px;font-weight:600;color:#8B95A1;margin-bottom:4px}
+.pl-ev{display:flex;align-items:center;gap:14px;min-height:62px}
+.pl-ev+.pl-ev{box-shadow:inset 0 1px 0 #F2F4F6}
+.pl-major{display:flex;flex-direction:column;gap:10px}
+.pl-major>.segc{align-self:flex-start;margin:-4px 0 4px -8px}
+.pl-rows{display:flex;flex-direction:column}
+.pl-row{display:flex;align-items:center;gap:10px;min-height:60px}
+.pl-row+.pl-row{box-shadow:inset 0 1px 0 #F2F4F6}
+.pl-emo{font-size:22px;width:28px;text-align:center;flex:none;line-height:1}
+.pl-tx{flex:1;min-width:0}
+.pl-tx b{display:block;font-size:15px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.pl-row .pl-d{flex:0 0 150px;height:42px;font-size:14px;padding:0 10px}
+.pl-row .pl-t{flex:0 0 128px;height:42px;font-size:14px;padding:0 10px}
+.pl-clr{width:30px;height:30px;flex:none}.pl-clr .icon{width:16px;height:16px}
+.pl-major>.pl-note{margin-top:6px}
 .pl-del.arm{background:var(--red);color:#fff}
-.pl-list:empty{display:none}
+@media (max-width:520px){
+  .pl-row{flex-wrap:wrap;gap:8px 10px;padding:10px 0}
+  .pl-row .pl-tx{flex:1 1 calc(100% - 80px)}
+  .pl-row .pl-d{flex:1 1 0;margin-left:38px}.pl-row .pl-t{flex:0 0 118px}
+  .pl-f{grid-template-columns:44px 1fr}
+  .pl-add-wrap>.pl-note{margin-left:56px}
+}
 
 @media (max-width:1080px),(orientation:portrait),(max-height:680px){
   .home-fit{height:auto;min-height:100vh;min-height:100dvh;overflow:visible;display:block}
@@ -2381,7 +2405,6 @@ html.offline body::after{content:'인터넷 연결 없음. 이 기기에 저장�
   .hm-list{overflow:visible}
   .hm-list>.hm-row:nth-of-type(n+6){display:none}
   .hm-bars{min-height:120px;flex:none;height:140px}
-  .pl .pl-dt{width:160px}
 }
 @media (min-width:600px) and (max-width:1080px),(min-width:600px) and (orientation:portrait){
   .home-fit .page:has(.hm){padding:8px 32px calc(40px + var(--safe-b))}

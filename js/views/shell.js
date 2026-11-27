@@ -28,7 +28,10 @@ export function shell({ title, active, left, right, body, tone, fit }) {
   function close() { scrim.classList.remove('on'); side.classList.remove('on'); side.setAttribute('aria-hidden', 'true'); }
 
   const top = h('header', { class: 'top' },
-    left || h('button', { class: 'ib', 'aria-label': '메뉴', onclick: open }, icon('menu')),
+    // 홈 말고는 모두 왼쪽 위에 뒤로 (메뉴는 홈에서)
+    left || (active === 'home'
+      ? h('button', { class: 'ib', 'aria-label': '메뉴', onclick: open }, icon('menu'))
+      : h('button', { class: 'ib', 'aria-label': '뒤로', onclick: () => go('#/home') }, icon('back'))),
     typeof title === 'string' ? h('div', { class: 'ttl' }, title) : title,
     h('div', { class: 'right' }, right),
   );
