@@ -225,7 +225,7 @@ export function homeView(q) {
     if (!week) return;
     const max = Math.max(1, ...week.days.map((x) => x.n));
     const diff = week.total - week.last;
-    weekBox.replaceChildren(
+    weekBox.replaceChildren(...[
       h('div', { class: 'hm-tot' }, h('b', {}, week.total.toLocaleString()), h('span', {}, '문제')),
       h('div', { class: 'hm-cmp' }, week.last || week.total
         ? (diff >= 0 ? ['지난주보다 ', h('em', {}, `${diff.toLocaleString()}문제`), ' 더 풀었어요'] : ['지난주보다 ', h('em', {}, `${(-diff).toLocaleString()}문제`), ' 덜 풀었어요'])
@@ -237,7 +237,7 @@ export function homeView(q) {
       weak?.length ? h('div', { class: 'hm-weak' }, h('div', { class: 'k' }, '정답률이 낮은 과목'),
         weak.map((w, i) => h('button', { class: 'hm-wr', onclick: () => go(`#/s/${w.sub.id}`) },
           h('span', { class: 'hm-tx' }, h('b', {}, w.sub.name), h('span', {}, `기출과 예상문제 ${w.p.q_ok + w.p.q_no}문항`)),
-          h('span', { class: 'hm-rate' + (i === 0 && w.rate < 70 ? ' r' : '') }, `${w.rate}%`)))) : null);
+          h('span', { class: 'hm-rate' + (i === 0 && w.rate < 70 ? ' r' : '') }, `${w.rate}%`)))) : null].filter(Boolean));
   }
   loadWeek().then((w) => { week = w; paintWeek(); }).catch(() => weekBox.replaceChildren(h('div', { class: 'hm-empty' }, '인터넷에 연결되면 보입니다')));
 
