@@ -8,7 +8,7 @@
 import { createClient } from 'jsr:@supabase/supabase-js@2';
 
 const VERSION = '1.1.0';
-const APP_URL = (Deno.env.get('APP_URL') || 'https://kiky-wku.github.io/KMED-Archive').replace(/\/$/, '');
+const APP_URL = (Deno.env.get('APP_URL') || 'https://studyhani.com').replace(/\/$/, '');
 const LIMIT = { rows: 3000, bytes: 2_000_000, pending: 20 };
 
 const json = (b: unknown, status = 200) => new Response(JSON.stringify(b), { status, headers: { 'Content-Type': 'application/json' } });
