@@ -54,10 +54,18 @@ export async function loadWeek() {
   const start = new Date(now.getFullYear(), now.getMonth(), now.getDate() - now.getDay());
   const prev = new Date(start); prev.setDate(prev.getDate() - 7);
   const key = (d) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
-  const { data } = await sb.from('study_log').select('day,n').eq('user_id', S.user.id).gte('day', key(prev));
+  const from = new Date(now.getFullYear(), now.getMonth(), now.getDate() - 60);
+  const { data } = await sb.from('study_log').select('day,n').eq('user_id', S.user.id).gte('day', key(from < prev ? from : prev));
   const m = new Map((data || []).map((r) => [r.day, r.n]));
   const days = Array.from({ length: 7 }, (_, i) => { const d = new Date(start); d.setDate(d.getDate() + i); return { d, n: m.get(key(d)) || 0 }; });
   let last = 0;
   for (let i = 0; i < 7; i++) { const d = new Date(prev); d.setDate(d.getDate() + i); last += m.get(key(d)) || 0; }
-  return { days, total: days.reduce((a, x) => a + x.n, 0), last, today: now.getDay() };
+  // 연속 학습 : 오늘부터 거꾸로 (오늘 아직 안 했으면 어제부터)
+  const on = (d) => (m.get(key(d)) || 0) > 0;
+  const back = (i) => new Date(now.getFullYear(), now.getMonth(), now.getDate() - i);
+  const todayOn = on(now);
+  let streak = 0;
+  for (let i = todayOn ? 0 : 1; i <= 60 && on(back(i)); i++) streak++;
+  const recent = Array.from({ length: 7 }, (_, k) => { const d = back(6 - k); return { d, n: m.get(key(d)) || 0 }; });
+  return { days, total: days.reduce((a, x) => a + x.n, 0), last, today: now.getDay(), streak, todayOn, recent };
 }

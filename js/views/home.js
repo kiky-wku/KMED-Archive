@@ -57,17 +57,13 @@ export function homeView(q) {
   const semBtn = h('button', { class: 'hm-sem' + (seesAll() ? '' : ' fixed') }, gradeLabel(g, s), seesAll() ? icon('down') : null);
   if (seesAll()) semBtn.addEventListener('click', () => openSemMenu(semBtn, g, s));
   const rail = h('div', { class: 'hm-rail' }, Array.from({ length: 4 }, () => h('i', { class: 'skel hm-sk' })));
-  const railWrap = h('div', { class: 'hm-railw' }, rail, h('i', { class: 'hm-fade l' }), h('i', { class: 'hm-fade r' }));
+  const railWrap = h('div', { class: 'hm-railw' }, rail);
   const prev = h('button', { class: 'hm-ic', 'aria-label': '앞 과목', disabled: true, onclick: () => slide(-1) }, icon('left'));
   const next = h('button', { class: 'hm-ic', 'aria-label': '다음 과목', onclick: () => slide(1) }, icon('right'));
-  const slide = (d) => rail.scrollBy({ left: d * Math.max(200, rail.clientWidth - 120), behavior: 'smooth' });
+  const slide = (d) => rail.scrollBy({ left: d * (rail.clientWidth + 10), behavior: 'smooth' });
   const navPaint = () => {
     prev.disabled = rail.scrollLeft < 4;
     next.disabled = rail.scrollLeft + rail.clientWidth > rail.scrollWidth - 4;
-    // 흐림 폭 = 남은 거리 (끝 카드의 오른쪽 가장자리를 따라 줄어듦)
-    const restR = Math.max(0, rail.scrollWidth - rail.clientWidth - rail.scrollLeft);
-    railWrap.style.setProperty('--fr', `${Math.min(72, restR)}px`);
-    railWrap.style.setProperty('--fl', `${Math.min(72, rail.scrollLeft)}px`);
   };
   let rafN = 0;
   rail.addEventListener('scroll', () => { cancelAnimationFrame(rafN); rafN = requestAnimationFrame(navPaint); }, { passive: true });
@@ -91,7 +87,7 @@ export function homeView(q) {
         h('div', { class: 'hm-lb' }, semBtn, h('span', { class: 'g' }), prev, next),
         railWrap),
       sec('hm-recent', h('h2', {}, '최근 본 자료'), iconBtn('right', '최근 본 자료 전체', () => openRecentAll()), recentBox),
-      sec('hm-wk', h('h2', {}, '이번 주 학습'), iconBtn('right', '내 학습', () => go('#/stats')), weekBox),
+      sec('hm-wk', h('h2', {}, '이번 주 학습 현황'), iconBtn('right', '내 학습', () => go('#/stats')), weekBox),
       h('div', { class: 'hm-side' },
         sec('hm-plan', h('h2', {}, '다가오는 일정'), iconBtn('pen', '일정 고치기', () => openPlan(g, s, subjects, refreshPlan)), evBox),
         sec('hm-news', h('h2', {}, '새 소식'), iconBtn('bell', '알림', () => openNotifs()), newsBox))));
@@ -157,7 +153,7 @@ export function homeView(q) {
       return h('button', { class: 'hm-card', style: { animationDelay: `${i * 0.035}s` }, onclick: () => go(`#/s/${sub.id}`) },
         h('span', { class: 'hm-emo' }, sub.icon || sub.name.slice(0, 1)),
         h('span', { class: 'hm-name' }, sub.name),
-        h('span', { class: 'hm-sub' + (n !== null && n <= 10 ? ' r' : '') }, sub2),
+        h('span', { class: 'hm-sub' + (n !== null && n <= 3 ? ' r' : '') }, sub2),
         pct === null ? h('span', { class: 'hm-pb' }) : h('span', { class: 'hm-pb' }, h('span', { class: 'hm-bar' }, h('i', { style: { width: `${pct}%` } })), `${pct}%`));
     }));
     requestAnimationFrame(navPaint);
@@ -168,7 +164,7 @@ export function homeView(q) {
     paintSubjects(new Map());
     const [prog, evs] = await Promise.all([loadProgress(subjects.map((x) => x.id)), loadEvents(g)]);
     events = evs;
-    paintSubjects(prog); paintPlan(); paintWeak(prog);
+    paintSubjects(prog); paintPlan(); paintWeek();
   })();
 
   // ── 최근 본 자료 ──
@@ -211,15 +207,6 @@ export function homeView(q) {
   }
 
   // ── 이번 주 학습 ──
-  let weak = null;
-  function paintWeak(prog) {
-    const list = subjects.map((sub) => ({ sub, p: prog.get(sub.id) }))
-      .filter((x) => x.p && x.p.q_ok + x.p.q_no >= 5)
-      .map((x) => ({ ...x, rate: Math.round((x.p.q_ok / (x.p.q_ok + x.p.q_no)) * 100) }))
-      .sort((a, b) => a.rate - b.rate).slice(0, 2);
-    weak = list;
-    paintWeek();
-  }
   let week = null;
   function paintWeek() {
     if (!week) return;
@@ -234,10 +221,21 @@ export function homeView(q) {
         i === week.today && x.n ? h('b', { style: { bottom: `calc(${Math.max(6, (x.n / max) * 100)}% + 30px)` } }, String(x.n)) : null,
         h('i', { style: { height: `${Math.max(6, (x.n / max) * 100)}%` } }),
         h('span', {}, DAY[i])))),
-      weak?.length ? h('div', { class: 'hm-weak' }, h('div', { class: 'k' }, '정답률이 낮은 과목'),
-        weak.map((w, i) => h('button', { class: 'hm-wr', onclick: () => go(`#/s/${w.sub.id}`) },
-          h('span', { class: 'hm-tx' }, h('b', {}, w.sub.name), h('span', {}, `기출과 예상문제 ${w.p.q_ok + w.p.q_no}문항`)),
-          h('span', { class: 'hm-rate' + (i === 0 && w.rate < 70 ? ' r' : '') }, `${w.rate}%`)))) : null].filter(Boolean));
+      streakBox()].filter(Boolean));
+  }
+  // 연속 학습 : 한 줄 문장 + 최근 7일 칸 (오른쪽 끝이 오늘, 많이 푼 날일수록 진하게)
+  function streakBox() {
+    const { streak, todayOn, recent } = week;
+    const msg = streak === 0 ? ['오늘부터 다시 시작해 보세요']
+      : todayOn ? [h('em', {}, `${streak}일째`), ' 연속 공부 중']
+      : [h('em', {}, `${streak}일`), ' 연속, 오늘도 이어 가세요'];
+    const top = Math.max(1, ...recent.map((x) => x.n));
+    const lv = (n) => (n <= 0 ? 0 : Math.min(4, Math.ceil((n / top) * 4)));
+    return h('div', { class: 'hm-stk' }, h('p', {}, ...msg),
+      h('div', { class: 'hm-heat' }, recent.map((x, i) => h('i', {
+        class: `l${lv(x.n)}${i === 6 ? ' t' : ''}`,
+        title: `${x.d.getMonth() + 1}월 ${x.d.getDate()}일 ${x.n ? `${x.n}문제` : '쉼'}`,
+      }))));
   }
   loadWeek().then((w) => { week = w; paintWeek(); }).catch(() => weekBox.replaceChildren(h('div', { class: 'hm-empty' }, '인터넷에 연결되면 보입니다')));
 
