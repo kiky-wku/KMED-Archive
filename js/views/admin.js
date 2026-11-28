@@ -79,10 +79,10 @@ export function adminView(q) {
 
 // ═════════════ 회원 ═════════════
 async function membersTab(area) {
-  const search = h('input', { class: 'search-in', type: 'search', placeholder: '이름 · 아이디 검색' });
+  const search = h('input', { class: 'search-in', type: 'search', placeholder: '이름 또는 아이디 검색' });
   const add = h('button', { class: 'btn sm', onclick: () => memberModal(null, reload) }, icon('plus'), '회원 등록');
   const list = h('div', { class: 'mb-groups' }, h('div', { class: 'card tbl-card' }, skelRows()));
-  const reqBox = h('div', { class: 'sr-box' });
+  const reqBox = h('div', { class: 'rq-box' });
   area.append(h('div', { class: 'toolbar' }, search, add), reqBox, list);
 
   // 가입 요청 (SQL 26 전이면 조용히 없음)
@@ -91,9 +91,9 @@ async function membersTab(area) {
     if (error || !data?.length) { reqBox.replaceChildren(); return; }
     reqBox.replaceChildren(
       h('h3', { class: 'mb-gh' }, '가입 요청', h('span', {}, `${data.length}명`)),
-      h('div', { class: 'sr-list' }, ...data.map((r) => {
-        const no = h('button', { class: 'sr-no' }, '거절');
-        const ok = h('button', { class: 'sr-ok' }, '승인');
+      h('div', { class: 'rq-list' }, ...data.map((r) => {
+        const no = h('button', { class: 'rq-no' }, '거절');
+        const ok = h('button', { class: 'rq-ok' }, '승인');
         let armed = 0;
         const act = async (action) => {
           if (action === 'reject' && Date.now() - armed > 2500) { armed = Date.now(); no.textContent = '한 번 더'; setTimeout(() => { if (no.isConnected) no.textContent = '거절'; }, 2500); return; }
@@ -107,8 +107,8 @@ async function membersTab(area) {
         };
         no.addEventListener('click', () => act('reject'));
         ok.addEventListener('click', () => act('approve'));
-        return h('div', { class: 'sr-row' },
-          h('div', { class: 'sr-tx' }, h('b', {}, r.name),
+        return h('div', { class: 'rq-row' },
+          h('div', { class: 'rq-tx' }, h('b', {}, r.name),
             h('span', {}, ...[`${r.student_no}학번`, gradeLabel(r.grade), r.username, ago(r.created_at)].map((t) => h('em', {}, t)))),
           no, ok);
       })));
@@ -174,7 +174,7 @@ async function memberModal(p, done) {
       ? h('div', { class: 'chips' }, subs.map((s) => {
         const c = h('button', { type: 'button', class: 'chipt' + (picked.has(s.id) ? ' on' : ''), onclick: () => {
           picked.has(s.id) ? picked.delete(s.id) : picked.add(s.id); c.classList.toggle('on');
-        } }, `${s.icon ? s.icon + ' ' : ''}${s.name} · ${gradeLabel(s.grade, s.semester)}`);
+        } }, `${s.icon ? s.icon + ' ' : ''}${s.name}, ${gradeLabel(s.grade, s.semester)}`);
         return c;
       }))
       : h('div', { class: 'sub' }, '등록된 과목이 없습니다'),
@@ -214,7 +214,7 @@ async function memberModal(p, done) {
     extra = h('div', { class: 'danger-zone' },
       h('div', { class: 'field' }, h('label', {}, '비밀번호 초기화'), h('div', { class: 'row' }, npw, rbtn)),
       h('div', { class: 'meta-row' },
-        h('span', { class: 'sub' }, `가입 ${fmtDate(p.created_at, false)} · 마지막 접속 ${p.last_seen_at ? fmtDate(p.last_seen_at) : '없음'}`),
+        h('span', { class: 'sub' }, `가입 ${fmtDate(p.created_at, false)}, 마지막 접속 ${p.last_seen_at ? fmtDate(p.last_seen_at) : '없음'}`),
         del),
     );
   }

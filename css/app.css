@@ -2120,17 +2120,17 @@ html.offline body::after{content:'인터넷 연결 없음. 이 기기에 저장�
 .su-done{margin:4px 0 0;text-align:center;font-size:15px;line-height:1.6;font-weight:500;color:#4E5968}
 
 /* 관리 : 가입 요청 목록 */
-.sr-box{margin-bottom:22px}
-.sr-box:empty{display:none}
-.sr-list{display:grid;gap:8px}
-.sr-row{display:flex;align-items:center;gap:12px;padding:14px 14px 14px 18px;border-radius:16px;background:#fff;box-shadow:var(--sh1);animation:rise .35s var(--ease) both}
-.sr-tx{flex:1;min-width:0;display:grid;gap:3px}
-.sr-tx b{font-size:16px;font-weight:700}
-.sr-tx span{display:flex;flex-wrap:wrap;gap:2px 10px;font-size:13px;font-weight:600;color:var(--sub)}
-.sr-tx em{font-style:normal}
-.sr-no{height:36px;padding:0 14px;border-radius:10px;background:#F2F4F6;color:#4E5968;font-size:14px;font-weight:700}
-.sr-ok{height:36px;padding:0 16px;border-radius:10px;background:var(--text);color:#fff;font-size:14px;font-weight:700}
-.sr-no:disabled,.sr-ok:disabled{opacity:.5}
+.rq-box{margin-bottom:22px}
+.rq-box:empty{display:none}
+.rq-list{display:grid;gap:8px}
+.rq-row{display:flex;align-items:center;gap:12px;padding:14px 14px 14px 18px;border-radius:16px;background:#fff;box-shadow:var(--sh1);animation:rise .35s var(--ease) both}
+.rq-tx{flex:1;min-width:0;display:grid;gap:3px}
+.rq-tx b{font-size:16px;font-weight:700}
+.rq-tx span{display:flex;flex-wrap:wrap;gap:2px 10px;font-size:13px;font-weight:600;color:var(--sub)}
+.rq-tx em{font-style:normal}
+.rq-no{height:36px;padding:0 14px;border-radius:10px;background:#F2F4F6;color:#4E5968;font-size:14px;font-weight:700}
+.rq-ok{height:36px;padding:0 16px;border-radius:10px;background:var(--text);color:#fff;font-size:14px;font-weight:700}
+.rq-no:disabled,.rq-ok:disabled{opacity:.5}
 
 .su-wrap{position:relative;width:100%;display:grid;place-items:center}
 .su-back{position:fixed;top:calc(14px + var(--safe-t, 0px));left:14px;width:44px;height:44px;border-radius:50%;display:grid;place-items:center;color:var(--text);transition:background .15s,scale .15s var(--spring);z-index:2}
