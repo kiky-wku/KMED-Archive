@@ -158,7 +158,7 @@ function card(r, i, canResolve, repaint, removed, onEdit) {
 // ─────────────────────────────────────────────
 // 알림 목록
 // ─────────────────────────────────────────────
-const NICON = { signup: 'bell', report: 'siren', suggest: 'chat', done: 'check', upload: 'file', comment: 'chat', device: 'shield' };
+const NICON = { signup: 'bell', report: 'siren', suggest: 'chat', done: 'check', upload: 'file', comment: 'chat', device: 'shield', schedule: 'cal' };
 export function openNotifs() {
   const list = h('div', { class: 'nt-list' }, skelRows(5, 64));
   // 모두 지우기 : 3초 안에 한 번 더 누르면 위에서부터 차례로 사라짐

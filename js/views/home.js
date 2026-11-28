@@ -23,7 +23,7 @@ const LINES = [
   '천천히, 그래도 꾸준히', '한 번 더 보면 오래 남습니다', '작은 습관이 성적을 만듭니다', '지금 보는 한 줄이 쌓입니다',
 ];
 const DAY = ['일', '월', '화', '수', '목', '금', '토'];
-const NICON = { signup: 'bell', report: 'siren', suggest: 'chat', done: 'check', upload: 'file', comment: 'chat', device: 'shield' };
+const NICON = { signup: 'bell', report: 'siren', suggest: 'chat', done: 'check', upload: 'file', comment: 'chat', device: 'shield', schedule: 'cal' };
 const KIND_ICON = { flash: 'layers', past: 'list', pred: 'list', hanja_r: 'pen', hanja_h: 'pen', hanja_grid: 'pen', jung_translate: 'pen', um_order: 'list', wordlist: 'list', wordbook: 'list' };
 const fileTitle = (f) => [f.series || (f.filename || '').replace(/\.pdf$/i, ''), f.mode === 'weekly' ? f.week : ''].filter(Boolean).join(' ');
 const dayStart = (d) => { const x = new Date(d); x.setHours(0, 0, 0, 0); return x; };
